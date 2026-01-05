@@ -1,0 +1,10 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt --platform manylinux2014_x86_64 --target /opt/python --only-binary=:all:
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD test -d /opt/python || exit 1
+
+ENTRYPOINT ["cp", "-r", "/opt/python/", "/output/"]

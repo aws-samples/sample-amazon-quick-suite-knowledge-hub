@@ -1,0 +1,310 @@
+[
+  {
+    "description": "Execute SQL query and store results in memory",
+    "inputSchema": {
+      "properties": {
+        "sql_query": {
+          "description": "SQL query to execute",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sql_query"
+      ],
+      "type": "object"
+    },
+    "name": "extract_data"
+  },
+  {
+    "description": "Detect litigation indicators in claims using data from memory",
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "description": "Session ID from extract_data",
+          "type": "string"
+        },
+        "litigation_config": {
+          "description": "Optional litigation analysis configuration overrides. If omitted, defaults to: confidence_thresholds={high: 0.7, low: 0.15}, score_weights={strong_signal_weight: 0.7, weak_signal_weight: 0.15}, limits={max_results: 100}",
+          "type": "object",
+          "properties": {
+            "confidence_thresholds": {
+              "type": "object",
+              "properties": {
+                "high": {
+                  "type": "number",
+                  "description": "High confidence threshold (default: 0.7)"
+                },
+                "low": {
+                  "type": "number",
+                  "description": "Low confidence threshold (default: 0.15)"
+                }
+              }
+            },
+            "score_weights": {
+              "type": "object",
+              "properties": {
+                "keyword_weight": {
+                  "type": "number",
+                  "description": "Weight for keyword matches (default: 0.01)"
+                },
+                "strong_signal_weight": {
+                  "type": "number",
+                  "description": "Weight for strong litigation signals (default: 0.7)"
+                },
+                "weak_signal_weight": {
+                  "type": "number",
+                  "description": "Weight for weak litigation signals (default: 0.15)"
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "name": "detect_litigation"
+  },
+  {
+    "description": "Calculate fraud risk scores using data from memory",
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "description": "Session ID from extract_data",
+          "type": "string"
+        },
+        "fraud_config": {
+          "description": "Optional fraud detection configuration overrides. If omitted, defaults to: amount_thresholds={low: 1000, medium: 5000, high: 20000, very_high: 50000}, age_thresholds={young_driver: 25, senior_driver: 70}, vehicle_thresholds={new_vehicle: 3, old_vehicle: 15}, ratios={medical_share_high: 0.7}, score_weights={amount_anomaly: 0.2, pattern_anomaly: 0.3, ratio_anomaly: 0.1, demographic_anomaly: 0.08, keyword_match: 0.1, severe_injury: 0.15, soft_tissue: 0.15, third_party_bi: 0.15, total_loss: 0.1}",
+          "type": "object",
+          "properties": {
+            "amount_thresholds": {
+              "type": "object",
+              "properties": {
+                "low": {
+                  "type": "number",
+                  "description": "Low amount threshold (default: 1000)"
+                },
+                "medium": {
+                  "type": "number",
+                  "description": "Medium amount threshold (default: 5000)"
+                },
+                "high": {
+                  "type": "number",
+                  "description": "High amount threshold (default: 20000)"
+                },
+                "very_high": {
+                  "type": "number",
+                  "description": "Very high amount threshold (default: 50000)"
+                }
+              }
+            },
+            "age_thresholds": {
+              "type": "object",
+              "properties": {
+                "young_driver": {
+                  "type": "number",
+                  "description": "Young driver age threshold (default: 25)"
+                },
+                "senior_driver": {
+                  "type": "number",
+                  "description": "Senior driver age threshold (default: 70)"
+                }
+              }
+            },
+            "vehicle_thresholds": {
+              "type": "object",
+              "properties": {
+                "new_vehicle": {
+                  "type": "number",
+                  "description": "New vehicle age threshold in years (default: 3)"
+                },
+                "old_vehicle": {
+                  "type": "number",
+                  "description": "Old vehicle age threshold in years (default: 15)"
+                }
+              }
+            },
+            "ratios": {
+              "type": "object",
+              "properties": {
+                "medical_share_high": {
+                  "type": "number",
+                  "description": "High medical share ratio threshold (default: 0.7)"
+                },
+                "anomaly_threshold": {
+                  "type": "number",
+                  "description": "Anomaly detection threshold (default: 0.75)"
+                }
+              }
+            },
+            "score_weights": {
+              "type": "object",
+              "properties": {
+                "amount_anomaly": {
+                  "type": "number",
+                  "description": "Weight for amount anomalies (default: 0.2)"
+                },
+                "timing_anomaly": {
+                  "type": "number",
+                  "description": "Weight for timing anomalies (default: 0.15)"
+                },
+                "pattern_anomaly": {
+                  "type": "number",
+                  "description": "Weight for pattern anomalies (default: 0.3)"
+                },
+                "ratio_anomaly": {
+                  "type": "number",
+                  "description": "Weight for ratio anomalies (default: 0.1)"
+                },
+                "demographic_anomaly": {
+                  "type": "number",
+                  "description": "Weight for demographic anomalies (default: 0.08)"
+                },
+                "keyword_match": {
+                  "type": "number",
+                  "description": "Weight for keyword matches (default: 0.1)"
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "name": "score_fraud_risk"
+  },
+  {
+    "description": "Perform risk factor analysis using data from memory",
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "description": "Session ID from extract_data",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "name": "analyze_risk_factors"
+  },
+  {
+    "description": "Create loss development triangles from data in memory",
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "description": "Session ID from extract_data",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "name": "build_loss_triangles"
+  },
+  {
+    "description": "Calculate IBNR reserves using chain ladder methodology with triangle data from memory",
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "description": "Session ID from extract_data",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "name": "calculate_reserves"
+  },
+  {
+    "description": "Monitor claim development with KPIs and alerts using data from memory",
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "description": "Session ID from extract_data",
+          "type": "string"
+        },
+        "monitoring_config": {
+          "description": "Optional monitoring configuration overrides",
+          "type": "object",
+          "properties": {
+            "alert_thresholds": {
+              "type": "object",
+              "properties": {
+                "fraud_rate": {
+                  "type": "number",
+                  "description": "Fraud rate alert threshold (default: 0.05)"
+                },
+                "severity_ratio": {
+                  "type": "number",
+                  "description": "Severity ratio alert threshold (default: 1.2)"
+                },
+                "frequency_change": {
+                  "type": "number",
+                  "description": "Frequency change alert threshold (default: 0.15)"
+                },
+                "reserve_adequacy": {
+                  "type": "number",
+                  "description": "Reserve adequacy alert threshold (default: 0.9)"
+                }
+              }
+            },
+            "kpi_targets": {
+              "type": "object",
+              "properties": {
+                "avg_claim_cost": {
+                  "type": "number",
+                  "description": "Average claim cost target (default: 15000)"
+                },
+                "claims_per_month": {
+                  "type": "number",
+                  "description": "Claims per month target (default: 100)"
+                },
+                "loss_ratio": {
+                  "type": "number",
+                  "description": "Loss ratio target (default: 0.65)"
+                }
+              }
+            },
+            "development_factors": {
+              "type": "object",
+              "properties": {
+                "12_to_24": {
+                  "type": "number",
+                  "description": "12 to 24 month development factor (default: 1.15)"
+                },
+                "24_to_36": {
+                  "type": "number",
+                  "description": "24 to 36 month development factor (default: 1.05)"
+                },
+                "36_to_48": {
+                  "type": "number",
+                  "description": "36 to 48 month development factor (default: 1.02)"
+                },
+                "48_to_60": {
+                  "type": "number",
+                  "description": "48 to 60 month development factor (default: 1.01)"
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "name": "monitor_development"
+  }
+]

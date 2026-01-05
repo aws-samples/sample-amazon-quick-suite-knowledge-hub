@@ -1,0 +1,48 @@
+[
+  {
+    "name": "ListKnowledgeBases",
+    "description": "List all available Amazon Bedrock Knowledge Bases and their data sources. Returns a mapping of knowledge base IDs to their details including name, description, and associated data sources.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": []
+    }
+  },
+  {
+    "name": "QueryKnowledgeBases",
+    "description": "Query an Amazon Bedrock Knowledge Base using natural language. Retrieves relevant documents and content based on the query with configurable result count and reranking options.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "A natural language query to search the knowledge base with"
+        },
+        "knowledge_base_id": {
+          "type": "string",
+          "description": "The knowledge base ID to query. Must be a valid ID from the ListKnowledgeBases tool"
+        },
+        "number_of_results": {
+          "type": "integer",
+          "description": "The number of results to return. Use smaller values for focused results and larger values for broader coverage."
+        },
+        "reranking": {
+          "type": "boolean",
+          "description": "Whether to rerank the results. Useful for improving relevance and sorting."
+        },
+        "reranking_model_name": {
+          "type": "string",
+          "description": "The name of the reranking model to use. Options: 'COHERE', 'AMAZON'"
+        },
+        "data_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The data source IDs to filter the knowledge base by. Must be valid data source IDs from the ListKnowledgeBases tool"
+        }
+      },
+      "required": ["query", "knowledge_base_id"]
+    }
+  }
+]
