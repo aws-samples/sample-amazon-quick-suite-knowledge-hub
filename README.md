@@ -13,6 +13,8 @@
     Integration guides and documentation for Amazon Quick Suite
   </h2>
 
+  You can read directly on github [https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/)
+
   <div align="center">
     <a href="https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/graphs/commit-activity"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/aws-samples/sample-amazon-quick-suite-knowledge-hub"/></a>
     <a href="https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/issues"><img alt="GitHub open issues" src="https://img.shields.io/github/issues/aws-samples/sample-amazon-quick-suite-knowledge-hub"/></a>
