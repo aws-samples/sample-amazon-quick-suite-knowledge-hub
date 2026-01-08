@@ -28,6 +28,12 @@ only-include = ["README.md"]
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+exclude = [
+    "docs/use-cases/*/tools/",
+    "docs/use-cases/*/cdk/",
+]
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings

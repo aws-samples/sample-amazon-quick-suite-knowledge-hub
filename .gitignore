@@ -41,6 +41,7 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+bandit-results.json
 
 # Temporary
 *.tmp

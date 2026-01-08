@@ -108,5 +108,5 @@ def get_title_from_file(file_path):
             content = f.read()
             title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
             return title_match.group(1) if title_match else None
-    except:
+    except Exception:
         return None

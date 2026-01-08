@@ -2,6 +2,7 @@
 """
 Actuarial Analysis Tools - CDK Deployment
 """
+
 import aws_cdk as cdk
 from cdk.actuarial_stack import ActuarialToolsStack
 
