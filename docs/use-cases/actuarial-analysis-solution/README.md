@@ -14,7 +14,7 @@ This solution addresses critical challenges in insurance operations by providing
 **For Insurance Companies:**
 
 - **Reduce Claims Processing Time** by 60-80% through automated analysis
-- **Improve Fraud Detection Accuracy** with multi-factor scoring algorithms  
+- **Improve Fraud Detection Accuracy** with multi-factor scoring algorithms
 - **Enhance Reserve Adequacy** using Chain Ladder and Bornhuetter-Ferguson methodologies
 - **Minimize Litigation Exposure** through early risk identification
 - **Streamline Actuarial Workflows** with natural language query interfaces
@@ -87,17 +87,20 @@ git sparse-checkout set docs/use-cases/actuarial-analysis-solution
 ```
 
 ### 2. Install Prerequisites
+
 ```bash
 npm install -g aws-cdk
 pip install -r requirements.txt
 ```
 
 ### 3. Configure AWS
+
 ```bash
 aws configure
 ```
 
 ### 4. Deploy Everything
+
 ```bash
 cdk deploy --require-approval never
 ```
@@ -118,6 +121,7 @@ This single command deploys:
 4. Copy the required values for Quick Suite integration
 
 **Option 2: CLI Commands**
+
 ```bash
 # View all deployment outputs
 aws cloudformation describe-stacks --stack-name ActuarialToolsStack --query 'Stacks[0].Outputs'
@@ -137,6 +141,7 @@ Key outputs for QuickSuite integration:
 ## 🔧 Available Tools
 
 ### Data Query Tools (data_query_lambda.py)
+
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
 | `list_tables` | Discover available databases and tables | None | tables, database info |
@@ -144,6 +149,7 @@ Key outputs for QuickSuite integration:
 | `run_query` | Execute SQL queries and return results | query, description | session_id, row_count, columns |
 
 ### Actuarial Analysis Tools (agentcore_lambda.py)
+
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
 | `detect_litigation` | Find legal involvement indicators | session_id | litigation_flags, scores |
@@ -191,7 +197,7 @@ Fill in the MCP configuration:
 3. Fill in the authentication values from your CDK deployment outputs:
 
    - **Client ID** → Paste your `ClientId` (ensure no leading/trailing spaces)
-   - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)  
+   - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)
    - **Token URL** → Paste your `TokenEndpoint`
 
 ![Authentication Configuration](./images/actuarial-tool-setup2.png)
@@ -253,6 +259,7 @@ As the flow runs, you can see:
 **Progress Tracking**: The left side shows each step's status as it is executed and completed.
 
 **Chat Interaction**: The right side allows you to:
+
 - Ask follow-up questions or commands, such as "Summarize the fraud findings" or "Explain the litigation risk factors"
 - Start new runs with different claim types or analysis parameters
 
@@ -266,20 +273,24 @@ As the flow runs, you can see:
 ## Troubleshooting
 
 **CDK Bootstrap Error:**
+
 ```bash
 cdk bootstrap aws://ACCOUNT-ID/REGION
 ```
 
 **Permission Denied:**
+
 ```bash
 aws sts get-caller-identity  # Verify credentials
 ```
 
 **Lambda Timeout:**
+
 - Check CloudWatch logs: `/aws/lambda/actuarial-tools`
 - Increase timeout in `cdk/actuarial_stack.py`
 
 **SQL Query Failed:**
+
 - Verify data source configuration
 - Check query syntax
 - Review IAM permissions
@@ -293,6 +304,7 @@ cdk destroy
 ## Sample Data
 
 The `sample_data/claims.csv` contains 10,000+ synthetic insurance claims with:
+
 - Multiple lines of business (Auto, Property, Liability)
 - Date range: 2020-2024
 - Realistic claim amounts and patterns

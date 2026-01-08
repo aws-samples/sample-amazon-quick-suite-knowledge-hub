@@ -17,9 +17,11 @@
 From **Confluence API**, add:
 
 **Classic scopes**:
+
 - search:confluence
 
 **Granular scopes**:
+
 - read:page:confluence
 - write:page:confluence
 - read:space:confluence
@@ -43,7 +45,7 @@ From **Confluence API**, add:
 9) Check both integration type if needed:
 
    **Perform actions in Atlassian Confluence**: This allows users to take actions to their Confluence cloud (read-and-write)
-   
+
    **Bring data from Atlassian Confluence**: This creates a Confluence knowledge base (read-only)
 
 ![Integration type selection](images/image_6.png)
@@ -59,6 +61,7 @@ ie. `https://<your namespace>.atlassian.net/_edge/tenant_info`
 cloudId returned is the Instance ID
 
 **Note**:
+
 - To configure Service Authentication, first generate API key without scopes at Confluence
 - To configure User Authentication, follow this:
 

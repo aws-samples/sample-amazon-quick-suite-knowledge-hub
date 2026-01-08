@@ -9,4 +9,8 @@ This section contains setup guides for integrating knowledge bases with Quick Su
 
 ## Knowledge Base Integrations
 
-- [Confluence Cloud (Knowledge Only)](knowledge%20base/confluence-cloud-knowledge-only-setup-guide/README.md)
+{% set integrations = get_integrations() %}
+{% for integration in integrations['knowledge-base'] %}
+
+- [{{ integration.title }}]({{ integration.path }})
+{% endfor %}

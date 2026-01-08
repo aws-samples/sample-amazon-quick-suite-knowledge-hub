@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --quicksuite-purple: #6B46C1;
+  --quicksuite-blue: #3B82F6;
+  --aws-dark-blue: #232F3E;
+  --aws-gray: #F2F3F3;
+}
+
+body {
+  font-family: 'Amazon Ember', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}

@@ -7,7 +7,7 @@
    - Glue Database: `claims_db_{suffix}`
    - Glue Crawler: Auto-discovers schema
    - Athena Workgroup: `actuarial-workgroup`
-3. **Lambda Functions** 
+3. **Lambda Functions**
    - Actuarial analysis tools (7 specialized tools)
    - Data query tools (SQL interface)
 4. **AgentCore Memory** - Session-based data persistence
@@ -17,11 +17,13 @@
 ## 🏗️ Architecture Components
 
 ### AgentCore Memory
+
 - **Purpose**: Stores intermediate results between tool calls
 - **Benefits**: Eliminates redundant calculations, enables complex workflows
 - **Storage**: Bedrock AgentCore memory service
 
-### AgentCore Gateway  
+### AgentCore Gateway
+
 - **Authentication**: Cognito OAuth2 with client credentials
 - **Protocol**: MCP (Model Context Protocol)
 - **Tools Integration**: Both actuarial and data query tools
@@ -30,15 +32,17 @@
 ## 🚀 Deployment
 
 ### Prerequisites
+
 ```bash
 # Install CDK
 npm install -g aws-cdk
 
-# Install Python dependencies  
+# Install Python dependencies
 pip install -r requirements.txt
 ```
 
 ### Deploy Everything
+
 ```bash
 cd actuarial-analysis-solution
 cdk deploy --require-approval never
@@ -46,18 +50,21 @@ cdk deploy --require-approval never
 
 ## 📊 What Gets Created
 
-### Data Layer:
+### Data Layer
+
 - S3 bucket for claims data with sample dataset
 - Glue crawler for automatic schema discovery
 - Athena workgroup for optimized queries
 
-### Compute Layer:
+### Compute Layer
+
 - **Actuarial Lambda**: 7 specialized analysis tools
 - **Data Query Lambda**: Flexible SQL interface
 - **Memory Creator Lambda**: AgentCore memory management
 - **Gateway Creator Lambda**: Gateway deployment automation
 
-### Integration Layer:
+### Integration Layer
+
 - **AgentCore Memory**: Session-based data persistence
 - **AgentCore Gateway**: Natural language interface
 - **OAuth2 Authentication**: Secure API access
@@ -65,22 +72,25 @@ cdk deploy --require-approval never
 ## 🔧 Key Outputs
 
 After deployment:
+
 ```
 GatewayUrl: https://{gateway-id}.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp
 ClientId: {cognito-client-id}
-ClientSecret: {cognito-client-secret}  
+ClientSecret: {cognito-client-secret}
 TokenEndpoint: https://{domain}.auth.us-east-1.amazoncognito.com/oauth2/token
 ```
 
 ## 🧪 Testing
 
 ### 1. Athena Queries
+
 ```sql
 SELECT * FROM claims_db_{suffix}.claims LIMIT 10;
 SELECT line_of_business, COUNT(*) FROM claims_db_{suffix}.claims GROUP BY 1;
 ```
 
 ### 2. Gateway Authentication
+
 ```bash
 # Get OAuth2 token
 curl -X POST {TokenEndpoint} \

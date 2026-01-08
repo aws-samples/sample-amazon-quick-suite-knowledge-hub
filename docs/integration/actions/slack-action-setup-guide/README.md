@@ -41,17 +41,17 @@
 10) Insert the following data:
 
     **Name**: Slack Actions
-    
+
     **Base URL**: `https://slack.com/api`
-    
+
     **Client ID**: (from Step 4)
-    
+
     **Client Secret**: (from Step 4)
-    
+
     **Token URL**: `https://slack.com/api/oauth.v2.access`
-    
+
     **Authorization URL**: `https://slack.com/oauth/v2/authorize`
-    
+
     **Redirect URL**: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
 ![Slack configuration form](images/image_9.png)

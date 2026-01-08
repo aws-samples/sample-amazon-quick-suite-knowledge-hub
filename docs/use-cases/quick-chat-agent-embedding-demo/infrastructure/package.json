@@ -1,0 +1,22 @@
+{
+  "name": "quickchat-embedding-infrastructure",
+  "version": "1.0.0",
+  "description": "CDK app for QuickChat embedding infrastructure",
+  "main": "cdk-app.js",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "synth": "cdk synth"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.100.0",
+    "constructs": "^10.0.0",
+    "cdk-nag": "^2.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}

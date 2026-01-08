@@ -66,6 +66,7 @@ nav:
     - Overview: use-cases/index.md
     - Actuarial Analysis Solution: use-cases/actuarial-analysis-solution/README.md
     - Bedrock KB Retrieval MCP: use-cases/bedrock-kb-retrieval-mcp/README.md
+    - Quick Chat Agent Embedding Demo: use-cases/quick-chat-agent-embedding-demo/README.md
     - Redshift Data Query MCP: use-cases/redshift-data-query-mcp/README.md
   - ❤️ How To Contribute: HOW-TO-CONTRIBUTE.md
 repo_url: https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub

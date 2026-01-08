@@ -19,11 +19,11 @@
 5) On the New Connected App page, do the following:
 
    In Basic information, enter the following required information:
-   
+
    **Connect App Name** – A name for your connected app.
-   
+
    **API Name** – A name for your API.
-   
+
    **Contact Email** – Your contact email.
 
 ![Basic information form](images/image_4.png)
@@ -31,7 +31,7 @@
 6) In API (Enable OAuth Settings), add callback url: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
    Check the following checkboxes:
-   
+
    1) Enable OAuth Settings
    2) Require Secret for Web Server Flow
    3) Require Secret for Refresh Token Flow
@@ -41,7 +41,7 @@
    7) Introspect All Tokens
 
    And select the following OAuth scopes:
-   
+
    - `visualforce`
    - `custom_permissions`
    - `open_id`
@@ -68,9 +68,9 @@
 ![Consumer details](images/image_7.png)
 
    **Note**:
-   
+
    **Consumer Key** is Client ID
-   
+
    **Consumer Secret** is Client Secret.
 
 ![Key and secret mapping](images/image_8.png)
@@ -80,23 +80,23 @@
 8) Go to Quick Suite and choose Integration, Select **Salesforce** and choose **Next**
 
    Insert the following data:
-   
+
    **Base URL**: `https://<your_salesforce_instance>.my.salesforce.com/services/data/v60.0`
-   
+
    **Client ID**: (from Step #7)
-   
+
    **Client Secret**: (from Step #7)
-   
+
    **Authentication URL** (for User authentication option only, NOT needed for Service authentication):
-   
+
    - Developer Edition: `https://login.salesforce.com/services/oauth2/authorize`
    - Sandbox Edition: `https://test.salesforce.com/services/oauth2/authorize`
-   
+
    **Token URL**:
-   
+
    - Developer Edition: `https://login.salesforce.com/services/oauth2/token`
    - Sandbox Edition: `https://test.salesforce.com/services/oauth2/token`
-   
+
    **Redirect URL**: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
    Your configuration should look like this:

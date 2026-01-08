@@ -23,13 +23,13 @@ Quick users can connect to 3P agents using the custom MCP connector in Quick Sui
 7) Select the authentication method: **User authentication** for Box
 
 8) Enter the following details:
-   
+
    a. **Client ID**
-   
+
    b. **Client secret**
-   
+
    c. **Token URL**
-   
+
    d. **Authorization URL**
 
 9) Click **Create and continue**

@@ -37,6 +37,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install uv
+        if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        uses: astral-sh/setup-uv@v3
+
       - name: Install documentation dependencies
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: uv sync
@@ -65,7 +69,7 @@ jobs:
             --max-retries 3 \
             --exclude-mail \
             './site/**/*.html' || exit_code=$?
-          
+
           if [ ${exit_code:-0} -ne 0 ]; then
             echo "⚠️ Some links may be broken or unreachable"
             echo "This could be due to temporary network issues or rate limiting"

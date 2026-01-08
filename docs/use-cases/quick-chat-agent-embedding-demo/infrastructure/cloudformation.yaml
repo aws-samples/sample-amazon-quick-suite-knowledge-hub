@@ -1,0 +1,657 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'QuickChat Embedding with Cognito and IDC Trusted Identity Propagation'
+
+Parameters:
+  LayerArn:
+    Type: String
+    Description: Lambda Layer ARN with required dependencies
+    Default: ""
+  IdcApplicationArn:
+    Type: String
+    Description: Identity Center instance ARN (auto-discovered by CDK)
+    Default: ""
+  AllowedDomains:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of allowed domains for QuickSuite embedding
+    Default: "http://localhost:3000,https://localhost:3000"
+
+Resources:
+  QuickChatEmbeddingAPI:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Description: QuickChat Embedding API
+      Name: quickchat-embedding-api
+      ProtocolType: HTTP
+      Target: !GetAtt TTELambda.Arn
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  PostRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref QuickChatEmbeddingAPI
+      RouteKey: POST /
+      AuthorizationType: JWT
+      AuthorizerId: !Ref JWTAuthorizer
+
+  OptionsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref QuickChatEmbeddingAPI
+      RouteKey: OPTIONS /
+      AuthorizationType: NONE
+
+  JWTAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref QuickChatEmbeddingAPI
+      AuthorizerType: JWT
+      IdentitySource:
+        - '$request.header.Authorization'
+      JwtConfiguration:
+        Audience:
+          - !Ref AppClient
+        Issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+      Name: quickchat-jwt-authorizer
+
+  TTELambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - '-'
+        - - !Ref 'AWS::StackName'
+          - 'TTELambdaFunction'
+      Handler: index.lambda_handler
+      Runtime: python3.11
+      Role: !GetAtt TTELambdaRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          IDC_APP_CLIENT_ID: !GetAtt IDCApiApp.ApplicationArn
+          QUICKSUITE_ROLE_ARN: !GetAtt QuickSuiteRole.Arn
+          ALLOWED_DOMAINS: !Join [',', !Ref AllowedDomains]
+          AWS_ACCOUNT_ID: !Ref 'AWS::AccountId'
+          COGNITO_REDIRECT_URI: !Select [0, !Split [',', !Join [',', !Ref AllowedDomains]]]
+      Layers:
+        - !Ref LayerArn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          from botocore.config import Config
+          import datetime
+          import jwt
+          import os
+
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          sts_client = boto3.client('sts')
+          oidc_client = boto3.client('sso-oidc', region_name='us-east-1')
+
+          IDC_APP_CLIENT_ID = os.environ.get('IDC_APP_CLIENT_ID')
+          ROLE_ARN = os.environ.get('QUICKSUITE_ROLE_ARN')
+          ALLOWED_DOMAINS = os.environ.get('ALLOWED_DOMAINS', 'http://localhost:3000').split(',')
+          AWS_ACCOUNT_ID = os.environ.get('AWS_ACCOUNT_ID')
+
+          CORS_HEADERS = {
+            "Access-Control-Allow-Headers":"Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+            "Access-Control-Allow-Origin" : "*",
+            "Access-Control-Allow-Methods":"POST,OPTIONS,GET"
+          }
+
+          def lambda_handler(event, context):
+            logger.info("IDC_APP_CLIENT_ID: %s" % IDC_APP_CLIENT_ID)
+            logger.info("ROLE_ARN: %s" % ROLE_ARN)
+            logger.info("Received event: %s" % json.dumps(event))
+            if (event["version"] == "1.0"):
+              httpMethod = event['httpMethod']
+            elif (event["version"] == "2.0"):
+              httpMethod = event["requestContext"]["http"]["method"]
+            else:
+              logger.info('Unknown version: %s' % event["version"])
+              httpMethod = event["requestContext"]["http"]["method"]
+            if httpMethod == 'OPTIONS':
+              logger.info('Handling OPTIONS event')
+              return {
+                "statusCode": 200,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({ 'message': 'Hello'})
+              }
+            elif httpMethod == 'POST':
+              logger.info('Handling POST event')
+              post_string = event['body']
+              if len(post_string) > 0:
+                post_json = json.loads(post_string)
+                logger.info("Received post json: %s" % json.dumps(post_json))
+                if ('idToken' in post_json):
+                  id_token = post_json['idToken']
+                  logger.info("ID Token received (first 50 chars): %s" % id_token[:50])
+                  logger.info("IDC_APP_CLIENT_ID being used: %s" % IDC_APP_CLIENT_ID)
+
+                  try:
+                    cognito_claims = jwt.decode(id_token, options={"verify_signature": False})
+                    logger.info("Cognito token claims: %s" % {
+                        "iss": cognito_claims.get("iss"),
+                        "aud": cognito_claims.get("aud"),
+                        "exp": cognito_claims.get("exp"),
+                        "sub": cognito_claims.get("sub"),
+                        "email": cognito_claims.get("email"),
+                        "token_use": cognito_claims.get("token_use")
+                    })
+                  except Exception as decode_error:
+                    logger.error("Failed to decode Cognito token: %s" % str(decode_error))
+
+                  try:
+                    logger.info("=== CALLING OIDC CREATE TOKEN ===")
+                    logger.info("Using clientId: %s" % IDC_APP_CLIENT_ID)
+                    logger.info("Using grantType: urn:ietf:params:oauth:grant-type:jwt-bearer")
+                    logger.info("Using assertion (first 100 chars): %s" % id_token[:100])
+
+                    oidc_token_response = oidc_client.create_token_with_iam(
+                      clientId = IDC_APP_CLIENT_ID,
+                      grantType = 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                      assertion = id_token
+                    )
+                    logger.info("OIDC token response received successfully")
+                  except Exception as e:
+                    import traceback
+                    logger.error("OIDC token error: %s" % str(e))
+                    logger.error("Error type: %s" % type(e).__name__)
+                    logger.error("Traceback: %s" % traceback.format_exc())
+
+                    error_code = getattr(e, 'response', {}).get('Error', {}).get('Code', 'Unknown')
+                    error_message = getattr(e, 'response', {}).get('Error', {}).get('Message', str(e))
+                    logger.error("AWS Error Code: %s" % error_code)
+                    logger.error("AWS Error Message: %s" % error_message)
+
+                    result = {
+                      'embedUrl': '',
+                      'status': "Exception: %s: %s (Code: %s)" % (type(e).__name__, error_message, error_code)
+                    }
+                  else:
+                    logger.info("=== DECODING OIDC TOKEN ===")
+                    claims = jwt.decode(oidc_token_response["idToken"], options={"verify_signature": False})
+                    logger.info("oidc_token_response claims: %s" % claims)
+                    logger.info("=== ASSUMING ROLE ===")
+                    x = datetime.datetime.now()
+                    try:
+                      user_creds = sts_client.assume_role(
+                        RoleArn=ROLE_ARN,
+                        RoleSessionName="quicksuite_session_"+str(x.strftime("%f")),
+                        DurationSeconds=3600,
+                        ProvidedContexts=[
+                          {
+                            'ProviderArn': "arn:aws:iam::aws:contextProvider/IdentityCenter",
+                            'ContextAssertion': claims["sts:identity_context"]
+                          }
+                        ]
+                      )
+                      logger.info("Role assumed successfully")
+                    except Exception as e:
+                      logger.error("Role assumption error: %s" % str(e))
+                      result = {
+                        'embedUrl': '',
+                        'status': "Role Error: " + str(e)
+                      }
+                    else:
+                      logger.info("=== CREATING QUICKSUITE CLIENT ===")
+                      quicksuite = boto3.client(
+                        'quicksight',
+                        aws_access_key_id=user_creds['Credentials']['AccessKeyId'],
+                        aws_secret_access_key=user_creds['Credentials']['SecretAccessKey'],
+                        aws_session_token=user_creds['Credentials']['SessionToken'],
+                      )
+                      logger.info("QuickSuite client created")
+
+                      logger.info("=== BOTO3 VERSION INFO ===")
+                      logger.info("boto3 version: %s" % boto3.__version__)
+                      try:
+                        import botocore
+                        logger.info("botocore version: %s" % botocore.__version__)
+                      except:
+                        logger.info("botocore version: unable to determine")
+
+                      try:
+                        logger.info("=== GENERATING EMBED URL ===")
+
+                        response = quicksuite.generate_embed_url_for_registered_user_with_identity(
+                            AwsAccountId=AWS_ACCOUNT_ID,
+                            ExperienceConfiguration={
+                                'QuickChat': {
+                                }
+                            },
+                            AllowedDomains=ALLOWED_DOMAINS,
+                            SessionLifetimeInMinutes=600  # 10 hours
+                        )
+                        logger.info("Embed URL generated successfully")
+                        logger.info("Generated embed URL: %s" % response['EmbedUrl'])
+                        result = {
+                          'embedUrl': response['EmbedUrl'],
+                          'status': 'SUCCESS'
+                        }
+                      except Exception as e:
+                        logger.error("QuickSuite embed error: %s" % str(e))
+                        result = {
+                          'embedUrl': '',
+                          'status': "QuickSuite Error: " + str(e)
+                        }
+                else:
+                  result = {
+                    'embedUrl': '',
+                    'status': "ERROR: idToken not provided"
+                  }
+              else:
+                result = {
+                  'embedUrl': '',
+                  'status' : "ERROR: JSON document body containing idToken is not provided"
+                }
+              return {
+                'statusCode': 200,
+                'headers': CORS_HEADERS,
+                "body": json.dumps(result)
+              }
+            else:
+              return {
+                'statusCode': 405,
+                'headers': CORS_HEADERS,
+                "body": "ERROR: Method " + httpMethod + " not allowed"
+              }
+
+  TTELambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSOInsightsPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sso-oauth:CreateTokenWithIAM
+                Resource: '*'
+
+  APIInvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TTELambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuickChatEmbeddingAPI}/$default/$default
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: quickchat-user-pool
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+
+  AppClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      AllowedOAuthFlows:
+        - implicit
+      AllowedOAuthScopes:
+        - aws.cognito.signin.user.admin
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      ClientName: quickchat-app-client
+      CallbackURLs: !Ref AllowedDomains
+      LogoutURLs: !Ref AllowedDomains
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      UserPoolId: !Ref UserPool
+      SupportedIdentityProviders:
+        - COGNITO
+      GenerateSecret: false
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "quickchat-${AWS::AccountId}"
+      UserPoolId: !Ref UserPool
+
+  IDCLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSOAdminPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sso:CreateTrustedTokenIssuer
+                  - sso:DeleteTrustedTokenIssuer
+                  - sso:PutApplicationGrant
+                  - sso:DeleteApplicationGrant
+                  - sso:PutApplicationAccessScope
+                  - sso:DeleteApplicationAccessScope
+                  - sso:PutApplicationAuthenticationMethod
+                  - sso:DeleteApplicationAuthenticationMethod
+                  - sso:PutApplicationAssignmentConfiguration
+                Resource: '*'
+
+  IDCLambda:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - IDCLambdaExecutionRole
+    Properties:
+      Handler: index.handler
+      Runtime: python3.11
+      Timeout: 300
+      Description: Create IDC Trusted Token Issuer
+      Role: !GetAtt IDCLambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+
+          sso_admin_client = boto3.client('sso-admin')
+
+          def app_auth_method(action, res_props):
+              idc_app_arn = res_props.get('IDCApplicationArn')
+              auth_method = res_props.get('AuthenticationMethod')
+              if action == "put":
+                  sso_admin_client.put_application_authentication_method(
+                      ApplicationArn=idc_app_arn,
+                      AuthenticationMethodType='IAM',
+                      AuthenticationMethod=auth_method
+                  )
+              elif action == "delete":
+                  sso_admin_client.delete_application_authentication_method(
+                      ApplicationArn=idc_app_arn,
+                      AuthenticationMethodType='IAM'
+                  )
+              return f"[{idc_app_arn}]"
+
+          def app_access_scope(action, res_props):
+              idc_app_arn = res_props.get('IDCApplicationArn')
+              access_scopes = res_props.get('AccessScopes')
+              for access_scope in access_scopes:
+                  if action == "put":
+                      sso_admin_client.put_application_access_scope(
+                          ApplicationArn=idc_app_arn,
+                          Scope=access_scope
+                      )
+                  elif action == "delete":
+                      sso_admin_client.delete_application_access_scope(
+                          ApplicationArn=idc_app_arn,
+                          Scope=access_scope
+                      )
+              return f"[{idc_app_arn}]"
+
+          def tt_issuer(action, res_props, phy_res_id):
+              name = res_props.get('Name')
+              idc_inst_arn = res_props.get('InstanceArn')
+              tti_config = res_props.get('TTIConfiguration')
+              data = {}
+              if action == "put":
+                  resp = sso_admin_client.create_trusted_token_issuer(
+                      Name=name,
+                      InstanceArn=idc_inst_arn,
+                      TrustedTokenIssuerType='OIDC_JWT',
+                      TrustedTokenIssuerConfiguration=tti_config
+                  )
+                  phy_res_id = resp['TrustedTokenIssuerArn']
+                  data = resp
+              elif action == "delete":
+                  sso_admin_client.delete_trusted_token_issuer(
+                      TrustedTokenIssuerArn=phy_res_id
+                  )
+              return phy_res_id, data
+
+          def app_grant(action, res_props):
+              idc_app_arn = res_props.get('IDCApplicationArn')
+              grant_type = res_props.get('GrantType')
+              grant = res_props.get('Grant')
+              if action == "put":
+                  sso_admin_client.put_application_grant(
+                      ApplicationArn=idc_app_arn,
+                      GrantType=grant_type,
+                      Grant=grant
+                  )
+              elif action == "delete":
+                  sso_admin_client.delete_application_grant(
+                      ApplicationArn=idc_app_arn,
+                      GrantType=grant_type
+                  )
+              return f"[{idc_app_arn}]"
+
+          def app_assignment_config(action, res_props):
+              idc_app_arn = res_props.get('IDCApplicationArn')
+              is_required = res_props.get('AssignmentRequired', 'no') == 'yes'
+              if action == "put":
+                  sso_admin_client.put_application_assignment_configuration(
+                      ApplicationArn=idc_app_arn,
+                      AssignmentRequired=is_required
+                  )
+              return f"[{idc_app_arn}][required={is_required}]"
+
+          def handler(event, context):
+              try:
+                  print('Received event: ' + json.dumps(event, indent=4, default=str))
+                  request_type = event.get('RequestType')
+                  res_props = event.get('ResourceProperties')
+                  resource_type = res_props.get('ResourceType')
+                  data = {}
+                  phy_res_id = event.get('PhysicalResourceId')
+
+                  if resource_type == "trusted-token-issuer":
+                      if request_type == "Create":
+                          phy_res_id, data = tt_issuer("put", res_props, phy_res_id)
+                      elif request_type == "Delete":
+                          phy_res_id, data = tt_issuer("delete", res_props, phy_res_id)
+                  elif resource_type == "application-grant":
+                      if request_type in ["Create", "Update"]:
+                          phy_res_id = app_grant("put", res_props)
+                      elif request_type == "Delete":
+                          phy_res_id = app_grant("delete", res_props)
+                  elif resource_type == "access-scope":
+                      if request_type in ["Create", "Update"]:
+                          phy_res_id = app_access_scope("put", res_props)
+                      elif request_type == "Delete":
+                          phy_res_id = app_access_scope("delete", res_props)
+                  elif resource_type == "app-auth-method":
+                      if request_type in ["Create", "Update"]:
+                          phy_res_id = app_auth_method("put", res_props)
+                      elif request_type == "Delete":
+                          phy_res_id = app_auth_method("delete", res_props)
+                  elif resource_type == "assignment-config":
+                      if request_type in ["Create", "Update"]:
+                          phy_res_id = app_assignment_config("put", res_props)
+
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, data, phy_res_id)
+              except Exception as e:
+                  print(e)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  IDCApiApp:
+    Type: AWS::SSO::Application
+    Properties:
+      ApplicationProviderArn: arn:aws:sso::aws:applicationProvider/custom
+      InstanceArn: !Ref IdcApplicationArn
+      Name: !Ref AWS::StackName
+      PortalOptions:
+        Visibility: DISABLED
+
+  IDCAppScopes:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt IDCLambda.Arn
+      ResourceType: access-scope
+      IDCApplicationArn: !GetAtt IDCApiApp.ApplicationArn
+      AccessScopes:
+        - quicksight:read
+    DependsOn:
+      - IDCApiApp
+      - IDCLambda
+
+  IDCAppAssignmentConfig:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt IDCLambda.Arn
+      ResourceType: assignment-config
+      IDCApplicationArn: !GetAtt IDCApiApp.ApplicationArn
+      AssignmentRequired: "no"
+    DependsOn:
+      - IDCApiApp
+      - IDCLambda
+
+  IDCTrustedTokenIssuer:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt IDCLambda.Arn
+      ResourceType: trusted-token-issuer
+      Name: !Sub "${AWS::StackName}-trusted-issuer"
+      InstanceArn: !Ref IdcApplicationArn
+      TTIConfiguration:
+        OidcJwtConfiguration:
+          IssuerUrl: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+          ClaimAttributePath: "email"
+          IdentityStoreAttributePath: "emails.value"
+          JwksRetrievalOption: "OPEN_ID_DISCOVERY"
+    DependsOn:
+      - IDCLambda
+
+  IDCAppGrant:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt IDCLambda.Arn
+      ResourceType: application-grant
+      IDCApplicationArn: !GetAtt IDCApiApp.ApplicationArn
+      GrantType: urn:ietf:params:oauth:grant-type:jwt-bearer
+      Grant:
+        JwtBearer:
+          AuthorizedTokenIssuers:
+            - TrustedTokenIssuerArn: !GetAtt IDCTrustedTokenIssuer.TrustedTokenIssuerArn
+              AuthorizedAudiences:
+                - !GetAtt AppClient.ClientId
+    DependsOn:
+      - IDCApiApp
+      - IDCLambda
+      - IDCTrustedTokenIssuer
+
+  QuickSuiteRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:root
+                - !Sub
+                  - 'arn:aws:sts::${AWS::AccountId}:assumed-role/${TTELambdaRole}/${ttelambdaname}'
+                  - ttelambdaname: !Join
+                    - '-'
+                    - - !Ref 'AWS::StackName'
+                      - 'TTELambdaFunction'
+            Action:
+              - 'sts:AssumeRole'
+              - 'sts:SetContext'
+      Policies:
+        - PolicyName: QuickSuitePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - quicksight:GenerateEmbedUrlForAnonymousUser
+                  - quicksight:GenerateEmbedUrlForRegisteredUser
+                  - quicksight:GenerateEmbedUrlForRegisteredUserWithIdentity
+                Resource: '*'
+
+  IDCAppAuthMethod:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt IDCLambda.Arn
+      ResourceType: app-auth-method
+      IDCApplicationArn: !GetAtt IDCApiApp.ApplicationArn
+      AuthenticationMethod:
+        Iam:
+          ActorPolicy:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sso-oauth:CreateTokenWithIAM
+                Principal:
+                  AWS: !GetAtt QuickSuiteRole.Arn
+                Resource: !GetAtt IDCApiApp.ApplicationArn
+    DependsOn:
+      - IDCApiApp
+      - IDCLambda
+      - QuickSuiteRole
+
+Outputs:
+  IDCApiAppArn:
+    Description: IDC application Arn used as client-id in create-token-with-iam API
+    Value: !GetAtt IDCApiApp.ApplicationArn
+
+  ApiEndpoint:
+    Description: API Endpoint to be used to get the embed URL
+    Value: !Sub https://${QuickChatEmbeddingAPI}.execute-api.${AWS::Region}.amazonaws.com
+
+  UserPoolClientId:
+    Description: Client ID of the User Pool
+    Value: !GetAtt AppClient.ClientId
+
+  UserPoolId:
+    Description: User Pool ID
+    Value: !Ref UserPool
+
+  CognitoDomain:
+    Description: Cognito Domain URL for OAuth
+    Value: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
+
+  QuickSuiteRole:
+    Description: Role to be assumed to invoke QuickSuite embedding
+    Value: !GetAtt QuickSuiteRole.Arn

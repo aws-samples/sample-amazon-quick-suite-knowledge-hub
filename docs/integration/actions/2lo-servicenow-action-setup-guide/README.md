@@ -1,7 +1,5 @@
 # 2LO - ServiceNow - Action Setup Guide
 
-
-
 Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page/administer/security/task/t_CreateEndpointforExternalClients.html>
 
 1) For ServiceNow Developer Instance, visit <https://developer.servicenow.com/dev.do#!/home> and click on **Start Building** button. Switch to **New Inbound Integration Experience**:
@@ -77,6 +75,7 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 Now that your ServiceNow integration is configured and authorized, you can use it across different Quick Suite components:
 
 **For Chat Agents:**
+
 1. Navigate to **Chat** in Quick Suite
 2. Create a new chat agent or edit an existing one
 3. In the agent configuration, go to the **Actions** section
@@ -84,6 +83,7 @@ Now that your ServiceNow integration is configured and authorized, you can use i
 5. Configure which ServiceNow operations the agent can perform (e.g., create tickets, search knowledge base, update records)
 
 **For Flows:**
+
 1. Go to **Flows** in Quick Suite
 2. Create a new flow or edit an existing workflow
 3. Add an **Action Step** to your flow
@@ -91,12 +91,14 @@ Now that your ServiceNow integration is configured and authorized, you can use i
 5. Configure the specific ServiceNow operation and parameters for that step
 
 **For Automate Projects:**
+
 1. Navigate to **Automate** in Quick Suite
 2. Create or edit an automation project
 3. Add a **ServiceNow Action** component to your automation workflow
 4. Configure the integration to automatically perform ServiceNow operations based on triggers or schedules
 
 **Example Use Cases:**
+
 - **Chat Agent**: "Create a ServiceNow incident ticket for this issue"
 - **Flow**: Automatically create tickets when certain conditions are met
 - **Automate**: Schedule regular ServiceNow data synchronization

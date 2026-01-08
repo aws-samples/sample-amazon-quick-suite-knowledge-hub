@@ -59,11 +59,13 @@ cd docs/use-cases/redshift-data-query-mcp
 ```
 
 ### 2. Deploy AgentCore Gateway
+
 ```bash
 npm install -g aws-cdk
 pip install -r requirements.txt
 cdk deploy --require-approval never
 ```
+
 ```
 
 ### 3. Get Outputs
@@ -90,6 +92,7 @@ Key outputs for QuickSuite integration:
 ## 🔧 Available Tools
 
 ### Redshift Data Tools (redshift_agentcore_lambda.py)
+
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
 | `list_clusters` | Discover available Redshift clusters and serverless workgroups | None | clusters, connection_details |
@@ -111,8 +114,9 @@ Key outputs for QuickSuite integration:
 The AWS LAB Redshift MCP Server provides these Redshift operations:
 
 ### Available Tools
+
 - **list_clusters**: Discover available Amazon Redshift clusters and serverless workgroups
-- **list_databases**: List databases in a Redshift cluster  
+- **list_databases**: List databases in a Redshift cluster
 - **list_schemas**: List schemas in a database
 - **list_tables**: List tables in a schema
 - **list_columns**: List columns in a table
@@ -156,7 +160,7 @@ Fill in the MCP configuration:
 3. Fill in the authentication values from your CDK deployment outputs:
 
    - **Client ID** → Paste your `ClientId` (ensure no leading/trailing spaces)
-   - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)  
+   - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)
    - **Token URL** → Paste your `CognitoTokenUrl`
 
 **Step 4: Complete Setup**
@@ -166,6 +170,7 @@ Fill in the MCP configuration:
 3. Select **Next**
 
 ### Usage in QuickSuite
+
 ```
 "List all available Redshift clusters"
 "Show me databases in cluster my-redshift-cluster"

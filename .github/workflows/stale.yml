@@ -18,63 +18,63 @@ jobs:
         uses: actions/stale@v9
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          
+
           # Stale issue configuration
           stale-issue-message: |
             👋 This issue has been automatically marked as stale because it has not had recent activity in the Amazon Quick Suite Knowledge Hub repository.
-            
+
             If this issue is still relevant and you would like to continue working on it, please:
             - Add a comment to remove the stale label
             - Provide any updates or additional context
-            
+
             If no activity occurs within 7 days, this issue will be automatically closed.
-            
+
             Thank you for your contribution to the Amazon Quick Suite Knowledge Hub! 🚀
-          
+
           close-issue-message: |
             🔒 This issue has been automatically closed due to inactivity in the Amazon Quick Suite Knowledge Hub repository.
-            
+
             If you believe this issue is still relevant, please feel free to reopen it or create a new issue with updated information.
-            
+
             Thank you for your interest in Amazon Quick Suite! 🙏
-          
-          # Stale PR configuration  
+
+          # Stale PR configuration
           stale-pr-message: |
             👋 This pull request has been automatically marked as stale because it has not had recent activity in the Amazon Quick Suite Knowledge Hub repository.
-            
+
             If this PR is still relevant and you would like to continue working on it, please:
             - Add a comment to remove the stale label
             - Rebase or update the PR if needed
             - Request a review from @aws-samples/quick-suite-team
-            
+
             If no activity occurs within 7 days, this PR will be automatically closed.
-            
+
             Thank you for your contribution to the Amazon Quick Suite Knowledge Hub! 🚀
-          
+
           close-pr-message: |
             🔒 This pull request has been automatically closed due to inactivity in the Amazon Quick Suite Knowledge Hub repository.
-            
+
             If you believe this PR is still relevant, please feel free to reopen it or create a new PR with updated changes.
-            
+
             Thank you for your contribution to Amazon Quick Suite! 🙏
-          
+
           # Timing configuration
           days-before-stale: 60
           days-before-close: 7
           days-before-pr-close: 7
-          
+
           # Label configuration
           stale-issue-label: 'stale'
           stale-pr-label: 'stale'
           exempt-issue-labels: 'pinned,security,enhancement,documentation'
           exempt-pr-labels: 'pinned,security,work-in-progress'
-          
+
           # Team exemption
           assignees-exempt: '@aws-samples/quick-suite-team'
-          
+
           # Limits
           operations-per-run: 50
           remove-stale-when-updated: true
-          
+
           # Enable debug output
           debug-only: false

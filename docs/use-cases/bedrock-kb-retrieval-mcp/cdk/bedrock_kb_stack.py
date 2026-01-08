@@ -5,22 +5,27 @@ CDK stack for Knowledge Base integration with QuickSuite
 following the actuarial-analysis-solution pattern.
 """
 
-from aws_cdk import (
-    Stack,
-    Duration,
-    RemovalPolicy,
-    CfnOutput,
-    aws_lambda as _lambda,
-    aws_iam as iam,
-    aws_logs as logs,
-    aws_cognito as cognito,
-)
-from constructs import Construct
-from .gateway_stack import AgentCoreGatewayStack
-import json
 import os
 import shutil
 import subprocess
+
+from aws_cdk import (
+    CfnOutput,
+    Duration,
+    Stack,
+)
+from aws_cdk import (
+    aws_iam as iam,
+)
+from aws_cdk import (
+    aws_lambda as _lambda,
+)
+from aws_cdk import (
+    aws_logs as logs,
+)
+from constructs import Construct
+
+from .gateway_stack import AgentCoreGatewayStack
 
 
 class BedrockKBStack(Stack):
@@ -29,10 +34,13 @@ class BedrockKBStack(Stack):
 
         # Create IAM role for Lambda function
         lambda_role = iam.Role(
-            self, "BedrockKBLambdaRole",
+            self,
+            "BedrockKBLambdaRole",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaBasicExecutionRole"
+                )
             ],
             inline_policies={
                 "BedrockKnowledgeBaseAccess": iam.PolicyDocument(
@@ -57,17 +65,19 @@ class BedrockKBStack(Stack):
 
         # Lambda Layers
         self._build_agentcore_layer()
-        
+
         agentcore_layer = _lambda.LayerVersion(
-            self, "BedrockKBAgentCoreLayer",
+            self,
+            "BedrockKBAgentCoreLayer",
             code=_lambda.Code.from_asset("cdk.out/agentcore_layer"),
             compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
-            description="AgentCore layer built with Docker for Linux Lambda environment"
+            description="AgentCore layer built with Docker for Linux Lambda environment",
         )
 
         # Create AgentCore Lambda function
         agentcore_lambda = _lambda.Function(
-            self, "BedrockKBAgentCoreLambda",
+            self,
+            "BedrockKBAgentCoreLambda",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="kb_agentcore_lambda.handler",
             code=_lambda.Code.from_asset("tools"),
@@ -85,38 +95,66 @@ class BedrockKBStack(Stack):
 
         # AgentCore Gateway (as nested stack)
         gateway_stack = AgentCoreGatewayStack(
-            self, "BedrockKBGatewayStack",
-            kb_lambda_arn=agentcore_lambda.function_arn
+            self, "BedrockKBGatewayStack", kb_lambda_arn=agentcore_lambda.function_arn
         )
 
         # Outputs
-        CfnOutput(self, "GatewayUrl", 
-                 value=gateway_stack.gateway_url,
-                 description="AgentCore Gateway URL")
-        CfnOutput(self, "ClientId",
-                 value=gateway_stack.client_id,
-                 description="Cognito Client ID")
-        CfnOutput(self, "ClientSecret",
-                 value=gateway_stack.client_secret,
-                 description="Cognito Client Secret")
-        CfnOutput(self, "UserPoolId",
-                 value=gateway_stack.user_pool_id,
-                 description="Cognito User Pool ID")
-        CfnOutput(self, "TokenEndpoint",
-                 value=gateway_stack.token_endpoint,
-                 description="OAuth Token Endpoint")
+        CfnOutput(
+            self,
+            "GatewayUrl",
+            value=gateway_stack.gateway_url,
+            description="AgentCore Gateway URL",
+        )
+        CfnOutput(
+            self,
+            "ClientId",
+            value=gateway_stack.client_id,
+            description="Cognito Client ID",
+        )
+        CfnOutput(
+            self,
+            "ClientSecret",
+            value=gateway_stack.client_secret,
+            description="Cognito Client Secret",
+        )
+        CfnOutput(
+            self,
+            "UserPoolId",
+            value=gateway_stack.user_pool_id,
+            description="Cognito User Pool ID",
+        )
+        CfnOutput(
+            self,
+            "TokenEndpoint",
+            value=gateway_stack.token_endpoint,
+            description="OAuth Token Endpoint",
+        )
 
     def _build_agentcore_layer(self):
         layer_dir = "cdk.out/agentcore_layer"
-        
+
         if os.path.exists(layer_dir):
             shutil.rmtree(layer_dir)
         os.makedirs(layer_dir, exist_ok=True)
-        
-        with open(os.path.join(layer_dir, "requirements.txt"), "w", encoding="utf-8") as f:
+
+        with open(
+            os.path.join(layer_dir, "requirements.txt"), "w", encoding="utf-8"
+        ) as f:
             f.write("bedrock-agentcore\n")
-        
+
         shutil.copy2("cdk/Dockerfile.agentcore", os.path.join(layer_dir, "Dockerfile"))
-        
-        subprocess.run(["docker", "build", "-t", "agentcore-layer", layer_dir], check=True)
-        subprocess.run(["docker", "run", "--rm", "-v", f"{os.path.abspath(layer_dir)}:/output", "agentcore-layer"], check=True)
+
+        subprocess.run(
+            ["docker", "build", "-t", "agentcore-layer", layer_dir], check=True
+        )
+        subprocess.run(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{os.path.abspath(layer_dir)}:/output",
+                "agentcore-layer",
+            ],
+            check=True,
+        )

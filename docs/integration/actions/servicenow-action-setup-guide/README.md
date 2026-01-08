@@ -15,9 +15,9 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 4) Fill in the form:
 
    **Note**:
-   
+
    **Client type**: choose either Integration as a User or Integration as a Service based on your requirements
-   
+
    **Provide Redirect URL**: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
    Then click **Submit** button on the bottom:
@@ -35,15 +35,15 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 7) Select **ServiceNow** then **Next**
 
    **Base URL**: `https://<YOUR_INSTANCE>.service-now.com`
-   
+
    **Client ID**: copy the value from step 5
-   
+
    **Client secret**: copy the value from step 5
-   
+
    **Token URL**: `https://<YOUR_INSTANCE>.service-now.com/oauth_token.do`
-   
+
    **Authorization URL**: `https://<YOUR_INSTANCE>.service-now.com/oauth_auth.do`
-   
+
    **Redirect URL**: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
 ![ServiceNow configuration](images/image_5.png)

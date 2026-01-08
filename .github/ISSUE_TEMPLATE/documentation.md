@@ -10,6 +10,7 @@ assignees: '@aws-samples/quick-suite-team'
 Link to the specific documentation page: _______________
 
 **Issue Type**
+
 - [ ] Fix typo or grammar
 - [ ] Add missing steps
 - [ ] Clarify existing instructions

@@ -15,12 +15,14 @@ The CDK stack (`KBDirectStack`) deploys:
 ## Stack Components
 
 ### AgentCore Gateway
+
 - **Type**: Amazon Bedrock AgentCore Gateway
 - **Target**: Lambda function for MCP tool execution
 - **Authentication**: Cognito User Pool with OAuth2
 - **Protocol**: Model Context Protocol (MCP)
 
 ### Lambda Function
+
 - **Runtime**: Python 3.12
 - **Handler**: `kb_agentcore_lambda.handler`
 - **Memory**: 512 MB
@@ -28,12 +30,14 @@ The CDK stack (`KBDirectStack`) deploys:
 - **Concurrency**: 10 reserved executions
 
 ### Authentication
+
 - **Type**: Cognito User Pool with OAuth2
 - **Flow**: Client credentials for service-to-service
 - **Password Policy**: Strong requirements
 - **Client Secret**: Generated for QuickSuite integration
 
 ### IAM Permissions
+
 - `bedrock:ListKnowledgeBases`
 - `bedrock:GetKnowledgeBase`
 - `bedrock:ListDataSources`
@@ -69,11 +73,14 @@ The stack provides these outputs for QuickSuite MCP Actions integration:
 ## Configuration
 
 ### Environment Variables
+
 Lambda function environment:
+
 - `LOG_LEVEL`: INFO
 - `POWERTOOLS_SERVICE_NAME`: kb-direct-agentcore
 
 ### Resource Naming
+
 All resources use the stack name prefix for consistent naming and easy identification.
 
 ## Security

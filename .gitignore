@@ -8,10 +8,12 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 *.egg-info/
 dist/
 build/
+.ruff_cache/
 
 # CDK
 cdk.out/
@@ -88,4 +90,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-

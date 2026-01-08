@@ -59,11 +59,13 @@ cd docs/use-cases/bedrock-kb-retrieval-mcp
 ```
 
 ### 2. Deploy AgentCore Gateway
+
 ```bash
 npm install -g aws-cdk
 pip install -r requirements.txt
 cdk deploy --require-approval never
 ```
+
 ```
 
 ### 3. Get Outputs
@@ -90,6 +92,7 @@ Key outputs for QuickSuite Actions:
 ## 🔧 Available Tools
 
 ### Knowledge Base Tools (kb_agentcore_lambda.py)
+
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
 | `ListKnowledgeBases` | Discover available Bedrock Knowledge Bases | None | knowledge_base_mapping, data_sources |
@@ -99,14 +102,14 @@ Key outputs for QuickSuite Actions:
 
 ### ListKnowledgeBases
 
-**Purpose**: Discover available Bedrock Knowledge Bases and data sources  
-**Input**: None  
+**Purpose**: Discover available Bedrock Knowledge Bases and data sources
+**Input**: None
 **Output**: Knowledge base mapping with IDs, names, descriptions, data sources
 
-### QueryKnowledgeBases  
+### QueryKnowledgeBases
 
-**Purpose**: Natural language retrieval from Bedrock Knowledge Bases  
-**Input**: 
+**Purpose**: Natural language retrieval from Bedrock Knowledge Bases
+**Input**:
 
 - `query` (required): Natural language search query
 - `knowledge_base_id` (required): Target KB ID
@@ -152,7 +155,7 @@ Fill in the MCP configuration:
 3. Fill in the authentication values from your CDK deployment outputs:
 
    - **Client ID** → Paste your `ClientId` (ensure no leading/trailing spaces)
-   - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)  
+   - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)
    - **Token URL** → Paste your `CognitoTokenUrl`
 
 **Step 4: Complete Setup**
@@ -162,6 +165,7 @@ Fill in the MCP configuration:
 3. Select **Next**
 
 ### Usage in QuickSuite
+
 ```
 "List all available knowledge bases"
 "Search for AWS Lambda best practices in my knowledge base"

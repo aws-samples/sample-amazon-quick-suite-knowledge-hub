@@ -11,8 +11,9 @@ A clear and concise description of what the bug is.
 
 **Component**
 Which part of the Knowledge Hub has the issue?
+
 - [ ] Integration Guide
-- [ ] Use Case  
+- [ ] Use Case
 - [ ] Documentation
 - [ ] Website/Navigation
 
@@ -20,6 +21,7 @@ Which part of the Knowledge Hub has the issue?
 
 **To Reproduce**
 Steps to reproduce the behavior:
+
 1. Go to '...'
 2. Follow step '....'
 3. See error
@@ -28,11 +30,13 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **Error Output**
+
 ```
 Paste any error messages or logs here
 ```
 
 **Environment**
+
 - OS: [e.g. macOS 14, Windows 11, Ubuntu 22.04]
 - Browser: [e.g. Chrome 120, Safari 17]
 - Amazon Quick Suite Region: [e.g. us-east-1]

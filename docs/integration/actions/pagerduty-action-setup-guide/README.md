@@ -15,7 +15,7 @@
 4) For Configure OAuth2.0, choose **Classic User OAuth** and select the fields like follows:
 
    **Redirect URL** - `https://<region of Quick>.quicksight.aws.amazon.com/sn/oauthcallback`
-   
+
    **Permission Scope** - Read & Write
 
 ![OAuth configuration](images/image_3.png)
@@ -37,15 +37,15 @@
 8) Setup the values for each field accordingly:
 
    **Base URL**: `https://api.pagerduty.com`
-   
+
    **Client ID**: (from step 5)
-   
+
    **Client secret**: (from step 5)
-   
+
    **Token URL**: `https://identity.pagerduty.com/oauth/token`
-   
+
    **Authorization URL**: `https://identity.pagerduty.com/oauth/authorize`
-   
+
    **Redirect URL**: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
 ![Configuration form](images/image_7.png)

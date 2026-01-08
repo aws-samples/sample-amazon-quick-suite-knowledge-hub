@@ -18,10 +18,11 @@ assignees: '@aws-samples/quick-suite-team'
 - [ ] Other: _______________
 
 ## Summary
+
 Briefly describe what you need help with or what you'd like to see added:
 
 ```
-Examples: 
+Examples:
 - Need help setting up Salesforce integration
 - Missing setup guide for Jira (I know it's supported by Quick Suite)
 - Would like to see a healthcare use case example
@@ -29,6 +30,7 @@ Examples:
 ```
 
 ## Details
+
 Provide more details about your request or issue:
 
 ```
@@ -36,6 +38,7 @@ Example: I confirmed Jira is supported by Quick Suite but can't find setup docum
 ```
 
 ## Expected Outcome
+
 What would you like to achieve or see happen?
 
 ```
@@ -43,12 +46,15 @@ Example: A step-by-step Jira integration guide in the Knowledge Hub
 ```
 
 ## Environment (if applicable)
+
 - Amazon Quick Suite Region: [e.g. us-east-1]
 - Service you're working with: [e.g. Salesforce, Jira]
 - OS: [e.g. macOS 14, Windows 11]
 
 ## Additional Context
+
 Add any other information that could help:
+
 - Links to existing documentation you've found
 - Business use case for the request
 - Screenshots, logs, or error messages

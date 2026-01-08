@@ -13,15 +13,16 @@ Key Features:
 Returns fraud probability scores and detailed risk factors for each claim.
 """
 
-import pandas as pd
 import logging
-from typing import Dict, List, Any
 from dataclasses import dataclass
 from datetime import datetime
-from utils.data_utils import load_session_data
+from typing import Any
+
+import pandas as pd
 from utils.constants import (
-    DEFAULT_FRAUD_CONFIG, FRAUD_KEYWORDS, LITIGATION_KEYWORDS,
-    WEATHER_KEYWORDS, BODY_PART_KEYWORDS, FIELD_MAPPINGS
+    DEFAULT_FRAUD_CONFIG,
+    FRAUD_KEYWORDS,
+    LITIGATION_KEYWORDS,
 )
 
 # Set up logging
@@ -37,9 +38,9 @@ logger.setLevel(logging.INFO)
 class FraudScore:
     claim_id: str
     fraud_probability: float
-    risk_factors: List[str]
+    risk_factors: list[str]
     anomaly_score: float
-    red_flags: List[str]
+    red_flags: list[str]
 
 
 class FraudDetectionService:
@@ -48,7 +49,11 @@ class FraudDetectionService:
         self.fraud_indicators = {
             "amount_anomalies": ["unusually_high_amount", "round_number_amount"],
             "timing_anomalies": ["weekend_claim", "holiday_claim", "quick_report"],
-            "pattern_anomalies": ["duplicate_amounts", "similar_claims", "frequent_claimant"],
+            "pattern_anomalies": [
+                "duplicate_amounts",
+                "similar_claims",
+                "frequent_claimant",
+            ],
             "behavioral_anomalies": ["multiple_policies", "recent_policy_change"],
         }
 
@@ -60,38 +65,44 @@ class FraudDetectionService:
         paid = float(claim.get("paidtotal") or 0)
         incurred = float(claim.get("totalincurred") or 0)
 
-        if paid > 0 and paid % self.config['amount_thresholds']['low'] == 0:
+        if paid > 0 and paid % self.config["amount_thresholds"]["low"] == 0:
             risk_factors.append("round_number_amount")
             red_flags.append(f"Round number amount: ${paid:,.0f}")
-            score += self.config['score_weights']['amount_anomaly']
+            score += self.config["score_weights"]["amount_anomaly"]
 
-        if paid > self.config['amount_thresholds']['high']:
+        if paid > self.config["amount_thresholds"]["high"]:
             risk_factors.append("moderately_high_amount")
             red_flags.append(f"High claim amount: ${paid:,.0f}")
-            score += self.config['score_weights']['amount_anomaly']
+            score += self.config["score_weights"]["amount_anomaly"]
 
-        if paid > self.config['amount_thresholds']['very_high']:
+        if paid > self.config["amount_thresholds"]["very_high"]:
             risk_factors.append("unusually_high_amount")
             red_flags.append(f"Very high claim amount: ${paid:,.0f}")
-            score += self.config['score_weights']['amount_anomaly']
+            score += self.config["score_weights"]["amount_anomaly"]
 
         med = float(claim.get("medpdtotal") or 0)
         if incurred > 0:
             med_share = med / incurred
-            if med_share > self.config['ratios']['medical_share_high'] and incurred > self.config['amount_thresholds']['medium']:
+            if (
+                med_share > self.config["ratios"]["medical_share_high"]
+                and incurred > self.config["amount_thresholds"]["medium"]
+            ):
                 risk_factors.append("high_medical_share")
                 red_flags.append(f"High medical share: {med_share:.2f}")
-                score += self.config['score_weights']['ratio_anomaly']
+                score += self.config["score_weights"]["ratio_anomaly"]
 
         try:
             age = int(claim.get("driverage") or 0)
         except:
             age = 0
 
-        if age and (age < self.config['age_thresholds']['young_driver'] or age > self.config['age_thresholds']['senior_driver']):
+        if age and (
+            age < self.config["age_thresholds"]["young_driver"]
+            or age > self.config["age_thresholds"]["senior_driver"]
+        ):
             risk_factors.append("high_risk_driver_age")
             red_flags.append(f"High-risk driver age: {age}")
-            score += self.config['score_weights']['demographic_anomaly']
+            score += self.config["score_weights"]["demographic_anomaly"]
 
         try:
             vehicle_year = int(claim.get("vehicleyear") or 0)
@@ -101,59 +112,71 @@ class FraudDetectionService:
         if vehicle_year:
             current_year = datetime.utcnow().year
             vehicle_age = max(0, current_year - vehicle_year)
-            if vehicle_age < self.config['vehicle_thresholds']['new_vehicle'] and incurred > self.config['amount_thresholds']['high']:
+            if (
+                vehicle_age < self.config["vehicle_thresholds"]["new_vehicle"]
+                and incurred > self.config["amount_thresholds"]["high"]
+            ):
                 risk_factors.append("new_vehicle_high_severity")
                 red_flags.append(f"High severity on new vehicle (age {vehicle_age})")
-                score += self.config['score_weights']['pattern_anomaly']
-            if vehicle_age > self.config['vehicle_thresholds']['old_vehicle'] and paid > self.config['amount_thresholds']['medium']:
+                score += self.config["score_weights"]["pattern_anomaly"]
+            if (
+                vehicle_age > self.config["vehicle_thresholds"]["old_vehicle"]
+                and paid > self.config["amount_thresholds"]["medium"]
+            ):
                 risk_factors.append("old_vehicle_high_payout")
                 red_flags.append(f"High payout on old vehicle (age {vehicle_age})")
-                score += self.config['score_weights']['pattern_anomaly']
+                score += self.config["score_weights"]["pattern_anomaly"]
 
         body_part = str(claim.get("bodypartproductcode") or "").upper()
         losstype = str(claim.get("losstype") or "").upper()
         injury_desc = str(claim.get("injurydescription") or "").lower()
 
         severe_body_parts = {"HEAD", "L2", "SPINE", "BACK"}
-        if body_part in severe_body_parts or any(w in injury_desc for w in ["head", "spine", "back", "neck"]):
+        if body_part in severe_body_parts or any(
+            w in injury_desc for w in ["head", "spine", "back", "neck"]
+        ):
             if incurred > 10000:
                 risk_factors.append("severe_injury_high_cost")
                 red_flags.append("Severe injury with high cost")
-                score += self.config['score_weights']['severe_injury']
+                score += self.config["score_weights"]["severe_injury"]
 
         soft_tissue_terms = ["whiplash", "soft tissue", "sprain", "strain"]
         if any(w in injury_desc for w in soft_tissue_terms) and incurred > 5000:
             risk_factors.append("soft_tissue_high_cost")
             red_flags.append("Soft tissue injury with high cost")
-            score += self.config['score_weights']['soft_tissue']
+            score += self.config["score_weights"]["soft_tissue"]
 
         if "3PTY" in losstype and incurred > 25000:
             risk_factors.append("third_party_bi_high_severity")
             red_flags.append("High-severity third-party BI claim")
-            score += self.config['score_weights']['third_party_bi']
+            score += self.config["score_weights"]["third_party_bi"]
 
-        text = " ".join([
-            str(claim.get("note_text") or ""),
-            str(claim.get("lossdescription") or ""),
-            str(claim.get("injurydescription") or ""),
-        ]).lower()
+        text = " ".join(
+            [
+                str(claim.get("note_text") or ""),
+                str(claim.get("lossdescription") or ""),
+                str(claim.get("injurydescription") or ""),
+            ]
+        ).lower()
 
         if any(w in text for w in FRAUD_KEYWORDS):
             risk_factors.append("fraud_keywords")
             red_flags.append("Fraud-related keywords in notes")
-            score += self.config['score_weights']['keyword_match']
+            score += self.config["score_weights"]["keyword_match"]
 
         if any(w in text for w in LITIGATION_KEYWORDS):
             risk_factors.append("litigation_keywords")
             red_flags.append("Litigation keywords in notes")
-            score += self.config['score_weights']['keyword_match']
+            score += self.config["score_weights"]["keyword_match"]
 
         if any(w in text for w in ["total loss", "write off", "beyond repair"]):
             risk_factors.append("total_loss_language")
             red_flags.append("Total loss language")
-            score += self.config['score_weights']['total_loss']
+            score += self.config["score_weights"]["total_loss"]
 
-        if any(w in text for w in ["fog", "black ice", "heavy rain", "hail", "snowstorm"]):
+        if any(
+            w in text for w in ["fog", "black ice", "heavy rain", "hail", "snowstorm"]
+        ):
             if incurred > 10000:
                 risk_factors.append("severe_weather_high_cost")
                 red_flags.append("Weather narrative with high cost")
@@ -168,7 +191,9 @@ class FraudDetectionService:
         fraud_probability = min(1.0, score)
 
         return FraudScore(
-            claim_id=str(claim.get("claimnumber") or claim.get("claim_number") or "unknown"),
+            claim_id=str(
+                claim.get("claimnumber") or claim.get("claim_number") or "unknown"
+            ),
             fraud_probability=fraud_probability,
             risk_factors=risk_factors,
             anomaly_score=anomaly_score,
@@ -188,7 +213,9 @@ class FraudDetectionService:
         except:
             return 0.0
 
-    def _detect_organized_fraud(self, df: pd.DataFrame, fraud_scores: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _detect_organized_fraud(
+        self, df: pd.DataFrame, fraud_scores: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         organized_indicators = []
         try:
             if "paidtotal" in df.columns:
@@ -196,38 +223,48 @@ class FraudDetectionService:
                 counts = amounts.value_counts()
                 for amount, count in counts.items():
                     if count >= 3 and amount > 1000:
-                        organized_indicators.append({
-                            "type": "duplicate_amounts",
-                            "description": f"{count} claims with identical amount: ${amount:,.0f}",
-                            "severity": "high" if count >= 5 else "medium",
-                        })
+                        organized_indicators.append(
+                            {
+                                "type": "duplicate_amounts",
+                                "description": f"{count} claims with identical amount: ${amount:,.0f}",
+                                "severity": "high" if count >= 5 else "medium",
+                            }
+                        )
 
-            high_fraud_claims = [s for s in fraud_scores if s.get("fraud_probability", 0) > 0.7]
+            high_fraud_claims = [
+                s for s in fraud_scores if s.get("fraud_probability", 0) > 0.7
+            ]
             if len(high_fraud_claims) >= 3:
-                organized_indicators.append({
-                    "type": "high_fraud_cluster",
-                    "description": f"{len(high_fraud_claims)} claims with high fraud probability",
-                    "severity": "high",
-                })
+                organized_indicators.append(
+                    {
+                        "type": "high_fraud_cluster",
+                        "description": f"{len(high_fraud_claims)} claims with high fraud probability",
+                        "severity": "high",
+                    }
+                )
 
         except Exception as e:
-            organized_indicators.append({
-                "type": "analysis_error",
-                "description": f"Error in organized fraud detection: {str(e)}",
-                "severity": "low",
-            })
+            organized_indicators.append(
+                {
+                    "type": "analysis_error",
+                    "description": f"Error in organized fraud detection: {str(e)}",
+                    "severity": "low",
+                }
+            )
 
         return {
             "indicators": organized_indicators,
             "total_indicators": len(organized_indicators),
-            "high_severity_count": sum(1 for i in organized_indicators if i.get("severity") == "high"),
+            "high_severity_count": sum(
+                1 for i in organized_indicators if i.get("severity") == "high"
+            ),
         }
 
 
 def score_fraud_risk(data, fraud_config=None):
     """
     Analyze claims data for fraud indicators and return risk scores.
-    
+
     Args:
         data: Claims data (list of dictionaries or DataFrame)
         fraud_config: Optional fraud configuration overrides
@@ -235,10 +272,15 @@ def score_fraud_risk(data, fraud_config=None):
     try:
         if not data:
             return {
-                "fraud_scores": [], "ranked_claims": [], "organized_fraud_indicators": {},
+                "fraud_scores": [],
+                "ranked_claims": [],
+                "organized_fraud_indicators": {},
                 "summary": {
-                    "total_claims": 0, "high_risk_claims": 0, "medium_risk_claims": 0,
-                    "flagged_claims": 0, "average_fraud_score": 0.0,
+                    "total_claims": 0,
+                    "high_risk_claims": 0,
+                    "medium_risk_claims": 0,
+                    "flagged_claims": 0,
+                    "average_fraud_score": 0.0,
                 },
             }
 
@@ -260,16 +302,22 @@ def score_fraud_risk(data, fraud_config=None):
             score_obj = service._calculate_fraud_score(row)
             all_scores.append(score_obj.__dict__)
 
-        ranked_all = sorted(all_scores, key=lambda x: x.get("fraud_probability", 0.0), reverse=True)
+        ranked_all = sorted(
+            all_scores, key=lambda x: x.get("fraud_probability", 0.0), reverse=True
+        )
         fraud_scores = ranked_all[:50]
         ranked_claims = fraud_scores
 
         organized_fraud = service._detect_organized_fraud(df, all_scores)
 
         if all_scores:
-            avg_score = sum(s.get("fraud_probability", 0.0) for s in all_scores) / len(all_scores)
+            avg_score = sum(s.get("fraud_probability", 0.0) for s in all_scores) / len(
+                all_scores
+            )
             high = sum(1 for s in all_scores if s.get("fraud_probability", 0.0) > 0.7)
-            med = sum(1 for s in all_scores if 0.3 < s.get("fraud_probability", 0.0) <= 0.7)
+            med = sum(
+                1 for s in all_scores if 0.3 < s.get("fraud_probability", 0.0) <= 0.7
+            )
         else:
             avg_score = high = med = 0
 
@@ -281,7 +329,9 @@ def score_fraud_risk(data, fraud_config=None):
                 "total_claims": total_claims,
                 "high_risk_claims": high,
                 "medium_risk_claims": med,
-                "flagged_claims": len([s for s in all_scores if s.get("fraud_probability", 0.0) > 0.3]),
+                "flagged_claims": len(
+                    [s for s in all_scores if s.get("fraud_probability", 0.0) > 0.3]
+                ),
                 "average_fraud_score": avg_score,
             },
         }
@@ -289,9 +339,14 @@ def score_fraud_risk(data, fraud_config=None):
     except Exception as e:
         return {
             "error": f"Failed to analyze fraud risk: {str(e)}",
-            "fraud_scores": [], "ranked_claims": [], "organized_fraud_indicators": {},
+            "fraud_scores": [],
+            "ranked_claims": [],
+            "organized_fraud_indicators": {},
             "summary": {
-                "total_claims": 0, "high_risk_claims": 0, "medium_risk_claims": 0,
-                "flagged_claims": 0, "average_fraud_score": 0.0,
+                "total_claims": 0,
+                "high_risk_claims": 0,
+                "medium_risk_claims": 0,
+                "flagged_claims": 0,
+                "average_fraud_score": 0.0,
             },
         }

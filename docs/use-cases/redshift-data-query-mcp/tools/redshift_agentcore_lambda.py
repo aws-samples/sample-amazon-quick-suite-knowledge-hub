@@ -14,24 +14,26 @@ Features:
 import os
 import sys
 import tempfile
+
 import boto3
+from mcp.client.stdio import StdioServerParameters
 from mcp_lambda import (
     BedrockAgentCoreGatewayTargetHandler,
     StdioServerAdapterRequestHandler,
 )
-from mcp.client.stdio import StdioServerParameters
+
 
 def handler(event, context):
     """
     Lambda handler for Amazon Redshift MCP Server.
-    
+
     Provides Redshift cluster management capabilities including cluster operations,
     database discovery, and SQL query execution.
-    
+
     Args:
         event: Lambda event containing request data
         context: Lambda context with runtime information
-        
+
     Returns:
         Response from the MCP server via Bedrock AgentCore Gateway
     """
@@ -52,26 +54,31 @@ def handler(event, context):
                 "AWS_SESSION_TOKEN": credentials.token or "",
                 "CACHE_DIR": tempfile.gettempdir(),
                 "TMPDIR": tempfile.gettempdir(),
-                "PYTHONPATH": "/opt/python:/var/task"
-            }
+                "PYTHONPATH": "/opt/python:/var/task",
+            },
         )
 
         # Extract tool name from event if not in context (following actuarial pattern)
-        if not (context.client_context and hasattr(context.client_context, "custom") and
-                context.client_context.custom.get("bedrockAgentCoreToolName")):
+        if not (
+            context.client_context
+            and hasattr(context.client_context, "custom")
+            and context.client_context.custom.get("bedrockAgentCoreToolName")
+        ):
             tool_name = None
             if isinstance(event, dict):
-                tool_name = (event.get("toolName") or
-                            event.get("tool_name") or
-                            event.get("bedrockAgentCoreToolName"))
+                tool_name = (
+                    event.get("toolName")
+                    or event.get("tool_name")
+                    or event.get("bedrockAgentCoreToolName")
+                )
                 headers = event.get("headers", {})
                 if headers:
                     tool_name = tool_name or headers.get("bedrockAgentCoreToolName")
 
             if tool_name:
-                if not hasattr(context, 'client_context') or not context.client_context:
-                    context.client_context = type('ClientContext', (), {})()
-                if not hasattr(context.client_context, 'custom'):
+                if not hasattr(context, "client_context") or not context.client_context:
+                    context.client_context = type("ClientContext", (), {})()
+                if not hasattr(context.client_context, "custom"):
                     context.client_context.custom = {}
                 context.client_context.custom["bedrockAgentCoreToolName"] = tool_name
 
@@ -83,7 +90,7 @@ def handler(event, context):
 
         result = gateway_handler.handle(event, context)
         return result
-        
+
     except Exception as e:
         print(f"Error in redshift-mcp Lambda handler: {str(e)}")
         raise
