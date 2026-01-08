@@ -98,7 +98,7 @@ jobs:
 
       - name: Lint Markdown documentation
         if: steps.changed-files.outputs.markdown_any_changed == 'true'
-        uses: DavidAnson/markdownlint-cli2-action@v16
+        uses: DavidAnson/markdownlint-cli2-action@v22
         with:
           globs: |
             ${{ steps.changed-files.outputs.markdown_all_changed_files }}
