@@ -1,0 +1,22 @@
+# Code ownership for automatic PR review assignments
+
+# Default owners for everything in the repo
+* @aws-samples/quick-suite-team
+
+# Documentation
+/docs/ @aws-samples/quick-suite-team
+*.md @aws-samples/quick-suite-team
+
+# Configuration files
+mkdocs.yml @aws-samples/quick-suite-team
+requirements.txt @aws-samples/quick-suite-team
+main.py @aws-samples/quick-suite-team
+*.yaml @aws-samples/quick-suite-team
+*.yml @aws-samples/quick-suite-team
+
+# GitHub configuration
+/.github/ @aws-samples/quick-suite-team
+
+# Security-sensitive files
+SECURITY.md @aws-samples/quick-suite-team
+/.github/workflows/*security*.yml @aws-samples/quick-suite-team

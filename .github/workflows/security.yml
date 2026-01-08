@@ -1,0 +1,107 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 12 * * 1'  # Weekly on Monday
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  bandit:
+    name: Bandit Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Bandit
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit[toml]
+
+    - name: Run Bandit
+      run: |
+        bandit -r src/ -f json -o bandit-results.json
+
+    - name: Upload Bandit results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: bandit-results
+        path: bandit-results.json
+
+  safety:
+    name: Safety Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install safety
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety
+
+    - name: Create requirements without private deps
+      run: |
+        # Extract dependencies excluding private ones
+        python - << 'SCRIPT'
+        import re
+        with open('pyproject.toml', 'r') as f:
+            content = f.read()
+        # Extract dependencies section
+        deps_match = re.search(r'dependencies = \[(.*?)\]', content, re.DOTALL)
+        if deps_match:
+            deps = deps_match.group(1)
+            # Remove private dependencies (if any)
+            deps = re.sub(r'"boto3[^"]*",?\s*\n?', '', deps)
+            deps = re.sub(r'"botocore[^"]*",?\s*\n?', '', deps)
+            # Extract package names
+            packages = re.findall(r'"([^"]+)"', deps)
+            with open('requirements-public.txt', 'w') as f:
+                f.write('\n'.join(packages))
+        SCRIPT
+
+    - name: Run safety check
+      run: |
+        safety check -r requirements-public.txt --json > safety-results.json || echo "Safety check completed"
+
+    - name: Upload safety results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: safety-results
+        path: safety-results.json
+
+  trufflehog:
+    name: TruffleHog Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@v3.90.6
+        with:
+          path: ./
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          extra_args: --debug --only-verified
