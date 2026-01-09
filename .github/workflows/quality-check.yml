@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload documentation artifacts
         if: steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: amazon-quick-suite-knowledge-hub-site
           path: site/

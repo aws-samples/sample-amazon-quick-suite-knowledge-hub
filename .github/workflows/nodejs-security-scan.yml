@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload Node.js security scan results
         if: (steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule') && steps.check-nodejs.outputs.has_nodejs == 'true' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nodejs-security-results
           path: |
