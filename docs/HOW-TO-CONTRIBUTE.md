@@ -166,7 +166,9 @@ The repository includes:
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- **Python 3.8 or higher** (for documentation site)
+- **Node.js 20 or higher** (for React/Next.js projects)
+- **npm or yarn** (for Node.js package management)
 
 ### Local Development
 
@@ -175,13 +177,90 @@ The repository includes:
 git clone https://github.com/YOUR-USERNAME/sample-amazon-quick-suite-knowledge-hub.git
 cd sample-amazon-quick-suite-knowledge-hub
 
-# Install uv and sync dependencies
+# Install Python dependencies for documentation
 pip install uv
 uv sync --dev
 
 # Install pre-commit hooks (one-time)
 uv run pre-commit install
+
+# For Node.js projects, navigate to specific project directories
+cd docs/use-cases/your-nodejs-project
+npm install
 ```
+
+#### Node.js Project Standards
+
+When contributing Node.js/React/Next.js projects:
+
+**Package.json Requirements:**
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build", 
+    "start": "next start",
+    "lint": "next lint"
+  }
+}
+```
+
+**ESLint Configuration:**
+- Use `eslint-config-next` for Next.js projects
+- Include security-focused rules
+- Configure for TypeScript if applicable
+
+**TypeScript Configuration:**
+- Use strict mode: `"strict": true`
+- Include proper path mapping
+- Configure for React/Next.js as needed
+
+**Security Best Practices:**
+- Keep dependencies updated
+- Use `npm audit` to check for vulnerabilities
+- Avoid hardcoded secrets or API keys
+- Use environment variables for configuration
+
+#### Python Project Standards
+
+When contributing Python projects (CDK, Lambda functions, documentation):
+
+**Project Structure:**
+```
+project/
+├── pyproject.toml          # Project metadata and dependencies
+├── uv.lock                 # Locked dependency versions
+├── requirements.txt        # For Lambda layers (if needed)
+└── .gitignore             # Python-specific ignores
+```
+
+**pyproject.toml Requirements:**
+```toml
+[project]
+name = "your-project"
+version = "0.1.0"
+description = "Brief description"
+requires-python = ">=3.8"
+dependencies = [
+    "boto3>=1.26.0",
+    "aws-cdk-lib>=2.0.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "black", "ruff"]
+```
+
+**Code Quality Standards:**
+- Use `ruff` for linting and formatting
+- Follow PEP 8 style guidelines
+- Use type hints where applicable
+- Include docstrings for functions and classes
+
+**Security Best Practices:**
+- Keep dependencies updated with `uv sync --upgrade`
+- Use `bandit` for security scanning
+- Avoid hardcoded credentials
+- Use AWS IAM roles and environment variables
 
 That's it! You're ready to develop.
 
@@ -214,13 +293,19 @@ git push origin my-branch
 ### What the Hooks Check
 
 **On every commit** (~30-60 seconds):
-✅ **Code formatting** (auto-fixes with ruff)
-✅ **Import sorting** (auto-fixes)
-✅ **Linting** (with ruff)
-✅ **File hygiene** (trailing whitespace, etc.)
-✅ **Markdown formatting** (auto-fixes)
-✅ **Security scanning** (bandit)
-✅ **Documentation build** (mkdocs build --strict)
+- ✅ **Python code formatting** (auto-fixes with ruff)
+- ✅ **Import sorting** (auto-fixes)
+- ✅ **Python linting** (with ruff)
+- ✅ **File hygiene** (trailing whitespace, etc.)
+- ✅ **Markdown formatting** (auto-fixes)
+- ✅ **Security scanning** (bandit for Python, npm audit for Node.js)
+- ✅ **Documentation build** (mkdocs build --strict)
+
+**For Node.js projects** (additional checks):
+- ✅ **TypeScript/JavaScript linting** (ESLint)
+- ✅ **Type checking** (TypeScript compiler)
+- ✅ **Build verification** (Next.js/React builds)
+- ✅ **Dependency security** (npm audit)
 
 ### Skipping Hooks (WIP Commits)
 
@@ -234,11 +319,12 @@ git commit --no-verify -m "wip: incomplete work"
 
 ### Running Checks Manually
 
+**Python project checks:**
 ```bash
 # Run all pre-commit checks
 uv run pre-commit run --all-files
 
-# Run individual tools
+# Run individual Python tools
 uv run ruff format .
 uv run ruff check --fix .
 uv run bandit -r .
@@ -247,11 +333,33 @@ uv run bandit -r .
 uv run mkdocs build --strict
 uv run mkdocs serve
 
-# Add new dependencies
+# Add new Python dependencies
 uv add requests
-
-# Add development dependencies
 uv add --dev pytest
+```
+
+**Node.js project checks:**
+```bash
+# Navigate to your Node.js project directory
+cd docs/use-cases/your-nodejs-project
+
+# Install dependencies
+npm install
+
+# Run linting
+npm run lint
+
+# Run build
+npm run build
+
+# Run development server
+npm run dev
+
+# Run security audit
+npm audit
+
+# Type checking (for TypeScript projects)
+npx tsc --noEmit
 ```
 
 ### Building for Production
@@ -328,6 +436,12 @@ Each project must include:
 - **LICENSE** - License file
 - **.gitignore** - Appropriate gitignore file
 
+**For Node.js/React projects, also include:**
+- **package.json** - Node.js dependencies and scripts
+- **tsconfig.json** - TypeScript configuration (for TypeScript projects)
+- **.eslintrc.js/.eslintrc.json** - ESLint configuration
+- **next.config.js/ts** - Next.js configuration (for Next.js projects)
+
 ### README.md Template
 
 Use this structure for your README.md:
@@ -358,7 +472,7 @@ cd infrastructure
 ./deploy.sh
 ```
 
-### 2. Configure Frontend
+### 2. Configure Frontend (for Node.js/React projects)
 
 ```bash
 cd frontend
@@ -387,3 +501,5 @@ Contributors who provide valuable content will be recognized in our project's Co
 ## 🙏 Thank You
 
 Your contributions help make Amazon Quick Suite more accessible and easier to use for everyone. Whether you're fixing a typo, adding a new integration guide, or sharing a complete use case, every contribution matters and is greatly appreciated!
+
+Learn more about [Amazon Quick Suite](https://aws.amazon.com/quicksuite/) | [Documentation](https://docs.aws.amazon.com/quicksuite/) | [Community](https://community.amazonquicksight.com/)
