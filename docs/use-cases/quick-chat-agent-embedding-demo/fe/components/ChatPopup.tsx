@@ -5,10 +5,22 @@ import cognitoConfig from '../lib/amplify-config';
 interface ChatPopupProps {
   idToken: string;
   apiEndpoint: string;
-  onTokenRefresh: (newToken: string) => void;
 }
 
-export default function ChatPopup({ idToken, apiEndpoint, onTokenRefresh }: ChatPopupProps) {
+interface ApiResponse {
+  status: string;
+  embedUrl?: string;
+}
+
+interface ChangeEvent {
+  eventName: string;
+}
+
+interface MessageEvent {
+  eventName: string;
+}
+
+export default function ChatPopup({ idToken, apiEndpoint }: ChatPopupProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,7 +53,7 @@ export default function ChatPopup({ idToken, apiEndpoint, onTokenRefresh }: Chat
     setShowWelcome(false);
   };
 
-  const callEmbeddingAPI = async (token: string): Promise<any> => {
+  const callEmbeddingAPI = async (token: string): Promise<ApiResponse> => {
     const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
@@ -92,7 +104,7 @@ export default function ChatPopup({ idToken, apiEndpoint, onTokenRefresh }: Chat
         setError('');
         console.log('Starting QuickSuite chat...');
 
-        let currentToken = idToken;
+        const currentToken = idToken;
         let embedUrl;
 
         try {
@@ -140,7 +152,7 @@ export default function ChatPopup({ idToken, apiEndpoint, onTokenRefresh }: Chat
               clipboardRead: true,
               clipboardWrite: true,
             },
-            onChange: (changeEvent: any, metadata: any) => {
+            onChange: (changeEvent: ChangeEvent, metadata?: object) => {
               console.log('Frame event:', changeEvent.eventName, metadata);
               switch (changeEvent.eventName) {
                 case 'FRAME_MOUNTED': {
@@ -162,7 +174,6 @@ export default function ChatPopup({ idToken, apiEndpoint, onTokenRefresh }: Chat
             }
           },
           {
-            locale: "en-US",
             agentOptions: {
               fixedAgentId: (() => {
                 const agentId = process.env.NEXT_PUBLIC_QUICKSUITE_AGENT_ID;
@@ -181,7 +192,7 @@ export default function ChatPopup({ idToken, apiEndpoint, onTokenRefresh }: Chat
               showBrandAttribution: false,
               showUsagePolicy: false,
             },
-            onMessage: async (messageEvent: any, experienceMetadata: any) => {
+            onMessage: async (messageEvent: MessageEvent, experienceMetadata?: object) => {
               console.log('Content event:', messageEvent.eventName, experienceMetadata);
               switch (messageEvent.eventName) {
                 case 'CONTENT_LOADED': {

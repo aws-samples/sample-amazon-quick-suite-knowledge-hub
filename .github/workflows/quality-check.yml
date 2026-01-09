@@ -22,8 +22,6 @@ on:
       - "mkdocs.yml"
       - "main.py"
       - "requirements.txt"
-      - "mkdocs.yml"
-      - "main.py"
 
 permissions:
   contents: read

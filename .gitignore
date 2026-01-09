@@ -1,5 +1,8 @@
 site/
 
+# Kiro CLI settings (local development only)
+.kiro/
+
 # Python
 __pycache__/
 *.py[cod]

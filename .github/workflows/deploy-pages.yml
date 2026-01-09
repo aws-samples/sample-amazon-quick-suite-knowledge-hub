@@ -6,6 +6,11 @@ on:
     paths:
       - "**/*.md"
       - "**/*.py"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/package.json"
       - "mkdocs.yml"
       - "pyproject.toml"
       - "static/**"

@@ -7,6 +7,12 @@ on:
     branches: [ main ]
     paths:
       - "**/*.md"
+      - "**/*.py"
+      - "**/*.js"
+      - "**/*.jsx" 
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/package.json"
       - "mkdocs.yml"
       - "main.py"
   workflow_dispatch:
@@ -28,6 +34,12 @@ jobs:
         with:
           files: |
             **/*.md
+            **/*.py
+            **/*.js
+            **/*.jsx
+            **/*.ts
+            **/*.tsx
+            **/package.json
             mkdocs.yml
             main.py
 
@@ -62,19 +74,56 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           echo "🔗 Checking links in Amazon Quick Suite Knowledge Hub documentation..."
+          
+          # Check links in built documentation site
+          echo "📚 Checking links in built MkDocs site..."
           lychee --verbose --no-progress \
             --accept 200,204,206,300,301,302,303,304,307,308,403,429 \
             --timeout 30 \
             --retry-wait-time 5 \
             --max-retries 3 \
             --exclude-mail \
-            './site/**/*.html' || exit_code=$?
+            './site/**/*.html' || site_exit_code=$?
 
-          if [ ${exit_code:-0} -ne 0 ]; then
+          # Check links in Node.js project files
+          echo "⚛️ Checking links in Node.js project files..."
+          find . -name "node_modules" -prune -o \
+            \( -name "*.md" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) \
+            -path "./docs/use-cases/*" -print | \
+          xargs -r lychee --verbose --no-progress \
+            --accept 200,204,206,300,301,302,303,304,307,308,403,429 \
+            --timeout 30 \
+            --retry-wait-time 5 \
+            --max-retries 3 \
+            --exclude-mail || nodejs_exit_code=$?
+
+          # Check links in Python project files
+          echo "🐍 Checking links in Python project files..."
+          find . -name "*.py" -not -path "*/.venv/*" -not -path "*/node_modules/*" -not -path "*/cdk.out/*" -not -path "*/site/*" | \
+          xargs -r lychee --verbose --no-progress \
+            --accept 200,204,206,300,301,302,303,304,307,308,403,429 \
+            --timeout 30 \
+            --retry-wait-time 5 \
+            --max-retries 3 \
+            --exclude-mail || python_exit_code=$?
+
+          # Check package.json URLs
+          echo "📦 Checking package.json repository and homepage URLs..."
+          find . -name "package.json" -not -path "./node_modules/*" | \
+          xargs -r grep -l "homepage\|repository" | \
+          xargs -r lychee --verbose --no-progress \
+            --accept 200,204,206,300,301,302,303,304,307,308,403,429 \
+            --timeout 30 \
+            --retry-wait-time 5 \
+            --max-retries 3 \
+            --exclude-mail || package_exit_code=$?
+
+          # Report results but don't fail workflow
+          if [ ${site_exit_code:-0} -ne 0 ] || [ ${nodejs_exit_code:-0} -ne 0 ] || [ ${python_exit_code:-0} -ne 0 ] || [ ${package_exit_code:-0} -ne 0 ]; then
             echo "⚠️ Some links may be broken or unreachable"
             echo "This could be due to temporary network issues or rate limiting"
             echo "Please review the output above for actual broken links"
-            # Don't fail the workflow for link checker issues in documentation
+            # Don't fail the workflow for link checker issues
             exit 0
           else
             echo "✅ All links in Amazon Quick Suite Knowledge Hub are valid"

@@ -4,8 +4,13 @@ import { useEffect, useState } from 'react';
 import ChatPopup from '../components/ChatPopup';
 import cognitoConfig from '../lib/amplify-config';
 
+interface User {
+  name?: string;
+  email: string;
+}
+
 export default function Home() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [idToken, setIdToken] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -122,7 +127,7 @@ export default function Home() {
                 Quick Suite Chat Agent Embedding Demo
               </h1>
               <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Experience Quick Suite's chat agent embedded directly into your application. This demo showcases how to integrate conversational capabilities that provide contextual responses within your existing workflow.
+                Experience Quick Suite&apos;s chat agent embedded directly into your application. This demo showcases how to integrate conversational capabilities that provide contextual responses within your existing workflow.
               </p>
             </div>
           </div>
@@ -132,7 +137,7 @@ export default function Home() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-3xl font-bold text-aws-dark-blue mb-4">Ready to try the demo?</h2>
             <p className="text-lg text-gray-600 mb-8">
-              Sign in with your Cognito credentials to experience Quick Suite's embedded chat capabilities.
+              Sign in with your Cognito credentials to experience Quick Suite&apos;s embedded chat capabilities.
             </p>
             <button
               onClick={handleSignIn}
@@ -186,7 +191,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-semibold text-aws-dark-blue mb-3">Custom Branding</h3>
-                <p className="text-gray-600">Customize visual theming and conversational tone to match your company's brand identity.</p>
+                <p className="text-gray-600">Customize visual theming and conversational tone to match your company&apos;s brand identity.</p>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
@@ -292,7 +297,6 @@ export default function Home() {
         <ChatPopup
           idToken={idToken}
           apiEndpoint={apiEndpoint}
-          onTokenRefresh={handleTokenRefresh}
         />
       )}
 

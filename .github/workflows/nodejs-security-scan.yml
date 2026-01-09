@@ -1,0 +1,111 @@
+name: Node.js Security Scanning
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "**/package.json"
+      - "**/package-lock.json"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - ".github/workflows/**"
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "**/package.json"
+      - "**/package-lock.json"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - ".github/workflows/**"
+  schedule:
+    - cron: '0 12 * * 2'  # Weekly security scan on Tuesday at 12:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  nodejs-security-scan:
+    name: Node.js Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Amazon Quick Suite Knowledge Hub
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed Node.js files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            **/package.json
+            **/package-lock.json
+            **/*.js
+            **/*.jsx
+            **/*.ts
+            **/*.tsx
+
+      - name: Setup Node.js
+        if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Find Node.js projects
+        if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
+        id: find-projects
+        run: |
+          echo "🔍 Finding Node.js projects for security scanning..."
+          projects=$(find . -name "package.json" -not -path "./node_modules/*" | xargs dirname | sort -u)
+          echo "projects<<EOF" >> $GITHUB_OUTPUT
+          echo "$projects" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "Found projects:"
+          echo "$projects"
+
+      - name: Install dependencies and run security scans
+        if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
+        run: |
+          echo "🔒 Running security scans on Node.js projects..."
+          mkdir -p security-results
+          
+          while IFS= read -r project; do
+            if [ -f "$project/package.json" ]; then
+              echo "🛡️ Scanning project: $project"
+              cd "$project"
+              
+              # Install dependencies
+              npm ci || npm install
+              
+              # Run npm audit
+              echo "📊 Running npm audit for $project"
+              npm audit --audit-level=moderate --json > "../security-results/npm-audit-$(basename $project).json"
+              
+              # Run ESLint security rules if available
+              if [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f "eslint.config.js" ]; then
+                echo "🔍 Running ESLint security scan for $project"
+                npx eslint . --ext .js,.jsx,.ts,.tsx --format json > "../security-results/eslint-$(basename $project).json"
+              fi
+              
+              cd - > /dev/null
+            fi
+          done <<< "${{ steps.find-projects.outputs.projects }}"
+
+      - name: Upload Node.js security scan results
+        if: (steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule') && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nodejs-security-results
+          path: security-results/
+          retention-days: 30
+
+      - name: Skip message
+        if: steps.changed-files.outputs.any_changed == 'false' && github.event_name != 'schedule'
+        run: echo "⏭️ No Node.js files changed - skipping Node.js security scan for Amazon Quick Suite Knowledge Hub"
