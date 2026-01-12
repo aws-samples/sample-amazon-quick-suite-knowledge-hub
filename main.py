@@ -37,6 +37,10 @@ def define_env(env):
                             {"title": title, "path": relative_path}
                         )
 
+        # Sort each integration list by title in ascending order
+        for key in integrations:
+            integrations[key].sort(key=lambda x: x["title"])
+
         return integrations
 
     @env.macro
