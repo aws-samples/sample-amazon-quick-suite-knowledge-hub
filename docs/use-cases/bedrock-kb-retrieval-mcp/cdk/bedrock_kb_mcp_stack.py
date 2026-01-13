@@ -7,6 +7,7 @@ using MCP through BedrockAgentCore Gateway constructs.
 
 import hashlib
 import json
+import logging
 import os
 import re
 
@@ -29,16 +30,24 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-# Print CDK version info for debugging
+# Log CDK version info for debugging
+logger = logging.getLogger(__name__)
+
 try:
     import aws_cdk
 
     if os.getenv("CDK_DEBUG"):
-        print(f"CDK Version: {getattr(aws_cdk, '__version__', 'unknown')}")
-        print(f"BedrockAgentCore available: {hasattr(bedrockagentcore, 'CfnGateway')}")
+        logger.debug(
+            "CDK Version: %s",
+            getattr(aws_cdk, "__version__", "unknown"),
+        )
+        logger.debug(
+            "BedrockAgentCore available: %s",
+            hasattr(bedrockagentcore, "CfnGateway"),
+        )
 except Exception as e:
     if os.getenv("CDK_DEBUG"):
-        print(f"CDK version check failed: {e}")
+        logger.debug("CDK version check failed: %s", e)
 
 
 class BedrockKBNativeStack(Stack):
