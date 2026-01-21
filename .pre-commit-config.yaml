@@ -35,5 +35,5 @@ repos:
         name: Build MkDocs documentation
         entry: mkdocs build --strict
         language: system
-        files: ^(docs/|mkdocs\.yml|main\.py|requirements\.txt)
+        files: ^(docs/|mkdocs\.yml)
         pass_filenames: false

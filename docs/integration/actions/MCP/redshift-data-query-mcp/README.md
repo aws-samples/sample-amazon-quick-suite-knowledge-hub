@@ -7,7 +7,7 @@ description: "Amazon Redshift MCP integration for database operations with Amazo
 
 **Amazon Redshift Data Query MCP integration** with Amazon QuickSuite. This solution creates an MCP integration that enables read-only access to Amazon Redshift clusters through QuickSuite using MCP Actions with AWS LAB Redshift MCP Server.
 
-## 🏗️ Architecture
+##  Architecture
 
 ![Amazon Redshift Data Query MCP Architecture](./images/redshift-mcp-architecture.png)
 
@@ -19,7 +19,7 @@ description: "Amazon Redshift MCP integration for database operations with Amazo
 - **QuickSuite Integration**: MCP Actions for conversational AI
 - **Amazon Redshift**: Cluster discovery and SQL query execution
 
-## 🎯 Purpose
+##  Purpose
 
 This MCP integration enables:
 
@@ -28,25 +28,25 @@ This MCP integration enables:
 - **AgentCore Gateway**: Gateway with Lambda target and authentication
 - **Read-Only Operations**: Secure database discovery and query execution
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 redshift-data-query-mcp/
-├── app.py                              # CDK deployment entry point
-├── cdk.json                            # CDK configuration
-├── pyproject.toml                      # Project dependencies
-├── uv.lock                             # Dependency lock file
-├── tools/                              # Lambda function code
-│   ├── redshift_agentcore_lambda.py   # AgentCore MCP handler
-│   ├── redshift_agentcore_tools.json  # MCP tool definitions
-│   └── requirements.txt               # Lambda dependencies
-├── cdk/                               # Infrastructure code
-│   ├── redshift_agentcore_stack.py   # AgentCore Gateway stack
-│   └── README.md                      # CDK deployment guide
-└── README.md                          # This file
+ app.py                              # CDK deployment entry point
+ cdk.json                            # CDK configuration
+ pyproject.toml                      # Project dependencies
+ uv.lock                             # Dependency lock file
+ tools/                              # Lambda function code
+    redshift_agentcore_lambda.py   # AgentCore MCP handler
+    redshift_agentcore_tools.json  # MCP tool definitions
+    requirements.txt               # Lambda dependencies
+ cdk/                               # Infrastructure code
+    redshift_agentcore_stack.py   # AgentCore Gateway stack
+    README.md                      # CDK deployment guide
+ README.md                          # This file
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ Key outputs for QuickSuite Actions:
 - `GatewayUrl` - AgentCore Gateway endpoint
 - `ClientId` - OAuth2 client ID
 - `ClientSecret` - OAuth2 client secret
-## 🔧 Available Tools
+##  Available Tools
 
 ### Redshift Tools (redshift_agentcore_lambda.py)
 
@@ -232,7 +232,7 @@ Fill in the MCP configuration:
 - Check Lambda timeout and memory settings
 - Review CORS configuration for QuickSuite
 
-## 📚 Documentation
+##  Documentation
 
 - [CDK Deployment Guide](cdk/README.md) - Infrastructure details
 - [MCP Tool Definitions](tools/redshift_agentcore_tools.json) - API specifications

@@ -9,7 +9,7 @@ description: "Comprehensive actuarial analysis solution for insurance claims pro
 
 This solution addresses critical challenges in insurance operations by providing **real-time fraud detection**, **litigation risk assessment**, **loss reserving calculations**, and **predictive analytics** - all accessible through conversational AI via Amazon Quick Suite.
 
-## 🎯 Business Value
+##  Business Value
 
 **For Insurance Companies:**
 
@@ -27,11 +27,11 @@ This solution addresses critical challenges in insurance operations by providing
 - Access 7 specialized analysis tools through a unified interface
 - Leverage session-based memory for complex multi-step analyses
 
-## 🏗️ Architecture
+##  Architecture
 
 ![Actuarial Analysis Solution Architecture](./images/actuarial-architecture.png)
 
-## 🎯 Overview
+##  Overview
 
 Complete actuarial analysis solution with:
 
@@ -41,38 +41,38 @@ Complete actuarial analysis solution with:
 - **Session-Based Memory** for efficient data sharing
 - **Amazon Quick Suite Integration** with conversational AI interface and automated workflow orchestration through Flows
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 actuarial-analytics-platform/
-├── app.py                      # CDK deployment entry point
-├── cdk.json                    # CDK configuration
-├── pyproject.toml              # Project dependencies and configuration
-├── deploy.sh                   # Deployment script
-├── QUICKSUITE.md              # QuickSuite integration guide
-├── tools/                      # Lambda function code
-│   ├── agentcore_lambda.py    # Main AgentCore handler
-│   ├── data_query_lambda.py   # Data query handler
-│   ├── agentcore_tools.json   # Tool definitions
-│   ├── data_query_tools.json  # Data query tool definitions
-│   ├── loss_reserving.py      # Loss reserving analysis
-│   ├── litigation_analysis.py # Litigation detection
-│   ├── fraud_detection.py     # Fraud scoring
-│   ├── risk_analysis.py       # Risk factor analysis
-│   ├── monitoring.py          # KPI monitoring
-│   ├── pyproject.toml         # Lambda dependencies and configuration
-│   ├── utils/                 # Shared utilities
-│   │   ├── constants.py       # Centralized constants
-│   │   └── data_utils.py      # Common data functions
-│   └── bin/                   # CLI tools (optional)
-├── cdk/                        # Infrastructure code
-│   ├── actuarial_stack.py     # CDK stack definition
-│   └── README.md              # CDK deployment guide
-└── sample_data/                # Sample claims data
-    └── claims.csv
+ app.py                      # CDK deployment entry point
+ cdk.json                    # CDK configuration
+ pyproject.toml              # Project dependencies and configuration
+ deploy.sh                   # Deployment script
+ QUICKSUITE.md              # QuickSuite integration guide
+ tools/                      # Lambda function code
+    agentcore_lambda.py    # Main AgentCore handler
+    data_query_lambda.py   # Data query handler
+    agentcore_tools.json   # Tool definitions
+    data_query_tools.json  # Data query tool definitions
+    loss_reserving.py      # Loss reserving analysis
+    litigation_analysis.py # Litigation detection
+    fraud_detection.py     # Fraud scoring
+    risk_analysis.py       # Risk factor analysis
+    monitoring.py          # KPI monitoring
+    pyproject.toml         # Lambda dependencies and configuration
+    utils/                 # Shared utilities
+       constants.py       # Centralized constants
+       data_utils.py      # Common data functions
+    bin/                   # CLI tools (optional)
+ cdk/                        # Infrastructure code
+    actuarial_stack.py     # CDK stack definition
+    README.md              # CDK deployment guide
+ sample_data/                # Sample claims data
+     claims.csv
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Clone Repository (Sparse Checkout)
 
@@ -107,9 +107,9 @@ cdk deploy --require-approval never
 
 This single command deploys:
 
-- ✅ **Infrastructure** (S3, Glue, Athena, Lambda)
-- ✅ **AgentCore Gateway** with Cognito authentication
-- ✅ **All configurations** and outputs
+-  **Infrastructure** (S3, Glue, Athena, Lambda)
+-  **AgentCore Gateway** with Cognito authentication
+-  **All configurations** and outputs
 
 ### 5. Get Outputs
 
@@ -138,7 +138,7 @@ Key outputs for QuickSuite integration:
 - `UserPoolId` - Cognito User Pool ID
 - `TokenEndpoint` - OAuth2 token endpoint
 
-## 🔧 Available Tools
+##  Available Tools
 
 ### Data Query Tools (data_query_lambda.py)
 
@@ -309,7 +309,7 @@ The `sample_data/claims.csv` contains 10,000+ synthetic insurance claims with:
 - Date range: 2020-2024
 - Realistic claim amounts and patterns
 
-## 📚 Documentation
+##  Documentation
 
 - [CDK Deployment Guide](cdk/README.md) - Infrastructure deployment details
 - [Tool Definitions](tools/agentcore_tools.json) - API specifications

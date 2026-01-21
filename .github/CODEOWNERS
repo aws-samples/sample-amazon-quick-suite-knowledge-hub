@@ -10,7 +10,6 @@
 # Configuration files
 mkdocs.yml @aws-samples/quick-suite-team
 pyproject.toml @aws-samples/quick-suite-team
-main.py @aws-samples/quick-suite-team
 *.yaml @aws-samples/quick-suite-team
 *.yml @aws-samples/quick-suite-team
 

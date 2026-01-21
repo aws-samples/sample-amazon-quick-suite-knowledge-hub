@@ -1,6 +1,6 @@
 # Actuarial Analysis Solution CDK Deployment
 
-## 📦 What This Deploys
+##  What This Deploys
 
 1. **S3 Buckets** - Claims data storage and Athena results (stack-prefixed naming)
 2. **Athena Integration** - SQL queries with Glue catalog
@@ -14,7 +14,7 @@
 5. **AgentCore Gateway** - Native MCP protocol with OAuth2 authentication
 6. **IAM Roles** - Least-privilege permissions for all services
 
-## 🏗️ Architecture Components
+##  Architecture Components
 
 ### AgentCore Memory
 
@@ -39,7 +39,7 @@ Examples:
 - Lambda Functions: `quicksuite-actuarial-mcp-actuarial-tools-a1b2c3d4`
 - Database: `quicksuite-actuarial-mcp-claims-db-a1b2c3d4`
 
-## 🚀 Deployment
+##  Deployment
 
 ### Prerequisites
 
@@ -58,7 +58,7 @@ cd actuarial-analysis-solution
 cdk deploy --require-approval never
 ```
 
-## 📊 What Gets Created
+##  What Gets Created
 
 ### Data Layer
 
@@ -79,7 +79,7 @@ cdk deploy --require-approval never
 - **AgentCore Gateway**: Natural language interface
 - **OAuth2 Authentication**: Secure API access
 
-## 🔧 Key Outputs
+##  Key Outputs
 
 After deployment:
 
@@ -90,7 +90,7 @@ ClientSecret: {cognito-client-secret}
 TokenEndpoint: https://{domain}.auth.us-east-1.amazoncognito.com/oauth2/token
 ```
 
-## 🧪 Testing
+##  Testing
 
 ### 1. Athena Queries
 
@@ -108,7 +108,7 @@ curl -X POST {TokenEndpoint} \
   -d "grant_type=client_credentials&client_id={ClientId}&client_secret={ClientSecret}&scope={Scope}"
 ```
 
-## 🗑️ Cleanup
+##  Cleanup
 
 ```bash
 cdk destroy --force

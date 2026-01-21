@@ -4,13 +4,13 @@
 
 This knowledge base offers a variety of resources and materials to assist you in getting started with Amazon Quick Suite.
 
-## :material-lightbulb:{ style="color: #f39c12" } Use Cases
+##  Use Cases
 
 <div class="grid" markdown>
 
 <div markdown>
 
-### :material-account-tie:{ style="color: #e74c3c" } For Sales & Marketing
+###  For Sales & Marketing
 
 - **Analyze** sales territories and product lines
 - **Generate** customized sales proposals
@@ -21,7 +21,7 @@ This knowledge base offers a variety of resources and materials to assist you in
 
 <div markdown>
 
-### :material-account-supervisor:{ style="color: #3498db" } For Managers & Operations
+###  For Managers & Operations
 
 - **Organize** team collateral and customer information
 - **Set** access permissions for different team members
@@ -32,7 +32,7 @@ This knowledge base offers a variety of resources and materials to assist you in
 
 <div markdown>
 
-### :material-chart-line:{ style="color: #2ecc71" } For Finance
+###  For Finance
 
 - **Perform** deep research across multiple data sources
 - **Generate** comprehensive reports with source citations
@@ -43,7 +43,7 @@ This knowledge base offers a variety of resources and materials to assist you in
 
 <div markdown>
 
-### :material-account-group:{ style="color: #9b59b6" } For Human Resources
+###  For Human Resources
 
 - **Transform** employee data and policies into strategic advantages
 - **Streamline** new hire onboarding and performance management
@@ -54,7 +54,7 @@ This knowledge base offers a variety of resources and materials to assist you in
 
 <div markdown>
 
-### :material-gavel:{ style="color: #f39c12" } For Legal
+###  For Legal
 
 - **Analyze** contracts and perform legal research
 - **Monitor** compliance and prepare cases
@@ -65,7 +65,7 @@ This knowledge base offers a variety of resources and materials to assist you in
 
 <div markdown>
 
-### :material-flash:{ style="color: #f1c40f" } For Energy
+###  For Energy
 
 - **Consolidate** fragmented technical data and operational systems
 - **Streamline** oil and gas operations
@@ -76,55 +76,55 @@ This knowledge base offers a variety of resources and materials to assist you in
 
 </div>
 
-## :material-rocket-launch:{ style="color: #3498db" } Getting Started
+##  Getting Started
 
 <div class="grid cards" markdown>
 
-- :material-file-document:{ .lg .middle } **Getting started with Amazon Quick Suite**
+-  **Getting started with Amazon Quick Suite**
 
     ---
 
     Learn about the concepts and necessary configurations.
 
-    [:octicons-arrow-right-24: Developer Guide](https://docs.aws.amazon.com/quicksight/latest/developerguide/getting-started.html){:target="_blank"}
+    [ Developer Guide](https://docs.aws.amazon.com/quicksight/latest/developerguide/getting-started.html){:target="_blank"}
 
-- :material-play-circle:{ .lg .middle } **Demo Central**
+-  **Demo Central**
 
     ---
 
     Welcome to Amazon Quick Suite DemoCentral
 
-    [:octicons-arrow-right-24: Demo Central](https://democentral.learnquicksight.online/){:target="_blank"}
+    [ Demo Central](https://democentral.learnquicksight.online/){:target="_blank"}
 
-- :material-login:{ .lg .middle } **Quick Suite Sign In**
+-  **Quick Suite Sign In**
 
     ---
 
     Sign in to Quick Suite
 
-    [:octicons-arrow-right-24: here](https://quicksight.aws.amazon.com/){:target="_blank"}
+    [ here](https://quicksight.aws.amazon.com/){:target="_blank"}
 
-- :material-account-group:{ .lg .middle } **Amazon Quick Suite Community**
+-  **Amazon Quick Suite Community**
 
     ---
 
     Find answers to your questions, learning resources, and events in your area!
 
-    [:octicons-arrow-right-24:  Amazon Quick Suite Community](https://aws-crm.lightning.force.com/lightning/r/Report/00ORU0000004bgv2AA/view?queryScope=userFolders){:target="_blank"}
+    [  Amazon Quick Suite Community](https://aws-crm.lightning.force.com/lightning/r/Report/00ORU0000004bgv2AA/view?queryScope=userFolders){:target="_blank"}
 
-- :material-youtube:{ .lg .middle } **Broadcast**
+-  **Broadcast**
 
     ---
 
     Watch tutorials, demos, and updates on our YouTube channel
 
-    [:octicons-arrow-right-24: Amazon Quick Suite YouTube](https://www.youtube.com/@AmazonQuickSuite){:target="_blank"}
+    [ Amazon Quick Suite YouTube](https://www.youtube.com/@AmazonQuickSuite){:target="_blank"}
 
 </div>
 
-## :material-library:{ style="color: #9b59b6" } Other Resources
+##  Other Resources
 
-### :material-school:{ style="color: #e74c3c" } Workshops
+###  Workshops
 
 #### [A Complete Guide to Amazon Quick Suite: The Unified AI-Powered Business Workspace](https://catalog.workshops.aws/amazon-quick-suite-workshop/en-US){:target="_blank"}
 

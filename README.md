@@ -31,9 +31,9 @@ Welcome to the Amazon Quick Suite Knowledge Hub repository!
 
 This repository provides comprehensive setup guides and integration documentation for Amazon Quick Suite, helping you connect various third-party services and knowledge bases to enhance your Quick Suite experience.
 
-## 📁 Repository Structure
+##  Repository Structure
 
-### 📚 [`Integration/`](./docs/integration/)
+###  [`Integration/`](./docs/integration/)
 
 **Knowledge Bases and Actions**
 
@@ -41,16 +41,20 @@ This folder contains detailed setup guides for integrating knowledge bases and t
 
 The structure is divided by integration type:
 
-* **[Knowledge Base](./docs/integration/knowledge-base.md)**: Setup guides for integrating knowledge bases with Quick Suite
-  * Confluence Cloud (Knowledge Only)
+* **Knowledge Base**: Setup guides for integrating knowledge bases with Quick Suite
+  * Confluence Cloud
 
-* **[Actions](./docs/integration/actions.md)**: Setup guides for integrating third-party actions with Quick Suite
+* **Actions**: Setup guides for integrating third-party actions with Quick Suite
+  * MCP (Model Context Protocol)
+    * Bedrock KB Retrieval MCP
+    * Redshift Data Query MCP
   * ServiceNow (2LO)
   * Asana
   * Box
-  * Confluence Cloud (Knowledge + Action)
+  * Confluence Cloud
   * Jira Cloud
   * MS Outlook
+  * MS SharePoint
   * MS Teams
   * PagerDuty
   * Salesforce
@@ -58,13 +62,15 @@ The structure is divided by integration type:
   * Slack
   * Smartsheet
 
-### 🎯 [`Guidance/`](./docs/guidance/)
+###  [`Guidance/`](./docs/guidance/)
 
 **How-to Guides**
 
 Step-by-step guides and best practices for working with Quick Suite.
 
-### 🔧 [`Use Cases/`](./docs/use-cases/)
+* **[Quick Suite Bootstrap](./docs/guidance/quick-suite-bootstrap/)**: Terraform module to set up Amazon Quick Suite with IAM Identity Center integration
+
+###  [`Use Cases/`](./docs/use-cases/)
 
 **Real-world Implementation Examples**
 
@@ -74,11 +80,11 @@ Complete end-to-end solutions demonstrating Quick Suite integrations:
 * **[Bedrock KB Retrieval MCP](./docs/use-cases/bedrock-kb-retrieval-mcp/)**: Amazon Bedrock Knowledge Base integration with MCP Actions
 * **[Redshift Data Query MCP](./docs/use-cases/redshift-data-query-mcp/)**: Amazon Redshift database operations through MCP integration
 
-## 🤝 Contributing
+##  Contributing
 
 Want to add your own integration guide or use case? See our [How to Contribute](docs/HOW-TO-CONTRIBUTE.md) guide for step-by-step instructions on adding your project to this documentation site.
 
-## 📄 License
+##  License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 

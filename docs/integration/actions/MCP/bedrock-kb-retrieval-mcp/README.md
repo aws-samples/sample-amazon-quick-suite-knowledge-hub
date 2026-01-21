@@ -7,7 +7,7 @@ description: "Amazon Bedrock Knowledge Base Retrieval MCP integration with Quick
 
 **Amazon Bedrock Knowledge Base Retrieval MCP integration** with Amazon QuickSuite. This solution creates an MCP integration that enables direct access to Amazon Bedrock Knowledge Bases through QuickSuite using MCP Actions.
 
-## 🏗️ Architecture
+##  Architecture
 
 ![Bedrock KB Retrieval MCP Architecture](./images/bedrockkb-architecture.png)
 
@@ -18,7 +18,7 @@ description: "Amazon Bedrock Knowledge Base Retrieval MCP integration with Quick
 - **QuickSuite Integration**: MCP Actions for conversational AI
 - **Amazon Bedrock Knowledge Bases**: Document retrieval and semantic search
 
-## 🎯 Purpose
+##  Purpose
 
 This MCP integration enables:
 
@@ -27,24 +27,24 @@ This MCP integration enables:
 - **AgentCore Gateway**: Gateway with Lambda target and authentication
 - **Document Retrieval**: Semantic search with reranking and filtering
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 bedrock-kb-retrieval-mcp/
-├── app.py                          # CDK deployment entry point
-├── cdk.json                        # CDK configuration
-├── pyproject.toml                  # Project dependencies
-├── tools/                          # Lambda function code
-│   ├── kb_agentcore_lambda.py     # AgentCore MCP handler
-│   ├── kb_agentcore_tools.json    # MCP tool definitions
-│   └── requirements.txt           # Lambda dependencies
-├── cdk/                           # Infrastructure code
-│   ├── bedrock_kb_mcp_stack.py    # AgentCore Gateway stack
-│   └── README.md                  # CDK deployment guide
-└── README.md                      # This file
+ app.py                          # CDK deployment entry point
+ cdk.json                        # CDK configuration
+ pyproject.toml                  # Project dependencies
+ tools/                          # Lambda function code
+    kb_agentcore_lambda.py     # AgentCore MCP handler
+    kb_agentcore_tools.json    # MCP tool definitions
+    requirements.txt           # Lambda dependencies
+ cdk/                           # Infrastructure code
+    bedrock_kb_mcp_stack.py    # AgentCore Gateway stack
+    README.md                  # CDK deployment guide
+ README.md                      # This file
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Clone Repository (Sparse Checkout)
 
@@ -87,7 +87,7 @@ Key outputs for QuickSuite Actions:
 - `ClientSecret` - OAuth2 client secret
 - `CognitoTokenUrl` - OAuth2 token endpoint
 
-## 🔧 Available Tools
+##  Available Tools
 
 ### Knowledge Base Tools (kb_agentcore_lambda.py)
 
@@ -190,7 +190,7 @@ Fill in the MCP configuration:
 - Check Lambda timeout and memory settings
 - Review CORS configuration for QuickSuite
 
-## 📚 Documentation
+##  Documentation
 
 - [CDK Deployment Guide](cdk/README.md) - Infrastructure details
 - [MCP Tool Definitions](tools/kb_agentcore_tools.json) - API specifications

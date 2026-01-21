@@ -8,7 +8,6 @@ on:
     paths:
       - "**/*.md"
       - "mkdocs.yml"
-      - "main.py"
   workflow_dispatch:
 
 permissions:
@@ -29,7 +28,6 @@ jobs:
           files: |
             **/*.md
             mkdocs.yml
-            main.py
 
       - name: Set up Python for documentation build
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

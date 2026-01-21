@@ -27,16 +27,20 @@ exclude_docs: |
   use-cases/*/infrastructure/
   use-cases/*/fe/
   use-cases/*/tools/
+  integration/actions/MCP/*/cdk/
+  integration/actions/MCP/*/tools/
   !use-cases/*/images/
   !use-cases/*/README.md
   !use-cases/*/LICENSE
+  !integration/actions/MCP/*/images/
+  !integration/actions/MCP/*/README.md
+  !integration/actions/MCP/*/LICENSE
 extra_css:
   - stylesheets/extra.css
 extra:
   static_path: ../static
 plugins:
   - search
-  - macros
 markdown_extensions:
   - attr_list
   - md_in_html
@@ -56,18 +60,38 @@ markdown_extensions:
       url_download: True
       url_request_headers:
 nav:
-  - 🏠 Home: index.md
-  - 📚 Guidance:
-    - How to..: guidance/how-to.md
-  - 🔗 Integration:
-    - Knowledge Base: integration/knowledge-base.md
-    - Actions: integration/actions.md
-  - 💡 Use Cases:
-    - Overview: use-cases/index.md
+  - Home: index.md
+  - Infrastructure as a Code:
+    - Terraform: infrastructure as code/Terraform/README.md
+  - Manage Quick Suite:
+    - Identity: manage quick/Identity.md
+    - Observability: manage quick/Observability.md
+    - Customization: manage quick/Customization.md
+    - Security:
+      - Guardrails: manage quick/Security/Guardrails.md
+  - Integration:
+    - Knowledge Base:
+      - Confluence Cloud: integration/knowledge base/confluence-cloud-knowledge-only-setup-guide/README.md
+    - Actions: 
+      - MCP:
+        - Amazon Bedrock KB Retrieval MCP: integration/actions/MCP/bedrock-kb-retrieval-mcp/README.md
+        - Amazon Redshift Data Query MCP: integration/actions/MCP/redshift-data-query-mcp/README.md
+      - Asana: integration/actions/asana-action-setup-guide/README.md
+      - Box: integration/actions/box-action-setup-guide/README.md
+      - Confluence Cloud: integration/actions/confluence-cloud-knowledge-action-setup-guide/README.md
+      - Jira Cloud: integration/actions/jira-cloud-action-setup-guide/README.md
+      - MS Outlook: integration/actions/ms-outlook-action-setup-guide/README.md
+      - MS SharePoint: integration/actions/ms-sharepoint-action-setup-guide/README.md
+      - MS Teams: integration/actions/ms-teams-action-setup-guide/README.md
+      - PagerDuty: integration/actions/pagerduty-action-setup-guide/README.md
+      - Salesforce: integration/actions/salesforce-action-setup-guide/README.md
+      - ServiceNow: integration/actions/servicenow-action-setup-guide/README.md
+      - ServiceNow (2LO): integration/actions/2lo-servicenow-action-setup-guide/README.md
+      - Slack: integration/actions/slack-action-setup-guide/README.md
+      - Smartsheet: integration/actions/smartsheet-action-setup-guide/README.md
+  - Use Cases:
     - Actuarial Analysis Solution: use-cases/actuarial-analysis-solution/README.md
-    - Bedrock KB Retrieval MCP: use-cases/bedrock-kb-retrieval-mcp/README.md
     - Quick Chat Agent Embedding Demo: use-cases/quick-chat-agent-embedding-demo/README.md
-    - Redshift Data Query MCP: use-cases/redshift-data-query-mcp/README.md
-  - ❤️ How To Contribute: HOW-TO-CONTRIBUTE.md
+  - How To Contribute: HOW-TO-CONTRIBUTE.md
 repo_url: https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub
 edit_uri: edit/main/docs/

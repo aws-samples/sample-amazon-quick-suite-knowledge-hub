@@ -10,7 +10,6 @@ on:
       - "**/*.yaml"
       - "pyproject.toml"
       - "mkdocs.yml"
-      - "main.py"
   push:
     branches: [ main ]
     paths:
@@ -20,9 +19,6 @@ on:
       - "**/*.yaml"
       - "pyproject.toml"
       - "mkdocs.yml"
-      - "main.py"
-      - "mkdocs.yml"
-      - "main.py"
 
 permissions:
   contents: read

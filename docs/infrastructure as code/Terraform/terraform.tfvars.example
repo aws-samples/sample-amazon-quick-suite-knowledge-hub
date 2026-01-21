@@ -1,0 +1,30 @@
+# Amazon Quick Suite Bootstrap - Example Variables
+# Copy this file to terraform.tfvars and customize the values
+
+# AWS Region
+aws_region = "us-west-2"
+identity_center_region = "us-west-2"
+
+# IAM Identity Center Instance ARN (leave empty to create new)
+# Example: "arn:aws:sso:::instance/ssoins-1234567890abcdef"
+identity_center_instance_arn = ""
+identity_center_identity_store_id = ""
+
+# Quick Suite Account Name
+quick_suite_account_name = "TerraformUser"
+
+# Admin Email Address
+quick_suite_admin_email = "admin@example.com"
+
+# Admin Group Name in Identity Center
+quick_suite_admin_group_name = "QuickSuiteAdmins"
+
+# Force update (set to true to re-run setup)
+force_update = false
+
+# Additional tags
+tags = {
+  Environment = "test_terraform"
+  Project     = "QuickSuite"
+  ManagedBy   = "Terraform"
+}
