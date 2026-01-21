@@ -37,6 +37,7 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v46
         with:
+          separator: ","
           files_yaml: |
             markdown:
               - "**/*.md"
@@ -76,20 +77,29 @@ jobs:
         if: steps.changed-files.outputs.python_any_changed == 'true'
         run: |
           echo "🔍 Linting Python files for Amazon Quick Suite Knowledge Hub:"
-          echo "${{ steps.changed-files.outputs.python_all_changed_files }}" | tr ' ' '\n'
-          uv run ruff check --output-format=github "${{ steps.changed-files.outputs.python_all_changed_files }}"
+          echo "${{ steps.changed-files.outputs.python_all_changed_files }}" | tr ',' '\n'
+          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.python_all_changed_files }}"
+          for file in "${FILES[@]}"; do
+            uv run ruff check --output-format=github "$file"
+          done
 
       - name: Check Python code formatting
         if: steps.changed-files.outputs.python_any_changed == 'true'
         run: |
           echo "📝 Checking Python code format:"
-          uv run ruff format --check "${{ steps.changed-files.outputs.python_all_changed_files }}"
+          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.python_all_changed_files }}"
+          for file in "${FILES[@]}"; do
+            uv run ruff format --check "$file"
+          done
 
       - name: Run Python security scan
         if: steps.changed-files.outputs.python_any_changed == 'true'
         run: |
           echo "🔒 Running security scan on Python files:"
-          uv run bandit -r "${{ steps.changed-files.outputs.python_all_changed_files }}" -f json || true
+          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.python_all_changed_files }}"
+          for file in "${FILES[@]}"; do
+            uv run bandit -r "$file" -f json || true
+          done
 
       - name: Lint Markdown documentation
         if: steps.changed-files.outputs.markdown_any_changed == 'true'
