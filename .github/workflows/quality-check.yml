@@ -77,19 +77,19 @@ jobs:
         run: |
           echo "🔍 Linting Python files for Amazon Quick Suite Knowledge Hub:"
           echo "${{ steps.changed-files.outputs.python_all_changed_files }}" | tr ' ' '\n'
-          uv run ruff check --output-format=github ${{ steps.changed-files.outputs.python_all_changed_files }}
+          uv run ruff check --output-format=github "${{ steps.changed-files.outputs.python_all_changed_files }}"
 
       - name: Check Python code formatting
         if: steps.changed-files.outputs.python_any_changed == 'true'
         run: |
           echo "📝 Checking Python code format:"
-          uv run ruff format --check ${{ steps.changed-files.outputs.python_all_changed_files }}
+          uv run ruff format --check "${{ steps.changed-files.outputs.python_all_changed_files }}"
 
       - name: Run Python security scan
         if: steps.changed-files.outputs.python_any_changed == 'true'
         run: |
           echo "🔒 Running security scan on Python files:"
-          uv run bandit -r ${{ steps.changed-files.outputs.python_all_changed_files }} -f json || true
+          uv run bandit -r "${{ steps.changed-files.outputs.python_all_changed_files }}" -f json || true
 
       - name: Lint Markdown documentation
         if: steps.changed-files.outputs.markdown_any_changed == 'true'
