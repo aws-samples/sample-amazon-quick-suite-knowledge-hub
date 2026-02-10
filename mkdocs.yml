@@ -92,6 +92,7 @@ nav:
       - Smartsheet: integration/actions/smartsheet-action-setup-guide/README.md
   - Use Cases:
     - Actuarial Analysis Solution: use-cases/actuarial-analysis-solution/README.md
+    - GenAI Operations Hub: use-cases/genai-operations-hub/README.md
     - Quick Chat Agent Embedding Demo: use-cases/quick-chat-agent-embedding-demo/README.md
   - How To Contribute: HOW-TO-CONTRIBUTE.md
 repo_url: https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub
