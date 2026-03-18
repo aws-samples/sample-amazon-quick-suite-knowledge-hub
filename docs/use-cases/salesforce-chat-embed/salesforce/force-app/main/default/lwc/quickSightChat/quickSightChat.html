@@ -1,0 +1,14 @@
+<template>
+    <lightning-card title="QuickSight Chat Agent">
+        <div class="slds-p-around_medium">
+            <!-- Replace the src and allow URLs with your Chat Agent embed URL from the QuickSight console -->
+            <iframe
+                width="450"
+                height="800"
+                frameborder="0"
+                allow="clipboard-read https://REGION.quicksight.aws.amazon.com; clipboard-write https://REGION.quicksight.aws.amazon.com"
+                src="https://REGION.quicksight.aws.amazon.com/sn/account/ACCOUNT_ALIAS/embed/share/accounts/ACCOUNT_ID/chatagents/AGENT_ID?directory_alias=ACCOUNT_ALIAS"
+            ></iframe>
+        </div>
+    </lightning-card>
+</template>
