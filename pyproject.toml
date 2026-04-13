@@ -5,7 +5,7 @@ description = "Integration guides and documentation for Amazon Quick Suite"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "mkdocs-material>=9.7.0",
+    "mkdocs-material>=9.7.6",
     "pymdown-extensions>=10.7.1",
 ]
 
