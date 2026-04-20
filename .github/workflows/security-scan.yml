@@ -89,7 +89,7 @@ jobs:
 
       - name: TruffleHog secret scan
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
-        uses: trufflesecurity/trufflehog@v3.90.6
+        uses: trufflesecurity/trufflehog@v3.94.3
         with:
           path: ./
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
