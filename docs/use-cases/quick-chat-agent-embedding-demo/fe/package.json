@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "amazon-quicksight-embedding-sdk": "^2.11.1",
-    "next": "^15.0.0",
+    "next": "^16.3.0",
     "react": "^19.0.0",
     "react-chatbotify": "^2.5.0",
     "react-dom": "^19.0.0"
@@ -22,7 +22,7 @@
     "autoprefixer": "^10.4.0",
     "eslint": "^8.56.0",
     "eslint-config-next": "^15.0.0",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.23",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.6.0"
   }
