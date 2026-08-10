@@ -57,11 +57,11 @@ jobs:
 
       - name: Install uv package manager
         if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
 
       - name: Install uv
         if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
 
       - name: Install Python dependencies
         if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'

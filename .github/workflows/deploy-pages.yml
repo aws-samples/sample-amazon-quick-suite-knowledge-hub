@@ -57,7 +57,7 @@ jobs:
             amazon-quick-suite-mkdocs-material-
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
 
       - name: Install Amazon Quick Knowledge Hub dependencies
         run: uv sync
