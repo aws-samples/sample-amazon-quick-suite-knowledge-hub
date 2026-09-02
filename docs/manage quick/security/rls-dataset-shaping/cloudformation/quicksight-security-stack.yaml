@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Amazon Quick Security Blog - QuickSight Resources
+  Creates datasets, groups, and supporting infrastructure for the
+  "Secure Amazon Quick from POC to Production" blog walkthrough.
+
+Parameters:
+  AwsAccountId:
+    Type: String
+    Description: AWS Account ID for QuickSight resources
+
+  S3BucketName:
+    Type: String
+    Description: S3 bucket containing the uploaded CSV datasets
+
+  QuickSightNamespace:
+    Type: String
+    Default: default
+    Description: QuickSight namespace
+
+  HRAdminUsername:
+    Type: String
+    Description: QuickSight username for the HR admin user (e.g., Admin/hr-admin-Isengard)
+
+Resources:
+  # --- S3 Bucket for datasets (optional - use existing bucket if preferred) ---
+  DatasetBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref S3BucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: amazon-quick-security-blog
+        - Key: Purpose
+          Value: QuickSight dataset storage
+
+  # --- QuickSight Groups ---
+  HRLeadershipGroup:
+    Type: AWS::QuickSight::Group
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      GroupName: hr-leadership
+      Namespace: !Ref QuickSightNamespace
+      Description: HR leadership with full workforce data access
+
+  DeptManagersGroup:
+    Type: AWS::QuickSight::Group
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      GroupName: dept-managers
+      Namespace: !Ref QuickSightNamespace
+      Description: Department managers with RLS-filtered team data
+
+  AllEmployeesGroup:
+    Type: AWS::QuickSight::Group
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      GroupName: all-employees
+      Namespace: !Ref QuickSightNamespace
+      Description: All employees with aggregated data and policy access only
+
+  # --- QuickSight Data Source (S3) ---
+  S3DataSource:
+    Type: AWS::QuickSight::DataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSourceId: anycompany-s3-datasource
+      Name: AnyCompany Employee Data (S3)
+      Type: S3
+      DataSourceParameters:
+        S3Parameters:
+          ManifestFileLocation:
+            Bucket: !Ref S3BucketName
+            Key: quicksight-security-blog/manifests/employee_data_manifest.json
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/${QuickSightNamespace}/${HRAdminUsername}
+          Actions:
+            - quicksight:DescribeDataSource
+            - quicksight:DescribeDataSourcePermissions
+            - quicksight:PassDataSource
+            - quicksight:UpdateDataSource
+            - quicksight:DeleteDataSource
+            - quicksight:UpdateDataSourcePermissions
+
+  # --- CloudTrail for QuickSight Auditing ---
+  QuickSightAuditTrail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: quicksight-security-audit
+      IsLogging: true
+      S3BucketName: !Ref CloudTrailBucket
+      EnableLogFileValidation: true
+      IncludeGlobalServiceEvents: true
+      IsMultiRegionTrail: false
+      Tags:
+        - Key: Project
+          Value: amazon-quick-security-blog
+
+  CloudTrailBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudTrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub ${CloudTrailBucket.Arn}/AWSLogs/${AwsAccountId}/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+Outputs:
+  DatasetBucketName:
+    Description: S3 bucket for QuickSight datasets
+    Value: !Ref DatasetBucket
+
+  HRLeadershipGroupArn:
+    Description: ARN of the hr-leadership group
+    Value: !GetAtt HRLeadershipGroup.Arn
+
+  DeptManagersGroupArn:
+    Description: ARN of the dept-managers group
+    Value: !GetAtt DeptManagersGroup.Arn
+
+  AllEmployeesGroupArn:
+    Description: ARN of the all-employees group
+    Value: !GetAtt AllEmployeesGroup.Arn
+
+  CloudTrailBucketName:
+    Description: S3 bucket for CloudTrail logs
+    Value: !Ref CloudTrailBucket
+
+  DataSourceArn:
+    Description: ARN of the QuickSight S3 data source
+    Value: !GetAtt S3DataSource.Arn

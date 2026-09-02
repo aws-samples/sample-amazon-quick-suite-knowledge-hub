@@ -1,0 +1,80 @@
+{
+  "flowName": "Weekly Attrition Risk Alert",
+  "description": "Identifies employees with high attrition risk from company data, requires human approval, and sends notifications to department managers",
+  "trigger": {
+    "type": "SCHEDULE",
+    "schedule": "rate(7 days)"
+  },
+  "connectedSpace": "AnyCompany HR",
+  "connectedDataset": "anycompany-employees-manager",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "name": "Retrieve High Attrition Employees",
+      "type": "DATA_QUERY",
+      "description": "Queries the dataset through the Space and filters for Attrition Flag = High",
+      "configuration": {
+        "datasetId": "anycompany-employees-manager",
+        "filter": {
+          "column": "Attrition Flag",
+          "operator": "EQUALS",
+          "value": "High"
+        },
+        "columns": [
+          "Employee ID",
+          "Department",
+          "Job Role",
+          "Position Level",
+          "Location",
+          "Years At Company",
+          "Engagement Score",
+          "Satisfaction Score",
+          "Work Life Balance Score"
+        ]
+      }
+    },
+    {
+      "stepNumber": 2,
+      "name": "Analyze Attrition Risk Factors",
+      "type": "AI_ANALYSIS",
+      "description": "Processes the filtered results (~300 employees) and identifies patterns",
+      "configuration": {
+        "prompt": "Analyze the high-attrition employees and group them by department. For each department, identify the top 3 contributing risk factors based on engagement scores, satisfaction scores, and work-life balance. Summarize findings in a concise report for manager review.",
+        "outputFormat": "STRUCTURED_REPORT"
+      }
+    },
+    {
+      "stepNumber": 3,
+      "name": "Human Approval Process",
+      "type": "HUMAN_APPROVAL",
+      "description": "Pauses execution until a designated approver reviews and approves the notification content",
+      "configuration": {
+        "approvers": ["hr-leadership"],
+        "timeoutHours": 72,
+        "approvalMessage": "Please review the attrition risk report before it is sent to department managers. Verify that no sensitive information is included in the notification.",
+        "requiredApprovals": 1
+      }
+    },
+    {
+      "stepNumber": 4,
+      "name": "Manager Notification",
+      "type": "NOTIFICATION",
+      "description": "After approval, sends department-specific alerts to the dept-managers group",
+      "configuration": {
+        "recipients": ["dept-managers"],
+        "notificationType": "EMAIL",
+        "subjectTemplate": "Weekly Attrition Risk Alert - {{department}} Department",
+        "bodyTemplate": "High attrition risk employees identified in your department. Please review the attached summary and take appropriate retention actions.",
+        "includeReport": true,
+        "filterByDepartment": true
+      }
+    }
+  ],
+  "securityNotes": [
+    "Flow connects to RLS-protected manager dataset (not full dataset)",
+    "Sensitive columns (salary, bonus) are not present in the connected dataset",
+    "Human approval gate prevents automated outbound communication without review",
+    "Each manager receives only their own department's data due to RLS",
+    "External credentials (if any) should be stored in AWS Secrets Manager"
+  ]
+}

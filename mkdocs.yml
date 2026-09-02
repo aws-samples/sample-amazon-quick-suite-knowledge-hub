@@ -32,6 +32,11 @@ exclude_docs: |
   amazon-quick-on-desktop/scripts/
   integration/actions/MCP/*/cdk/
   integration/actions/MCP/*/tools/
+  manage quick/security/*/datasets/
+  manage quick/security/*/documents/
+  manage quick/security/*/scripts/
+  manage quick/security/*/cloudformation/
+  manage quick/security/*/flows/
   infrastructure as code/quick-custom-domain-redirect/lib/
   !use-cases/*/images/
   !use-cases/*/README.md
@@ -39,6 +44,7 @@ exclude_docs: |
   !integration/actions/MCP/*/images/
   !integration/actions/MCP/*/README.md
   !integration/actions/MCP/*/LICENSE
+  !manage quick/security/*/README.md
 extra_css:
   - stylesheets/extra.css
 extra:
@@ -74,6 +80,8 @@ nav:
     - Quick Custom Domain Redirect: infrastructure as code/quick-custom-domain-redirect/README.md
   - Manage Quick:
     - Observability: manage quick/observability-agent/README.md
+    - Security:
+      - Row-Level Security & Dataset Shaping: manage quick/security/rls-dataset-shaping/README.md
   - Amazon Quick on desktop:
     - Cognito OIDC Provider: amazon-quick-on-desktop/README.md
   - Integration:
