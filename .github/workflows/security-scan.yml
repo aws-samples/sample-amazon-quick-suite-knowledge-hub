@@ -47,7 +47,7 @@ jobs:
 
       - name: Install uv package manager
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
 
       - name: Install security scanning tools
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
