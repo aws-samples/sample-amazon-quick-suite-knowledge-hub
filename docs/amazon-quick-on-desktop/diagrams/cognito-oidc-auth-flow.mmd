@@ -1,32 +1,25 @@
 sequenceDiagram
     participant User
     participant Desktop as Desktop App
-    participant Proxy as API Gateway + Lambda<br/>(Scope Proxy)
     participant Cognito as Amazon Cognito<br/>(User Pool)
     participant QuickService as Amazon Quick Service
     participant TTI as Trusted Token Issuer<br/>(IAM Identity Center)
 
     User->>Desktop: Launch and select Enterprise sign-in
     Desktop->>QuickService: Request discovery configuration
-    QuickService-->>Desktop: Proxy endpoints, Client ID, scopes
+    QuickService-->>Desktop: Cognito endpoints, Client ID, scopes
     Desktop->>Desktop: Generate PKCE code verifier + challenge
     Desktop->>Desktop: Bind localhost:18080 listener
 
-    Desktop->>Proxy: GET /oauth2/authorize<br/>(code challenge, scopes incl. offline_access)
-    Proxy->>Proxy: Strip offline_access from scope parameter
-    Proxy-->>Desktop: 302 Redirect to Cognito hosted UI<br/>(cleaned scopes)
-
-    Desktop->>Cognito: Follow redirect to hosted UI
+    Desktop->>Cognito: GET /oauth2/authorize<br/>(code challenge, scopes)
     Cognito->>User: Present login page
     User->>Cognito: Authenticate (email + password + MFA)
     Note right of Cognito: MFA enforced via User Pool config
     Cognito-->>Desktop: Authorization code<br/>(via localhost:18080 redirect)
     Desktop->>Desktop: Shut down localhost:18080 listener
 
-    Desktop->>Proxy: POST /oauth2/token<br/>(authorization code + PKCE verifier)
-    Proxy->>Cognito: Forward token request
-    Cognito-->>Proxy: Access token, ID token, refresh token
-    Proxy-->>Desktop: Pass through token response
+    Desktop->>Cognito: POST /oauth2/token<br/>(authorization code + PKCE verifier)
+    Cognito-->>Desktop: Access token, ID token, refresh token
 
     Desktop->>QuickService: Validate session (access token)
     QuickService->>TTI: Validate token via JWKS<br/>(email claim mapping)

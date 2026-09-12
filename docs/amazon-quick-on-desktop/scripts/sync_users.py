@@ -32,7 +32,7 @@ class StackOutput(StrEnum):
 
 
 class StackName(StrEnum):
-    COGNITO_PROXY = "QuickDesktopCognitoProxyStack"
+    COGNITO = "QuickDesktopCognitoStack"
 
 
 class SyncError(Exception):
@@ -58,6 +58,7 @@ class SyncUser:
 class SyncStatus(StrEnum):
     CREATED = "CREATED"
     EXISTS = "EXISTS"
+    ACTIVE = "ACTIVE"
     SKIPPED = "SKIPPED"
 
 
@@ -90,15 +91,15 @@ class StackOutputResolver:
         self._cfn = cfn_client
 
     def resolve(self) -> StackOutputResponse:
-        resp = self._cfn.describe_stacks(StackName=StackName.COGNITO_PROXY)
+        resp = self._cfn.describe_stacks(StackName=StackName.COGNITO)
         stacks = resp.get("Stacks", [])
         if not stacks:
-            raise StackNotFoundError(StackName.COGNITO_PROXY)
+            raise StackNotFoundError(StackName.COGNITO)
         outputs = {
             o["OutputKey"]: o["OutputValue"] for o in stacks[0].get("Outputs", [])
         }
         if StackOutput.POOL_ID not in outputs:
-            raise StackNotFoundError(StackName.COGNITO_PROXY)
+            raise StackNotFoundError(StackName.COGNITO)
         return StackOutputResponse(pool_id=outputs[StackOutput.POOL_ID])
 
 
@@ -148,6 +149,9 @@ class LocalUserLister:
                 )
 
 
+FORCE_CHANGE_PASSWORD_STATUS = "FORCE_CHANGE_PASSWORD"
+
+
 class CognitoUserSyncer:
     """Creates users and lets Cognito send the invitation email."""
 
@@ -160,10 +164,14 @@ class CognitoUserSyncer:
         for user in users:
             if not user.username:
                 results.append(UserSyncResult(user=user, status=SyncStatus.SKIPPED))
-            elif self._user_exists(user.username):
+                continue
+            status = self._user_status(user.username)
+            if status is None:
+                results.append(UserSyncResult(user=user, status=SyncStatus.CREATED))
+            elif status == FORCE_CHANGE_PASSWORD_STATUS:
                 results.append(UserSyncResult(user=user, status=SyncStatus.EXISTS))
             else:
-                results.append(UserSyncResult(user=user, status=SyncStatus.CREATED))
+                results.append(UserSyncResult(user=user, status=SyncStatus.ACTIVE))
         return results
 
     def create(self, user: SyncUser) -> None:
@@ -188,12 +196,15 @@ class CognitoUserSyncer:
             DesiredDeliveryMediums=["EMAIL"],
         )
 
-    def _user_exists(self, username: str) -> bool:
+    def _user_status(self, username: str) -> str | None:
+        """Returns the Cognito user's status, or None if the user does not exist."""
         try:
-            self._cognito.admin_get_user(UserPoolId=self._pool_id, Username=username)
-            return True
+            resp = self._cognito.admin_get_user(
+                UserPoolId=self._pool_id, Username=username
+            )
+            return resp["UserStatus"]
         except self._cognito.exceptions.UserNotFoundException:
-            return False
+            return None
 
 
 class UserSyncOrchestrator:
@@ -240,6 +251,11 @@ class UserSyncOrchestrator:
         for result in plan:
             match result.status:
                 case SyncStatus.SKIPPED:
+                    skipped += 1
+                case SyncStatus.ACTIVE:
+                    print(
+                        f"    ACTIVE:  {result.user.username} already signed up, nothing to resend"
+                    )
                     skipped += 1
                 case SyncStatus.CREATED:
                     if not self._confirm(
