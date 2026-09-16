@@ -1,6 +1,6 @@
 # Amazon Quick on desktop: Cognito OpenID Connect (OIDC) Provider
 
-[Amazon Quick on desktop](https://docs.aws.amazon.com/quick/latest/userguide/amazon-quick-desktop.html) for enterprise customers requires an [OIDC provider](https://docs.aws.amazon.com/quick/latest/userguide/desktop-enterprise-setup.html). As stated in the documentation, you can use a compatible OIDC provider such as Entra ID, Okta, Auth0, or PingOne. You can also use [Amazon Cognito](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-federation.html) as an OIDC provider with a proxy. This sample, deployable through the AWS Cloud Development Kit (CDK) and AWS CloudFormation, provides the infrastructure for that solution.
+[Amazon Quick on desktop](https://docs.aws.amazon.com/quick/latest/userguide/amazon-quick-desktop.html) for enterprise customers requires an [OIDC provider](https://docs.aws.amazon.com/quick/latest/userguide/desktop-enterprise-setup.html). As stated in the documentation, you can use a compatible OIDC provider such as Entra ID, Okta, Auth0, or PingOne. You can also use [Amazon Cognito](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-federation.html) as an OIDC provider. This sample, deployable through the AWS Cloud Development Kit (CDK) and AWS CloudFormation, provides the infrastructure for that solution.
 
 This solution is designed for customers who do not have or want to use one of the aforementioned OIDC providers and use local Amazon Quick users or AWS IAM Identity Center without a federated identity provider (IdP). As with all Quick desktop setup, emails used in Amazon Quick must also match the emails in your OIDC provider. See below for details on deployment and synchronization of users.
 
@@ -12,25 +12,11 @@ The following sequence diagram shows the Amazon Quick desktop authentication flo
 
 ![Cognito OIDC Auth Flow](diagrams/cognito-oidc-auth-flow.png)
 
-The stack deploys an Amazon Cognito User Pool with a hosted UI domain and public app client, and an Amazon API Gateway REST API with an AWS Lambda proxy that strips `offline_access` scope from OAuth requests. That scope is currently sent with all requests in Amazon Quick, but is not available within Cognito. New users are provisioned by an admin and receive a Cognito invitation email; they set their own password on first sign-in.
+The stack deploys an Amazon Cognito User Pool with a hosted UI domain and a public app client. The desktop app points directly at the Cognito hosted UI OAuth endpoints (`/oauth2/authorize` and `/oauth2/token`). New users are provisioned by an admin and receive a Cognito invitation email; they set their own password on first sign-in.
 
 ## Important security considerations
 
 Review and apply these before using the stack in production. AWS reference documentation is linked for each control.
-
-### API Gateway access (public by default)
-
-The API Gateway REST API deployed by this stack is **publicly accessible by default**. The proxy only forwards OAuth requests to Cognito and does not expose sensitive data, but you should restrict who can reach it.
-
-**IP allowlist (CIDR).** Pass `allowedCidrs` at deploy time to attach an [API Gateway resource policy](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-resource-policies.html) that allows `execute-api:Invoke` from your ranges and denies all other source IPs:
-
-```bash
-cdk deploy -c allowedCidrs='["203.0.113.0/24", "198.51.100.0/24"]'
-```
-
-Use the public egress ranges your desktop users connect from (corporate NAT gateways or VPN egress IPs). Requests from any other address receive `403 Forbidden`. Omit the flag to leave the API open. Changing the policy requires a redeploy.
-
-**AWS WAF** Attach a regional [AWS WAF web ACL](https://docs.aws.amazon.com/waf/latest/developerguide/web-acl.html) to the deployed `prod` stage for rate limiting, geo-restrictions, managed rule groups, and bot control. The web ACL must be `REGIONAL` scope in the same Region as the stack; see [Using AWS WAF with API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-aws-waf.html) to create and associate it. The web ACL applies on top of any CIDR resource policy — both are evaluated, so a request must satisfy both to reach the proxy.
 
 ### Multi-factor authentication (MFA)
 
@@ -79,7 +65,7 @@ For an overview of all user pool security features, see [Using Amazon Cognito us
 
 - AWS account with an active Amazon Quick subscription
 - Node.js 18+, AWS CDK CLI, and configured AWS credentials
-- Python 3.12+ (Lambda runtime)
+- Python 3.12+ (user sync script)
 
 ## Setup
 
@@ -92,12 +78,6 @@ Install dependencies and deploy:
 ```bash
 npm install
 cdk deploy
-```
-
-To restrict the API Gateway to specific desktop IP ranges:
-
-```bash
-cdk deploy -c allowedCidrs='["203.0.113.0/24", "198.51.100.0/24"]'
 ```
 
 To require MFA (authenticator app) for all users:
@@ -118,7 +98,7 @@ You will use these values in Step 3.
 
 ```bash
 aws cloudformation describe-stacks \
-  --stack-name QuickDesktopCognitoProxyStack \
+  --stack-name QuickDesktopCognitoStack \
   --query "Stacks[0].Outputs" --output table
 ```
 
@@ -127,8 +107,8 @@ aws cloudformation describe-stacks \
 | `PoolId` | Cognito User Pool ID |
 | `ClientId` | App client ID (also used as the `aud` claim) |
 | `IssuerUrl` | OIDC issuer URL |
-| `AuthEndpoint` | Authorization endpoint (points to the proxy) |
-| `TokenEndpoint` | Token endpoint (points to the proxy) |
+| `AuthEndpoint` | Authorization endpoint (Cognito hosted UI) |
+| `TokenEndpoint` | Token endpoint (Cognito hosted UI) |
 | `JwksUri` | JSON Web Key Set URI |
 
 ### Step 3: Configure Amazon Quick

@@ -28,7 +28,6 @@ exclude_docs: |
   use-cases/*/fe/
   use-cases/*/tools/
   amazon-quick-on-desktop/lib/
-  amazon-quick-on-desktop/lambda/
   amazon-quick-on-desktop/scripts/
   integration/actions/MCP/*/cdk/
   integration/actions/MCP/*/tools/

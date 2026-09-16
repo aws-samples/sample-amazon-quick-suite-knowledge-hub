@@ -16,7 +16,7 @@ The [infrastructure as code section](infrastructure as code/Terraform/README.md)
 
 The [management section](manage quick/Identity.md) covers identity configuration, security guardrails, customization options, and a CloudWatch-based observability MCP that exposes chat logs, feedback, agent hours, Quick Sight metrics, and CloudTrail audit data through natural language queries in Quick itself.
 
-The [desktop section](amazon-quick-on-desktop/README.md) is a CDK stack that deploys Amazon Cognito as an OIDC provider for the desktop application. It includes an API Gateway proxy that strips the `offline_access` scope (which Cognito does not support but Quick sends with every request), a user invitation flow, and MFA configuration. This is for [enterprise deployments](https://docs.aws.amazon.com/quick/latest/userguide/desktop-enterprise-setup.html){:target="_blank"} where you use local users or IAM Identity Center without a federated IdP.
+The [desktop section](amazon-quick-on-desktop/README.md) is a CDK stack that deploys Amazon Cognito as an OIDC provider for the desktop application. The desktop app points directly at the Cognito hosted UI OAuth endpoints, and the stack includes a user invitation flow and MFA configuration. This is for [enterprise deployments](https://docs.aws.amazon.com/quick/latest/userguide/desktop-enterprise-setup.html){:target="_blank"} where you use local users or IAM Identity Center without a federated IdP.
 
 The [use cases section](use-cases/actuarial-analysis-solution/README.md) has complete, deployable solutions covering chat agent embedding, document generation, compliance automation, and operational dashboards.
 
