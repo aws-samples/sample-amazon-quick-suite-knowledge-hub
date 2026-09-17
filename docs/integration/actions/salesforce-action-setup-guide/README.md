@@ -4,7 +4,7 @@
 
    or Salesforce Online Sandbox Edition account at <https://test.salesforce.com>
 
-2) From the Salesforce Online profile menu, copy your Salesforce Online URL, if you haven't already. This will be the root of the Base URL to use later.
+2) From the Salesforce interface, click the gear (Setup) icon in the top-right corner, then select **Setup**. In the left navigation menu, go to **SETTINGS** → **Company Settings** → **My Domain**. Under **My Domain Details**, copy the value of **Current My Domain URL**.
 
 ![Salesforce profile menu](images/image_1.png)
 
