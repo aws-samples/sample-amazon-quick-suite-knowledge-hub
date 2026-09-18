@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Quick Resource Migrator - cross-account QuickSight role (quick-space-migrator-role).
+  Deploy this in EACH source/target account. Creates a role the AgentCore
+  runner account can assume (sts:AssumeRole), scoped to the QuickSight
+  agent/connector/knowledge-base actions the resource-driven migrator uses, plus
+  S3 permissions to create/manage the knowledge-base-* buckets. No Space actions.
+
+Parameters:
+  RoleName:
+    Type: String
+    Default: quick-space-migrator-role
+    Description: Name of the cross-account role (must match the ARN in the runner exec policy).
+
+  RunnerExecRoleArn:
+    Type: String
+    Description: >
+      ARN of the runner's AgentCore execution role (output ExecutionRoleArn from
+      cfn-runner-role.yaml), e.g.
+      arn:aws:iam::111122223333:role/quick_space_migrator-exec-role.
+      Trusted directly as the Principal. Deploy cfn-runner-role.yaml FIRST so
+      this role exists before it is referenced here.
+
+  ExternalId:
+    Type: String
+    Default: ""
+    Description: Optional ExternalId to require on AssumeRole (leave blank to disable).
+
+Conditions:
+  UseExternalId: !Not [!Equals [!Ref ExternalId, ""]]
+
+Resources:
+
+  # ── QuickSight migration permissions ──
+  # Scoped to exactly the API surface the resource-driven migrator calls
+  # (agents, action connectors, knowledge bases, data sources, and user/group
+  # lookups for principal resolution). No Space actions — the migrator does not
+  # create, describe, or link Spaces.
+  QuickMigrationPolicyScoped:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${RoleName}-quicksight-scoped-policy"
+      Description: QuickSight migration permissions (resource-scoped) for the Quick Resource Migrator.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: QuickSightMigrationScoped
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:account/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:action-connector/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:agent/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:datasource/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:group/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:namespace/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:user/*"
+            Action:
+              # Action connectors
+              - quicksight:CreateActionConnector
+              - quicksight:DescribeActionConnector
+              - quicksight:DescribeActionConnectorPermissions
+              - quicksight:UpdateActionConnector
+              - quicksight:UpdateActionConnectorPermissions
+              # Agents
+              - quicksight:CreateAgent
+              - quicksight:DescribeAgent
+              - quicksight:DescribeAgentPermissions
+              - quicksight:ListAgents
+              - quicksight:UpdateAgent
+              - quicksight:UpdateAgentPermissions
+              # Knowledge bases
+              - quicksight:DescribeKnowledgeBase
+              - quicksight:DescribeKnowledgeBasePermissions
+              - quicksight:UpdateKnowledgeBasePermissions
+              # Principal resolution (target account)
+              - quicksight:DescribeGroup
+              - quicksight:DescribeUser
+              - quicksight:ListUsers
+  QuickMigrationPolicyAccount:
+    # checkov:skip=CKV_AWS_111: These QuickSight actions (Create*/Update*/List*
+    # for data sources, knowledge bases, and connector/KB enumeration) do NOT
+    # support resource-level IAM permissions — Create* runs before a resource
+    # ARN exists and List* enumerates account-wide. Resource "*" is required by
+    # the service; QuickSight still confines the calls to the caller's own
+    # AwsAccountId. See the QuickSight Service Authorization Reference.
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${RoleName}-quicksight-account-policy"
+      Description: QuickSight migration permissions (account-level) for the Quick Resource Migrator.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: QuickSightMigrationAccountLevel
+            # These actions do not support resource-level permissions in IAM
+            # (Create*/List* that operate before a resource ARN exists or that
+            # enumerate account-wide). They require Resource "*"; QuickSight
+            # still confines them to the caller's own AwsAccountId.
+            Effect: Allow
+            Resource: "*"
+            Action:
+              # Data sources + knowledge base create/update (KB migration)
+              - quicksight:CreateDataSource
+              - quicksight:UpdateDataSource
+              - quicksight:CreateKnowledgeBase
+              - quicksight:UpdateKnowledgeBase
+              # List ops used by resource resolution (search_by = name | all)
+              - quicksight:ListActionConnectors
+              - quicksight:ListKnowledgeBases
+
+  # ── S3 permissions to create/manage the knowledge-base-* buckets ──
+  KnowledgeBaseS3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${RoleName}-kb-s3-policy"
+      Description: S3 permissions for the migrator to create and manage knowledge-base-* buckets.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ListAllBuckets
+            Effect: Allow
+            Action: s3:ListAllMyBuckets
+            Resource: "*"
+          - Sid: KnowledgeBaseBucketAdmin
+            Effect: Allow
+            Action:
+              - s3:CreateBucket
+              - s3:PutBucketPolicy
+              - s3:GetBucketPolicy
+              - s3:PutBucketVersioning
+              - s3:GetBucketVersioning
+              - s3:PutBucketPublicAccessBlock
+              - s3:PutEncryptionConfiguration
+              - s3:GetBucketLocation
+              - s3:ListBucket
+            Resource: "arn:aws:s3:::knowledge-base-*"
+          - Sid: KnowledgeBaseObjects
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucketVersions
+            Resource: "arn:aws:s3:::knowledge-base-*/*"
+
+  # ── IAM read permission so the migrator can preflight-verify the QuickSight service role ──
+  ServiceRoleReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${RoleName}-iam-read-policy"
+      Description: Allows the migrator to verify the QuickSight service role exists + its trust policy.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: GetQuickSightServiceRole
+            Effect: Allow
+            Action:
+              - iam:GetRole
+            # The QuickSight service-role name is a user-supplied input and can be
+            # anything, so iam:GetRole is scoped to any role in this account.
+            Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
+
+  # ── The cross-account role ──
+  QuickSpaceAgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            # Trust the runner execution role directly. cfn-runner-role.yaml is
+            # deployed FIRST, so this role already exists when referenced here.
+            Principal:
+              AWS: !Ref RunnerExecRoleArn
+            Action: sts:AssumeRole
+            Condition: !If
+              - UseExternalId
+              - StringEquals:
+                  sts:ExternalId: !Ref ExternalId
+              - !Ref "AWS::NoValue"
+      ManagedPolicyArns:
+        - !Ref QuickMigrationPolicyScoped
+        - !Ref QuickMigrationPolicyAccount
+        - !Ref KnowledgeBaseS3Policy
+        - !Ref ServiceRoleReadPolicy
+
+Outputs:
+  RoleArn:
+    Description: ARN of the created cross-account role (use in the runner exec policy + env vars).
+    Value: !GetAtt QuickSpaceAgentRole.Arn
+  RoleName:
+    Value: !Ref RoleName

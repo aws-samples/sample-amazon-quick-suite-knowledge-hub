@@ -1,0 +1,168 @@
+:root > * {
+    --md-primary-fg-color: #14181C;
+    --md-primary-bg-color: #F0F6FC;
+    --md-primary-bg-color--light: #716F6F;
+    --md-accent-fg-color: #D600BA;
+    --md-typeset-a-color: #A000B8;
+
+    /* Amazon Quick brand gradient (orange -> magenta -> purple) */
+    --quick-gradient: linear-gradient(100deg, #FF4B14 0%, #D600BA 33%, #7300E5 66%, #6842FF 100%);
+    --quick-orange: #FF4B14;
+    --quick-magenta: #D600BA;
+    --quick-purple: #6842FF;
+}
+
+/* ── Amazon Quick brand accents ────────────────────────────────── */
+
+/* Gradient accent bar under the header for a fluid, branded feel */
+.md-header {
+    box-shadow: 0 0 .2rem rgba(0, 0, 0, .1), 0 .2rem .4rem rgba(0, 0, 0, .1);
+}
+.md-header::after {
+    content: "";
+    display: block;
+    height: 3px;
+    background: var(--quick-gradient);
+}
+
+/* Gradient accent on the active left-nav item */
+.md-nav__link--active,
+.md-nav__item .md-nav__link--active {
+    position: relative;
+    font-weight: 600;
+}
+.md-nav__link--active::before {
+    content: "";
+    position: absolute;
+    left: -.6rem;
+    top: .15em;
+    bottom: .15em;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--quick-gradient);
+}
+
+/* Primary buttons use the brand gradient */
+.md-typeset .md-button--primary {
+    background: var(--quick-gradient);
+    border-color: transparent;
+    color: #fff !important;
+    transition: filter .2s ease, transform .2s ease;
+}
+.md-typeset .md-button--primary:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+/* Brand-colored selection + code accents */
+::selection {
+    background: rgba(214, 0, 186, .18);
+}
+
+[data-md-color-scheme="default"] .logo-light {
+    display: none !important;
+}
+[data-md-color-scheme="slate"] .logo-dark {
+    display: none !important;
+}
+
+[data-md-color-scheme="default"] {
+    .md-header, .md-tabs {
+        background-color: #FFF;
+        color: var(--md-primary-fg-color);
+    }
+    .md-search__form, .md-search__input, .md-search__icon {
+        background-color: #F0F0F0;
+        color: var(--md-primary-fg-color);
+    }
+}
+
+.md-header__button.md-logo {
+    padding: 0 .2rem;
+    margin: 0;
+}
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg,
+.md-nav__title .md-nav__button.md-logo img,
+.md-nav__title .md-nav__button.md-logo svg {
+    height: 1.5rem;
+    width: 1.5rem;
+}
+
+.md-tabs__link {
+    opacity: 1;
+    font-size: 1.6em;
+}
+
+.md-tabs__item--active,
+.md-tabs__item:hover,
+.md-content a:hover {
+    text-decoration: underline;
+    text-underline-offset: .5em;
+}
+.md-content a:hover {
+    text-underline-offset: .2em;
+}
+
+.md-nav--lifted > .md-nav__list > .md-nav__item > [for],
+.md-nav__item--section > .md-nav__link[for],
+.md-nav__title {
+    font-size: 1.4em;
+}
+
+.md-typeset h1 {
+    color: inherit;
+}
+
+.md-grid {
+    /* default was max-width: 61rem; */
+    max-width: 68rem;
+}
+
+.mermaid {
+    text-align: center;
+}
+
+/* Remove the font-enlargement that is on by default for the material theme */
+@media screen and (min-width: 100em) {
+    html {
+        font-size: 125%;
+    }
+}
+
+@media screen and (min-width: 125em) {
+    html {
+        font-size: 125%;
+    }
+}
+
+@media screen and (max-width: 76.2344em) {
+    .md-nav--lifted > .md-nav__list > .md-nav__item > [for],
+    .md-nav__item--section > .md-nav__link[for],
+    .md-nav__title {
+        font-size: 1em;
+    }
+    .md-nav--primary .md-nav__title {
+        height: auto;
+        padding: 2rem .8rem .2rem;
+    }
+    .md-nav--primary .md-nav__title .md-logo {
+        padding: .2rem;
+        margin: 0;
+    }
+
+    [data-md-color-scheme="default"] .md-nav--primary .md-nav__title,
+    [data-md-color-scheme="default"] .md-nav--primary .md-nav__title[for="__drawer"] {
+        background-color: #FFF;
+        color: var(--md-primary-fg-color);
+    }
+}
+
+[data-md-color-scheme="slate"] {
+    /* Override the font color in dark mode - text is too light */
+    --md-default-fg-color: rgb(240, 246, 252)
+}
+
+[data-md-color-scheme="slate"] .md-button {
+  color: rgb(140, 140, 140) !important;
+}

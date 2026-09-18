@@ -1,0 +1,122 @@
+site_name: Amazon Quick Knowledge Hub
+site_url: https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/
+site_description: >-
+  Integration guides, infrastructure-as-code, and deployable reference
+  architectures for Amazon Quick — maintained by the Amazon Quick team.
+theme:
+  name: material
+  custom_dir: static/overrides
+  logo: amazonquick.png
+  favicon: amazonquick.png
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    primary: white
+    accent: white
+    toggle:
+      icon: material/weather-night
+      name: "Switch to dark mode"
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: black
+    accent: black
+    toggle:
+      icon: material/weather-sunny
+      name: "Switch to light mode"
+docs_dir: docs
+exclude_docs: |
+  **/LICENSE.md
+extra_css:
+  - stylesheets/extra.css
+extra:
+  static_path: ../static
+hooks:
+  - hooks/copy_project_docs.py
+plugins:
+  - search
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - tables
+  - fenced_code
+  - codehilite
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.snippets:
+      url_download: True
+      url_request_headers:
+nav:
+  - Home: index.md
+  - Infrastructure as a Code:
+    - Terraform: infrastructure-as-code/terraform/index.md
+    - Quick Custom Domain Redirect: infrastructure-as-code/quick-custom-domain-redirect/index.md
+    - Quick Resource Migrator MCP:
+      - Overview: infrastructure-as-code/quick-resource-migrator-mcp/index.md
+      - Knowledge Base IAM Setup: infrastructure-as-code/quick-resource-migrator-mcp/docs/knowledge-base-iam-setup.md
+      - Quick App Integration: infrastructure-as-code/quick-resource-migrator-mcp/docs/quick-app-integration.md
+  - Manage Quick:
+    - Observability: manage-quick/observability/index.md
+    - Security:
+      - Row-Level Security & Dataset Shaping: manage-quick/security/rls-dataset-shaping/index.md
+  - Amazon Quick on desktop:
+    - Cognito OIDC Provider: amazon-quick-on-desktop/index.md
+  - Integration:
+    - Knowledge Base:
+      - Confluence Cloud: integration/knowledge-base/confluence-cloud-knowledge-only-setup-guide/README.md
+    - Actions:
+      - MCP:
+        - Amazon Bedrock KB Retrieval MCP: integration/mcp/bedrock-kb-retrieval-mcp/index.md
+        - Amazon Redshift Data Query MCP: integration/mcp/redshift-data-query-mcp/index.md
+        - Amazon Gateway AgentCore S3 MCP: integration/mcp/gateway-agentcore-s3-crud-mcp/index.md
+        - Build Custom MCP Server Using AgentCore Runtime: integration/mcp/custom-mcp-server-agentcore-runtime/index.md
+        - Build Custom MCP Server Using AgentCore Gateway: integration/mcp/custom-mcp-server-agentcore-gateway/index.md
+        - Powerpoint Creator MCP: integration/mcp/powerpoint-creator-mcp/index.md
+        - Testing MCP OAuth Flow: integration/mcp/testing-mcp-oauth-flow/index.md
+      - Asana: integration/actions/asana-action-setup-guide/README.md
+      - Box: integration/actions/box-action-setup-guide/README.md
+      - Confluence Cloud: integration/actions/confluence-cloud-knowledge-action-setup-guide/README.md
+      - Jira Cloud: integration/actions/jira-cloud-action-setup-guide/README.md
+      - HubSpot: integration/actions/hubspot-action-setup-guide/README.md
+      - MS Outlook: integration/actions/ms-outlook-action-setup-guide/README.md
+      - MS SharePoint: integration/actions/ms-sharepoint-action-setup-guide/README.md
+      - MS Teams: integration/actions/ms-teams-action-setup-guide/README.md
+      - PagerDuty: integration/actions/pagerduty-action-setup-guide/README.md
+      - Salesforce: integration/actions/salesforce-action-setup-guide/README.md
+      - ServiceNow: integration/actions/servicenow-action-setup-guide/README.md
+      - ServiceNow (2LO): integration/actions/2lo-servicenow-action-setup-guide/README.md
+      - Slack: integration/actions/slack-action-setup-guide/README.md
+      - Smartsheet: integration/actions/smartsheet-action-setup-guide/README.md
+  - Use Cases:
+    - Actuarial Analysis Solution: use-cases/actuarial-analysis-solution/index.md
+    - Quick Chat Agent Embedding Demo: use-cases/quick-chat-agent-embedding-demo/index.md
+    - Compliance Assistant MCP: use-cases/compliance-assistant-mcp/index.md
+    - Document Generation MCP AgentCore Runtime: use-cases/document-generation-mcp-agentcore-runtime/index.md
+    - GenAI Operations Hub: use-cases/genai-operations-hub/index.md
+    - Embed Quick Chat Agent in Salesforce: use-cases/salesforce-chat-embed/index.md
+    - Export SharePoint Lists to Quick Sight: use-cases/sharepoint-list-to-quicksight-dataset/index.md
+  - How To Contribute: HOW-TO-CONTRIBUTE.md
+repo_url: https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub
+edit_uri: edit/main/external-docs/docs/
