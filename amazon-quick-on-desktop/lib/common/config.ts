@@ -7,8 +7,6 @@ export enum ProjectName {
 export enum ResourceName {
   USER_POOL = 'UserPool',
   APP_CLIENT = 'AppClient',
-  AUTH_PROXY_API = 'AuthProxy',
-  AUTH_PROXY_FUNCTION = 'AuthProxyFunction',
 }
 
 export enum CognitoDomainPrefix {
@@ -18,7 +16,6 @@ export enum CognitoDomainPrefix {
 export interface QuickDesktopConfig {
   readonly projectName: ProjectName;
   readonly retainResources: boolean;
-  readonly allowedCidrs?: string[];
   readonly mfaRequired?: boolean;
 }
 
