@@ -98,14 +98,15 @@ jobs:
 
       - name: Gitleaks secret scan
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          # Point the action at the repo's AWS-tuned rules (.gitleaks.toml):
-          # hardened AWS access-key-ID rule, a .tfvars guard, and an allowlist
-          # for AWS documentation placeholders. Runs alongside TruffleHog.
-          GITLEAKS_CONFIG: .gitleaks.toml
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
-          GITLEAKS_ENABLE_SUMMARY: "true"
+        # The official gitleaks-action@v2 requires a paid license for GitHub
+        # organizations. Instead we run the same pinned, checksum-verified
+        # gitleaks binary that `make check` uses locally, with the repo's
+        # AWS-tuned rules (.gitleaks.toml). No license required, and CI matches
+        # the local developer gate exactly.
+        run: |
+          echo "🔑 Running gitleaks secret scan..."
+          uv run install
+          uv run build secrets
 
       - name: Skip message
         if: steps.changed-files.outputs.any_changed == 'false' && github.event_name != 'schedule'
