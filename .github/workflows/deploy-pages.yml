@@ -2,13 +2,13 @@ name: Deploy Amazon Quick Knowledge Hub
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.md"
       - "**/*.py"
       - "mkdocs.yml"
       - "pyproject.toml"
-      - "static/**"
+      - "docs/static/**"
   workflow_dispatch:
 
 permissions:
@@ -43,7 +43,7 @@ jobs:
       - name: Set up Python for Amazon Quick Knowledge Hub
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Set up documentation cache
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
@@ -65,7 +65,7 @@ jobs:
       - name: Build Amazon Quick Knowledge Hub documentation
         run: |
           echo "📚 Building Amazon Quick Knowledge Hub documentation..."
-          uv run mkdocs build --verbose
+          uv run mkdocs build --verbose -f mkdocs.yml
 
       - name: Upload Amazon Quick Knowledge Hub pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -28,7 +28,7 @@ cdk deploy -c mfaRequired=true
 
 ### User Pool hardening
 
-The deployed User Pool uses minimal defaults. Review and adjust the configuration in [`lib/construct-groups/identity-provider.ts`](lib/construct-groups/identity-provider.ts) to meet your organization's security policies.
+The deployed User Pool uses minimal defaults. Review and adjust the configuration in [`lib/construct-groups/identity-provider.ts`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/amazon-quick-on-desktop/lib/construct-groups/identity-provider.ts) to meet your organization's security policies.
 
 | Requirement | CDK property | AWS reference |
 |-------------|--------------|---------------|

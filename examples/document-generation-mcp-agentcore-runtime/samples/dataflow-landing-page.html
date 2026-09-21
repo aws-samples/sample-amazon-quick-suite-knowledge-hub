@@ -1,0 +1,2210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DataFlow – Transform Your Data Workflow</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ─── Reset & Base ─────────────────────────────────── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --blue-900: #0a1628;
+        --blue-800: #0d2045;
+        --blue-700: #0f3460;
+        --blue-600: #1a4f8a;
+        --blue-500: #2563eb;
+        --blue-400: #3b82f6;
+        --blue-300: #60a5fa;
+        --blue-100: #dbeafe;
+        --blue-50: #eff6ff;
+        --cyan: #06b6d4;
+        --cyan-light: #67e8f9;
+        --violet: #8b5cf6;
+        --green: #10b981;
+        --orange: #f59e0b;
+        --white: #ffffff;
+        --gray-50: #f8fafc;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-300: #cbd5e1;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-800: #1e293b;
+        --gray-900: #0f172a;
+        --radius-sm: 6px;
+        --radius-md: 12px;
+        --radius-lg: 20px;
+        --radius-xl: 28px;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.07);
+        --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-glow: 0 0 40px rgba(37, 99, 235, 0.35);
+        --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        background: var(--white);
+        color: var(--gray-800);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ─── Utility ───────────────────────────────────────── */
+      .container {
+        width: 100%;
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 14px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .badge--blue {
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--blue-500);
+        border: 1px solid rgba(37, 99, 235, 0.2);
+      }
+
+      .section-label {
+        text-align: center;
+        margin-bottom: 16px;
+      }
+
+      .section-title {
+        font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+        font-weight: 800;
+        color: var(--gray-900);
+        text-align: center;
+        line-height: 1.2;
+        letter-spacing: -0.03em;
+      }
+
+      .section-sub {
+        font-size: 1.05rem;
+        color: var(--gray-500);
+        text-align: center;
+        max-width: 560px;
+        margin: 16px auto 0;
+        line-height: 1.7;
+      }
+
+      /* ─── Navbar ────────────────────────────────────────── */
+      .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        transition: var(--transition);
+      }
+
+      .navbar__inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 68px;
+      }
+
+      .navbar__logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+      }
+
+      .logo-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--blue-500), var(--cyan));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logo-icon svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .logo-text {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--gray-900);
+        letter-spacing: -0.04em;
+      }
+
+      .logo-text span {
+        color: var(--blue-500);
+      }
+
+      .navbar__links {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        list-style: none;
+      }
+
+      .navbar__links a {
+        text-decoration: none;
+        color: var(--gray-600);
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 6px 14px;
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+      }
+
+      .navbar__links a:hover {
+        color: var(--blue-500);
+        background: var(--blue-50);
+      }
+
+      .navbar__cta {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* ─── Buttons ───────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 24px;
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: var(--transition);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .btn--primary {
+        background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-400) 100%);
+        color: var(--white);
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+      }
+
+      .btn--primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+        background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-500) 100%);
+      }
+
+      .btn--primary:active {
+        transform: translateY(0);
+      }
+
+      .btn--secondary {
+        background: var(--white);
+        color: var(--gray-700);
+        border: 1.5px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .btn--secondary:hover {
+        border-color: var(--blue-300);
+        color: var(--blue-500);
+        background: var(--blue-50);
+        transform: translateY(-1px);
+      }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--gray-600);
+        border: 1.5px solid transparent;
+      }
+
+      .btn--ghost:hover {
+        color: var(--blue-500);
+        background: var(--blue-50);
+      }
+
+      .btn--lg {
+        padding: 15px 34px;
+        font-size: 1rem;
+        border-radius: var(--radius-md);
+      }
+
+      .btn--xl {
+        padding: 17px 40px;
+        font-size: 1.05rem;
+        border-radius: var(--radius-md);
+      }
+
+      /* ─── Hero ──────────────────────────────────────────── */
+      .hero {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        background: var(--blue-900);
+        padding-top: 68px;
+      }
+
+      .hero__bg {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 80% 60% at 60% 40%, rgba(37, 99, 235, 0.3) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 50% at 20% 70%, rgba(6, 182, 212, 0.2) 0%, transparent 55%),
+          radial-gradient(ellipse 40% 40% at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+          linear-gradient(160deg, #0a1628 0%, #0d2045 50%, #0f172a 100%);
+      }
+
+      .hero__grid-lines {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(37, 99, 235, 0.07) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 0%, transparent 100%);
+      }
+
+      .hero__content {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 60px;
+        align-items: center;
+        padding: 80px 0;
+      }
+
+      .hero__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        background: rgba(37, 99, 235, 0.15);
+        border: 1px solid rgba(37, 99, 235, 0.3);
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--cyan-light);
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        margin-bottom: 28px;
+      }
+
+      .hero__eyebrow .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--cyan);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.5;
+          transform: scale(0.8);
+        }
+      }
+
+      .hero__headline {
+        font-size: clamp(2.4rem, 5.5vw, 3.8rem);
+        font-weight: 900;
+        line-height: 1.08;
+        letter-spacing: -0.05em;
+        color: var(--white);
+        margin-bottom: 24px;
+      }
+
+      .hero__headline .highlight {
+        background: linear-gradient(135deg, var(--blue-300), var(--cyan-light));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero__subheadline {
+        font-size: 1.1rem;
+        color: rgba(255, 255, 255, 0.65);
+        line-height: 1.75;
+        margin-bottom: 40px;
+        max-width: 480px;
+      }
+
+      .hero__actions {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .hero__trust {
+        margin-top: 48px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .trust-avatars {
+        display: flex;
+      }
+
+      .trust-avatars span {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid var(--blue-800);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--white);
+        margin-left: -8px;
+        background: linear-gradient(135deg, var(--blue-500), var(--violet));
+      }
+
+      .trust-avatars span:first-child {
+        margin-left: 0;
+      }
+      .trust-avatars span:nth-child(2) {
+        background: linear-gradient(135deg, var(--cyan), var(--blue-500));
+      }
+      .trust-avatars span:nth-child(3) {
+        background: linear-gradient(135deg, var(--violet), var(--blue-400));
+      }
+      .trust-avatars span:nth-child(4) {
+        background: linear-gradient(135deg, var(--green), var(--cyan));
+      }
+
+      .trust-text {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .trust-text strong {
+        color: rgba(255, 255, 255, 0.8);
+        display: block;
+      }
+
+      /* Hero Visual */
+      .hero__visual {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .hero__dashboard {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--radius-xl);
+        padding: 24px;
+        width: 100%;
+        max-width: 480px;
+        box-shadow:
+          0 24px 64px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.05);
+      }
+
+      .dashboard__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .dashboard__title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .dashboard__dots {
+        display: flex;
+        gap: 5px;
+      }
+
+      .dashboard__dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .dashboard__dots span:nth-child(1) {
+        background: #ff5f57;
+      }
+      .dashboard__dots span:nth-child(2) {
+        background: #febc2e;
+      }
+      .dashboard__dots span:nth-child(3) {
+        background: #28c840;
+      }
+
+      .dashboard__stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .stat-card {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: var(--radius-md);
+        padding: 14px;
+      }
+
+      .stat-card__label {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.45);
+        font-weight: 500;
+        margin-bottom: 6px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .stat-card__value {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: var(--white);
+        letter-spacing: -0.04em;
+      }
+
+      .stat-card__change {
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-top: 4px;
+      }
+
+      .change--up {
+        color: var(--green);
+      }
+      .change--down {
+        color: #f87171;
+      }
+
+      .dashboard__chart {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+
+      .chart__label {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.4);
+        margin-bottom: 12px;
+        font-weight: 500;
+      }
+
+      .chart__bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 64px;
+      }
+
+      .chart__bar {
+        flex: 1;
+        border-radius: 4px 4px 0 0;
+        background: linear-gradient(180deg, var(--blue-400), var(--blue-600));
+        opacity: 0.7;
+        transition: opacity 0.3s;
+        animation: barGrow 0.6s ease backwards;
+      }
+
+      .chart__bar:hover {
+        opacity: 1;
+      }
+      .chart__bar:nth-child(odd) {
+        background: linear-gradient(180deg, var(--cyan), var(--blue-600));
+      }
+
+      @keyframes barGrow {
+        from {
+          transform: scaleY(0);
+          transform-origin: bottom;
+        }
+        to {
+          transform: scaleY(1);
+        }
+      }
+
+      .chart__bar:nth-child(1) {
+        height: 40%;
+        animation-delay: 0.05s;
+      }
+      .chart__bar:nth-child(2) {
+        height: 65%;
+        animation-delay: 0.1s;
+      }
+      .chart__bar:nth-child(3) {
+        height: 45%;
+        animation-delay: 0.15s;
+      }
+      .chart__bar:nth-child(4) {
+        height: 80%;
+        animation-delay: 0.2s;
+      }
+      .chart__bar:nth-child(5) {
+        height: 55%;
+        animation-delay: 0.25s;
+      }
+      .chart__bar:nth-child(6) {
+        height: 90%;
+        animation-delay: 0.3s;
+      }
+      .chart__bar:nth-child(7) {
+        height: 70%;
+        animation-delay: 0.35s;
+      }
+      .chart__bar:nth-child(8) {
+        height: 100%;
+        animation-delay: 0.4s;
+      }
+      .chart__bar:nth-child(9) {
+        height: 75%;
+        animation-delay: 0.45s;
+      }
+      .chart__bar:nth-child(10) {
+        height: 85%;
+        animation-delay: 0.5s;
+      }
+      .chart__bar:nth-child(11) {
+        height: 60%;
+        animation-delay: 0.55s;
+      }
+      .chart__bar:nth-child(12) {
+        height: 95%;
+        animation-delay: 0.6s;
+      }
+
+      .dashboard__activity {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .activity-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: var(--radius-sm);
+      }
+
+      .activity-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .activity-dot--green {
+        background: var(--green);
+      }
+      .activity-dot--blue {
+        background: var(--blue-400);
+      }
+      .activity-dot--cyan {
+        background: var(--cyan);
+      }
+
+      .activity-text {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.55);
+        flex: 1;
+      }
+
+      .activity-time {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.3);
+        font-weight: 500;
+      }
+
+      /* Floating badge */
+      .hero__float-badge {
+        position: absolute;
+        background: var(--white);
+        border-radius: var(--radius-md);
+        padding: 12px 16px;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: float 3s ease-in-out infinite;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-8px);
+        }
+      }
+
+      .hero__float-badge--tl {
+        top: -16px;
+        left: -24px;
+        animation-delay: 0s;
+      }
+      .hero__float-badge--br {
+        bottom: 20px;
+        right: -20px;
+        animation-delay: 1.5s;
+      }
+
+      .float-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+      }
+
+      .float-icon--green {
+        background: rgba(16, 185, 129, 0.12);
+      }
+      .float-icon--blue {
+        background: rgba(37, 99, 235, 0.12);
+      }
+
+      .float-info .float-val {
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--gray-900);
+        line-height: 1;
+      }
+
+      .float-info .float-lbl {
+        font-size: 0.67rem;
+        color: var(--gray-500);
+        margin-top: 2px;
+      }
+
+      /* ─── Stats Band ────────────────────────────────────── */
+      .stats-band {
+        background: var(--gray-50);
+        border-top: 1px solid var(--gray-100);
+        border-bottom: 1px solid var(--gray-100);
+        padding: 40px 0;
+      }
+
+      .stats-band__inner {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+      }
+
+      .stat-item {
+        text-align: center;
+        position: relative;
+      }
+
+      .stat-item::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 40px;
+        width: 1px;
+        background: var(--gray-200);
+      }
+
+      .stat-item:last-child::after {
+        display: none;
+      }
+
+      .stat-item__value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--gray-900);
+        letter-spacing: -0.05em;
+        line-height: 1;
+      }
+
+      .stat-item__value span {
+        background: linear-gradient(135deg, var(--blue-500), var(--cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .stat-item__label {
+        font-size: 0.82rem;
+        color: var(--gray-500);
+        margin-top: 6px;
+        font-weight: 500;
+      }
+
+      /* ─── Features ──────────────────────────────────────── */
+      .features {
+        padding: 100px 0;
+        background: var(--white);
+      }
+
+      .features__header {
+        margin-bottom: 64px;
+      }
+
+      .features__grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+      }
+
+      .feature-card {
+        padding: 32px;
+        border-radius: var(--radius-lg);
+        border: 1.5px solid var(--gray-100);
+        background: var(--white);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+        cursor: default;
+      }
+
+      .feature-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--blue-500), var(--cyan));
+        opacity: 0;
+        transition: var(--transition);
+      }
+
+      .feature-card:hover {
+        border-color: var(--blue-200);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-4px);
+      }
+
+      .feature-card:hover::before {
+        opacity: 1;
+      }
+
+      .feature-card__icon {
+        width: 52px;
+        height: 52px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+      }
+
+      .icon--blue {
+        background: rgba(37, 99, 235, 0.1);
+      }
+      .icon--cyan {
+        background: rgba(6, 182, 212, 0.1);
+      }
+      .icon--violet {
+        background: rgba(139, 92, 246, 0.1);
+      }
+      .icon--green {
+        background: rgba(16, 185, 129, 0.1);
+      }
+      .icon--orange {
+        background: rgba(245, 158, 11, 0.1);
+      }
+      .icon--rose {
+        background: rgba(244, 63, 94, 0.1);
+      }
+
+      .feature-card__title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin-bottom: 10px;
+        letter-spacing: -0.02em;
+      }
+
+      .feature-card__desc {
+        font-size: 0.88rem;
+        color: var(--gray-500);
+        line-height: 1.7;
+      }
+
+      /* ─── Pricing ───────────────────────────────────────── */
+      .pricing {
+        padding: 100px 0;
+        background: var(--gray-50);
+      }
+
+      .pricing__toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 32px;
+      }
+
+      .toggle-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--gray-500);
+      }
+
+      .toggle-label.active {
+        color: var(--gray-900);
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 26px;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: var(--blue-500);
+        border-radius: 999px;
+        transition: var(--transition);
+      }
+
+      .toggle-slider::before {
+        content: "";
+        position: absolute;
+        height: 18px;
+        width: 18px;
+        left: 4px;
+        bottom: 4px;
+        background: var(--white);
+        border-radius: 50%;
+        transition: var(--transition);
+      }
+
+      .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(22px);
+      }
+
+      .save-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--green);
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+      }
+
+      .pricing__grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-top: 56px;
+        align-items: start;
+      }
+
+      .price-card {
+        background: var(--white);
+        border-radius: var(--radius-xl);
+        padding: 36px;
+        border: 1.5px solid var(--gray-200);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .price-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-4px);
+        border-color: var(--blue-200);
+      }
+
+      .price-card--popular {
+        border-color: var(--blue-500);
+        background: linear-gradient(160deg, #0f2952 0%, #0d1f40 100%);
+        color: var(--white);
+        transform: scale(1.03);
+      }
+
+      .price-card--popular:hover {
+        transform: scale(1.03) translateY(-4px);
+        border-color: var(--blue-400);
+        box-shadow: var(--shadow-glow), var(--shadow-lg);
+      }
+
+      .popular-badge {
+        position: absolute;
+        top: -1px;
+        right: 28px;
+        background: linear-gradient(135deg, var(--blue-400), var(--cyan));
+        color: var(--white);
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 5px 14px;
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .price-card__tier {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--blue-500);
+        margin-bottom: 8px;
+      }
+
+      .price-card--popular .price-card__tier {
+        color: var(--cyan-light);
+      }
+
+      .price-card__name {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--gray-900);
+        letter-spacing: -0.04em;
+        margin-bottom: 4px;
+      }
+
+      .price-card--popular .price-card__name {
+        color: var(--white);
+      }
+
+      .price-card__tagline {
+        font-size: 0.82rem;
+        color: var(--gray-400);
+        margin-bottom: 28px;
+      }
+
+      .price-card--popular .price-card__tagline {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .price-card__price {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        margin-bottom: 28px;
+      }
+
+      .price-currency {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--gray-500);
+        line-height: 2.4;
+      }
+
+      .price-card--popular .price-currency {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .price-amount {
+        font-size: 3rem;
+        font-weight: 900;
+        color: var(--gray-900);
+        letter-spacing: -0.06em;
+        line-height: 1;
+      }
+
+      .price-card--popular .price-amount {
+        color: var(--white);
+      }
+
+      .price-period {
+        font-size: 0.82rem;
+        color: var(--gray-400);
+        margin-bottom: 6px;
+      }
+
+      .price-card--popular .price-period {
+        color: rgba(255, 255, 255, 0.45);
+      }
+
+      .price-divider {
+        height: 1px;
+        background: var(--gray-100);
+        margin: 24px 0;
+      }
+
+      .price-card--popular .price-divider {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .price-features {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 32px;
+      }
+
+      .price-features li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 0.875rem;
+        color: var(--gray-600);
+      }
+
+      .price-card--popular .price-features li {
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .price-features li .check {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      .price-card--popular .price-features li .check {
+        background: rgba(96, 165, 250, 0.2);
+      }
+
+      .check svg {
+        width: 10px;
+        height: 10px;
+        stroke: var(--blue-500);
+        stroke-width: 2.5;
+        fill: none;
+      }
+
+      .price-card--popular .check svg {
+        stroke: var(--cyan-light);
+      }
+
+      .price-card .btn--primary {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .price-card--popular .btn--outline {
+        width: 100%;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1.5px solid rgba(255, 255, 255, 0.2);
+        color: var(--white);
+        font-weight: 600;
+        padding: 13px 24px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.9rem;
+        transition: var(--transition);
+      }
+
+      .price-card--popular .btn--outline:hover {
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.35);
+        transform: translateY(-1px);
+      }
+
+      /* ─── Signup Form ────────────────────────────────────── */
+      .signup {
+        padding: 100px 0;
+        background: var(--white);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .signup::before {
+        content: "";
+        position: absolute;
+        top: -200px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 800px;
+        height: 800px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(37, 99, 235, 0.05) 0%, transparent 70%);
+        pointer-events: none;
+      }
+
+      .signup__inner {
+        max-width: 620px;
+        margin: 0 auto;
+      }
+
+      .signup__header {
+        text-align: center;
+        margin-bottom: 48px;
+      }
+
+      .signup__title {
+        font-size: clamp(2rem, 4vw, 2.8rem);
+        font-weight: 900;
+        color: var(--gray-900);
+        letter-spacing: -0.05em;
+        margin-bottom: 14px;
+      }
+
+      .signup__sub {
+        font-size: 1rem;
+        color: var(--gray-500);
+        line-height: 1.7;
+      }
+
+      .signup__form {
+        background: var(--white);
+        border-radius: var(--radius-xl);
+        padding: 40px;
+        border: 1.5px solid var(--gray-100);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .form-group.full {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--gray-700);
+        letter-spacing: 0.01em;
+      }
+
+      label .optional {
+        color: var(--gray-400);
+        font-weight: 400;
+        font-size: 0.76rem;
+        margin-left: 4px;
+      }
+
+      .input-wrap {
+        position: relative;
+      }
+
+      .input-wrap svg {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        stroke: var(--gray-400);
+        fill: none;
+        stroke-width: 2;
+        pointer-events: none;
+      }
+
+      input[type="text"],
+      input[type="email"],
+      input[type="tel"] {
+        width: 100%;
+        padding: 12px 14px 12px 40px;
+        border: 1.5px solid var(--gray-200);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 0.9rem;
+        color: var(--gray-800);
+        background: var(--white);
+        transition: var(--transition);
+        outline: none;
+      }
+
+      input[type="text"]:hover,
+      input[type="email"]:hover,
+      input[type="tel"]:hover {
+        border-color: var(--gray-300);
+      }
+
+      input[type="text"]:focus,
+      input[type="email"]:focus,
+      input[type="tel"]:focus {
+        border-color: var(--blue-400);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+
+      input::placeholder {
+        color: var(--gray-300);
+      }
+
+      .form-submit {
+        margin-top: 24px;
+      }
+
+      .form-submit .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 15px;
+        font-size: 1rem;
+      }
+
+      .form-privacy {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 0.8rem;
+        color: var(--gray-400);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .form-privacy svg {
+        width: 13px;
+        height: 13px;
+        stroke: var(--gray-400);
+        fill: none;
+        stroke-width: 2;
+      }
+
+      /* ─── Footer ────────────────────────────────────────── */
+      .footer {
+        background: var(--gray-900);
+        padding: 60px 0 32px;
+      }
+
+      .footer__inner {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 48px;
+        padding-bottom: 48px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+
+      .footer__brand p {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.4);
+        margin-top: 16px;
+        line-height: 1.7;
+        max-width: 280px;
+      }
+
+      .footer__col-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.5);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+
+      .footer__links {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .footer__links a {
+        text-decoration: none;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.45);
+        transition: var(--transition);
+      }
+
+      .footer__links a:hover {
+        color: var(--white);
+      }
+
+      .footer__bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 28px;
+      }
+
+      .footer__copy {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      .footer__socials {
+        display: flex;
+        gap: 12px;
+      }
+
+      .social-link {
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-sm);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+      }
+
+      .social-link:hover {
+        background: rgba(37, 99, 235, 0.2);
+        border-color: rgba(37, 99, 235, 0.3);
+        color: var(--blue-300);
+      }
+
+      /* ─── Toast Notification ────────────────────────────── */
+      .toast {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        background: var(--gray-900);
+        color: var(--white);
+        padding: 14px 20px;
+        border-radius: var(--radius-md);
+        font-size: 0.88rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: var(--shadow-lg);
+        transform: translateX(120%);
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 9999;
+        border-left: 3px solid var(--green);
+        max-width: 320px;
+      }
+
+      .toast.show {
+        transform: translateX(0);
+      }
+
+      /* ─── Scroll Animation ──────────────────────────────── */
+      .reveal {
+        opacity: 0;
+        transform: translateY(28px);
+        transition:
+          opacity 0.6s ease,
+          transform 0.6s ease;
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* ─── Responsive ────────────────────────────────────── */
+      @media (max-width: 1024px) {
+        .features__grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .footer__inner {
+          grid-template-columns: 1fr 1fr;
+          gap: 32px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .navbar__links,
+        .navbar__cta .btn--ghost {
+          display: none;
+        }
+        .hero__content {
+          grid-template-columns: 1fr;
+          gap: 48px;
+          text-align: center;
+          padding: 60px 0;
+        }
+        .hero__subheadline {
+          max-width: 100%;
+        }
+        .hero__actions {
+          justify-content: center;
+        }
+        .hero__trust {
+          justify-content: center;
+        }
+        .hero__float-badge {
+          display: none;
+        }
+        .stats-band__inner {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .stat-item::after {
+          display: none;
+        }
+        .features__grid {
+          grid-template-columns: 1fr;
+        }
+        .pricing__grid {
+          grid-template-columns: 1fr;
+        }
+        .price-card--popular {
+          transform: scale(1);
+        }
+        .price-card--popular:hover {
+          transform: translateY(-4px);
+        }
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+        .signup__form {
+          padding: 28px 20px;
+        }
+        .footer__inner {
+          grid-template-columns: 1fr;
+          gap: 28px;
+        }
+        .footer__bottom {
+          flex-direction: column;
+          gap: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══════════════════════════════════════ NAVBAR ══ -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="navbar__inner">
+          <a href="#" class="navbar__logo">
+            <div class="logo-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </div>
+            <span class="logo-text">Data<span>Flow</span></span>
+          </a>
+          <ul class="navbar__links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#">Docs</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Company</a></li>
+          </ul>
+          <div class="navbar__cta">
+            <a href="#" class="btn btn--ghost">Sign In</a>
+            <a href="#signup" class="btn btn--primary">Start Free Trial</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ═══════════════════════════════════════ HERO ════ -->
+    <section class="hero">
+      <div class="hero__bg"></div>
+      <div class="hero__grid-lines"></div>
+      <div class="container">
+        <div class="hero__content">
+          <!-- Left: Copy -->
+          <div class="hero__copy">
+            <div class="hero__eyebrow">
+              <span class="dot"></span>
+              Now with AI-powered insights
+            </div>
+            <h1 class="hero__headline">
+              Transform Your<br />
+              <span class="highlight">Data Workflow</span>
+            </h1>
+            <p class="hero__subheadline">
+              DataFlow helps teams collect, analyze, and visualize data in real-time with powerful
+              automation and insights.
+            </p>
+            <div class="hero__actions">
+              <a href="#signup" class="btn btn--primary btn--xl">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" />
+                  <polyline points="13 2 13 9 20 9" />
+                </svg>
+                Start Free Trial
+              </a>
+              <button
+                class="btn btn--secondary btn--xl"
+                onclick="showToast(&#x27;Demo launching soon! 🎬&#x27;)"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polygon points="10 8 16 12 10 16 10 8" />
+                </svg>
+                Watch Demo
+              </button>
+            </div>
+            <div class="hero__trust">
+              <div class="trust-avatars">
+                <span>JK</span><span>AM</span><span>SR</span><span>+4</span>
+              </div>
+              <div class="trust-text">
+                <strong>2,400+ teams trust DataFlow</strong>
+                Rated 4.9★ on G2 &amp; Capterra
+              </div>
+            </div>
+          </div>
+          <!-- Right: Visual -->
+          <div class="hero__visual">
+            <div class="hero__float-badge hero__float-badge--tl">
+              <div class="float-icon float-icon--green">📈</div>
+              <div class="float-info">
+                <div class="float-val">+34.2%</div>
+                <div class="float-lbl">Revenue growth</div>
+              </div>
+            </div>
+            <div class="hero__dashboard">
+              <div class="dashboard__header">
+                <span class="dashboard__title">Live Analytics Dashboard</span>
+                <div class="dashboard__dots"><span></span><span></span><span></span></div>
+              </div>
+              <div class="dashboard__stats">
+                <div class="stat-card">
+                  <div class="stat-card__label">Events/sec</div>
+                  <div class="stat-card__value">8.4K</div>
+                  <div class="stat-card__change change--up">↑ 12%</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card__label">Active Users</div>
+                  <div class="stat-card__value">2.1M</div>
+                  <div class="stat-card__change change--up">↑ 7%</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card__label">Pipelines</div>
+                  <div class="stat-card__value">149</div>
+                  <div class="stat-card__change change--down">↓ 2</div>
+                </div>
+              </div>
+              <div class="dashboard__chart">
+                <div class="chart__label">Data throughput — last 12h</div>
+                <div class="chart__bars">
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                  <div class="chart__bar"></div>
+                </div>
+              </div>
+              <div class="dashboard__activity">
+                <div class="activity-row">
+                  <div class="activity-dot activity-dot--green"></div>
+                  <span class="activity-text">Pipeline "Sales Sync" completed</span>
+                  <span class="activity-time">2s ago</span>
+                </div>
+                <div class="activity-row">
+                  <div class="activity-dot activity-dot--blue"></div>
+                  <span class="activity-text">New Salesforce connector added</span>
+                  <span class="activity-time">18s ago</span>
+                </div>
+                <div class="activity-row">
+                  <div class="activity-dot activity-dot--cyan"></div>
+                  <span class="activity-text">Alert threshold exceeded on DB-04</span>
+                  <span class="activity-time">1m ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="hero__float-badge hero__float-badge--br">
+              <div class="float-icon float-icon--blue">⚡</div>
+              <div class="float-info">
+                <div class="float-val">99.99%</div>
+                <div class="float-lbl">Uptime SLA</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ STATS BAND ══ -->
+    <section class="stats-band">
+      <div class="container">
+        <div class="stats-band__inner">
+          <div class="stat-item reveal">
+            <div class="stat-item__value"><span>2.4K+</span></div>
+            <div class="stat-item__label">Teams worldwide</div>
+          </div>
+          <div class="stat-item reveal">
+            <div class="stat-item__value"><span>500M+</span></div>
+            <div class="stat-item__label">Records processed daily</div>
+          </div>
+          <div class="stat-item reveal">
+            <div class="stat-item__value"><span>100+</span></div>
+            <div class="stat-item__label">Native integrations</div>
+          </div>
+          <div class="stat-item reveal">
+            <div class="stat-item__value"><span>99.99%</span></div>
+            <div class="stat-item__label">Guaranteed uptime</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ FEATURES ════ -->
+    <section class="features" id="features">
+      <div class="container">
+        <div class="features__header">
+          <div class="section-label">
+            <span class="badge badge--blue">✦ Features</span>
+          </div>
+          <h2 class="section-title">Everything your data team needs</h2>
+          <p class="section-sub">
+            A complete platform built to handle every stage of your data pipeline — from ingestion
+            to insight.
+          </p>
+        </div>
+        <div class="features__grid">
+          <div class="feature-card reveal">
+            <div class="feature-card__icon icon--blue">📊</div>
+            <h3 class="feature-card__title">Real-Time Analytics</h3>
+            <p class="feature-card__desc">
+              Monitor your data streams with live dashboards and instant insights. React to changes
+              as they happen, not hours later.
+            </p>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="feature-card__icon icon--cyan">⚙️</div>
+            <h3 class="feature-card__title">Automated Workflows</h3>
+            <p class="feature-card__desc">
+              Set up custom automation rules to process data without manual intervention. Trigger
+              actions, alerts, and reports automatically.
+            </p>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="feature-card__icon icon--violet">🔗</div>
+            <h3 class="feature-card__title">Seamless Integrations</h3>
+            <p class="feature-card__desc">
+              Connect with 100+ tools including Salesforce, Slack, and Google Workspace. One-click
+              connectors with zero-code setup.
+            </p>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="feature-card__icon icon--green">🛡️</div>
+            <h3 class="feature-card__title">Advanced Security</h3>
+            <p class="feature-card__desc">
+              Enterprise-grade encryption and compliance with SOC 2, GDPR, and HIPAA. Your data
+              stays safe and auditable at every step.
+            </p>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="feature-card__icon icon--orange">🤝</div>
+            <h3 class="feature-card__title">Collaborative Tools</h3>
+            <p class="feature-card__desc">
+              Share dashboards and reports with your team in real-time. Comment, annotate, and
+              collaborate without leaving the platform.
+            </p>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="feature-card__icon icon--rose">☁️</div>
+            <h3 class="feature-card__title">Scalable Infrastructure</h3>
+            <p class="feature-card__desc">
+              Handle millions of data points with our cloud-native architecture. Auto-scaling
+              ensures performance under any load, any time.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ PRICING ═════ -->
+    <section class="pricing" id="pricing">
+      <div class="container">
+        <div class="section-label">
+          <span class="badge badge--blue">✦ Pricing</span>
+        </div>
+        <h2 class="section-title">Simple, transparent pricing</h2>
+        <p class="section-sub">
+          Start for free and scale as you grow. No hidden fees, no surprises.
+        </p>
+
+        <div class="pricing__toggle">
+          <span class="toggle-label active">Monthly</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="billingToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Annual</span>
+          <span class="save-badge">Save 20%</span>
+        </div>
+
+        <div class="pricing__grid">
+          <!-- Starter -->
+          <div class="price-card reveal">
+            <div class="price-card__tier">Starter</div>
+            <div class="price-card__name">Starter</div>
+            <div class="price-card__tagline">Perfect for small teams getting started</div>
+            <div class="price-card__price">
+              <span class="price-currency">$</span>
+              <span class="price-amount" data-monthly="29" data-annual="23">29</span>
+              <span class="price-period">/month</span>
+            </div>
+            <div class="price-divider"></div>
+            <ul class="price-features">
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Up to 10,000 records
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >5 integrations
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Basic analytics dashboard
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Email support
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >1 user seat
+              </li>
+            </ul>
+            <a href="#signup" class="btn btn--primary">Get Started Free</a>
+          </div>
+
+          <!-- Professional (Popular) -->
+          <div class="price-card price-card--popular reveal">
+            <span class="popular-badge">Most Popular</span>
+            <div class="price-card__tier">Professional</div>
+            <div class="price-card__name">Professional</div>
+            <div class="price-card__tagline">For growing teams that need more power</div>
+            <div class="price-card__price">
+              <span class="price-currency">$</span>
+              <span class="price-amount" data-monthly="99" data-annual="79">99</span>
+              <span class="price-period">/month</span>
+            </div>
+            <div class="price-divider"></div>
+            <ul class="price-features">
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Up to 100,000 records
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Unlimited integrations
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Advanced analytics &amp; AI insights
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Priority support
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >10 user seats
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Custom workflows &amp; alerts
+              </li>
+            </ul>
+            <button
+              class="btn--outline"
+              onclick="document.getElementById(&#x27;signup&#x27;).scrollIntoView({behavior:&#x27;smooth&#x27;})"
+            >
+              Start Free Trial →
+            </button>
+          </div>
+
+          <!-- Enterprise -->
+          <div class="price-card reveal">
+            <div class="price-card__tier">Enterprise</div>
+            <div class="price-card__name">Enterprise</div>
+            <div class="price-card__tagline">For large-scale organizations &amp; agencies</div>
+            <div class="price-card__price">
+              <span class="price-amount" style="font-size: 2rem; letter-spacing: -0.04em"
+                >Custom</span
+              >
+            </div>
+            <div class="price-divider"></div>
+            <ul class="price-features">
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Unlimited records
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Custom integrations &amp; APIs
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >24/7 dedicated support
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >Unlimited user seats
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >White-label options
+              </li>
+              <li>
+                <span class="check"
+                  ><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3" /></svg></span
+                >SLA guarantee &amp; SOC 2
+              </li>
+            </ul>
+            <a href="#signup" class="btn btn--primary">Contact Sales</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════ SIGNUP ════ -->
+    <section class="signup" id="signup">
+      <div class="container">
+        <div class="signup__inner">
+          <div class="signup__header">
+            <span class="badge badge--blue">✦ Get Started</span>
+            <h2 class="signup__title" style="margin-top: 16px">Ready to Get Started?</h2>
+            <p class="signup__sub">
+              Join over 2,400 teams already using DataFlow to unlock the full potential of their
+              data.
+            </p>
+          </div>
+          <div class="signup__form reveal">
+            <form id="signupForm" onsubmit="handleSignup(event)" novalidate>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="fullName">Full Name</label>
+                  <div class="input-wrap">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <input
+                      type="text"
+                      id="fullName"
+                      name="fullName"
+                      placeholder="Jane Smith"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="email">Email Address</label>
+                  <div class="input-wrap">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                      />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      placeholder="jane@company.com"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="company">Company Name</label>
+                  <div class="input-wrap">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                    <input
+                      type="text"
+                      id="company"
+                      name="company"
+                      placeholder="Acme Inc."
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="phone">Phone Number <span class="optional">(optional)</span></label>
+                  <div class="input-wrap">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.22 1.18 2 2 0 012.2 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"
+                      />
+                    </svg>
+                    <input type="tel" id="phone" name="phone" placeholder="+1 (555) 000-0000" />
+                  </div>
+                </div>
+              </div>
+              <div class="form-submit">
+                <button type="submit" class="btn btn--primary">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M22 2L11 13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  Create Free Account
+                </button>
+              </div>
+              <div class="form-privacy">
+                <svg viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                No credit card required. 14-day free trial.
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ FOOTER ══════ -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer__inner">
+          <div class="footer__brand">
+            <a href="#" class="navbar__logo" style="text-decoration: none">
+              <div class="logo-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </div>
+              <span class="logo-text" style="color: white">Data<span>Flow</span></span>
+            </a>
+            <p>
+              The modern data platform for teams who move fast and need reliable, real-time insights
+              at every step.
+            </p>
+          </div>
+          <div>
+            <div class="footer__col-title">Product</div>
+            <ul class="footer__links">
+              <li><a href="#">Features</a></li>
+              <li><a href="#">Integrations</a></li>
+              <li><a href="#">Pricing</a></li>
+              <li><a href="#">Changelog</a></li>
+              <li><a href="#">Roadmap</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-title">Company</div>
+            <ul class="footer__links">
+              <li><a href="#">About</a></li>
+              <li><a href="#">Blog</a></li>
+              <li><a href="#">Careers</a></li>
+              <li><a href="#">Press</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-title">Legal</div>
+            <ul class="footer__links">
+              <li><a href="#">Privacy Policy</a></li>
+              <li><a href="#">Terms of Service</a></li>
+              <li><a href="#">Cookie Policy</a></li>
+              <li><a href="#">Security</a></li>
+              <li><a href="#">GDPR</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer__bottom">
+          <span class="footer__copy">© 2025 DataFlow Inc. All rights reserved.</span>
+          <div class="footer__socials">
+            <a class="social-link" href="#" aria-label="Twitter">𝕏</a>
+            <a class="social-link" href="#" aria-label="LinkedIn">in</a>
+            <a class="social-link" href="#" aria-label="GitHub">⌥</a>
+            <a class="social-link" href="#" aria-label="YouTube">▶</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- ══════════════════════════════════ TOAST ══════════ -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ══════════════════════════════════ JS ═════════════ -->
+    <script>
+      // ── Scroll Reveal ──────────────────────────────────
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry, i) => {
+            if (entry.isIntersecting) {
+              setTimeout(() => entry.target.classList.add("visible"), i * 80);
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.12 },
+      );
+
+      document.querySelectorAll(".reveal").forEach((el) => revealObserver.observe(el));
+
+      // ── Billing Toggle ─────────────────────────────────
+      const billingToggle = document.getElementById("billingToggle");
+      const amounts = document.querySelectorAll(".price-amount[data-monthly]");
+      const labels = document.querySelectorAll(".toggle-label");
+
+      billingToggle.addEventListener("change", () => {
+        const isAnnual = billingToggle.checked;
+        labels[0].classList.toggle("active", !isAnnual);
+        labels[1].classList.toggle("active", isAnnual);
+        amounts.forEach((el) => {
+          el.textContent = isAnnual ? el.dataset.annual : el.dataset.monthly;
+        });
+      });
+
+      // ── Toast ──────────────────────────────────────────
+      let toastTimer;
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        toast.textContent = "✅  " + msg;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 3500);
+      }
+
+      // ── Form Submit ────────────────────────────────────
+      function handleSignup(e) {
+        e.preventDefault();
+        const form = e.target;
+        const name = form.fullName.value.trim();
+        const email = form.email.value.trim();
+        const comp = form.company.value.trim();
+        if (!name || !email || !comp) {
+          showToast("Please fill in all required fields.");
+          return;
+        }
+        const btn = form.querySelector("button[type=submit]");
+        btn.textContent = "Creating account…";
+        btn.disabled = true;
+        setTimeout(() => {
+          showToast("🎉 Account created! Check your inbox for next steps.");
+          form.reset();
+          btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Account Created!`;
+          btn.style.background = "linear-gradient(135deg,#10b981,#059669)";
+          btn.style.boxShadow = "0 4px 14px rgba(16,185,129,.4)";
+        }, 1600);
+      }
+
+      // ── Navbar scroll shadow ───────────────────────────
+      window.addEventListener("scroll", () => {
+        document.querySelector(".navbar").style.boxShadow =
+          window.scrollY > 10 ? "0 2px 20px rgba(0,0,0,.08)" : "none";
+      });
+    </script>
+  </body>
+</html>

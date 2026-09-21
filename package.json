@@ -1,0 +1,10 @@
+{
+  "name": "amazon-quick-knowledge-hub",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "prettier": "^3"
+  }
+}

@@ -1,0 +1,329 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Quick Resource Migrator - VPC networking for the AgentCore Runtime.
+  Creates a VPC with 2 public + 2 private subnets, an Internet Gateway,
+  a NAT Gateway (for QuickSight egress — the QuickSight interface endpoint
+  does NOT support the Action Connector APIs the migrator uses), an S3
+  gateway endpoint (free), and STS + CloudWatch Logs interface endpoints.
+  Exports the private subnet IDs and the runtime security group for the
+  runtime stack to consume.
+
+# ═══════════════════════════════════════════════════════════════════
+# PARAMETERS
+# ═══════════════════════════════════════════════════════════════════
+Parameters:
+  NamePrefix:
+    Type: String
+    Default: quick-migrator
+    Description: Prefix for resource names and exports.
+
+  VpcCidr:
+    Type: String
+    Default: 10.60.0.0/16
+    Description: CIDR block for the VPC.
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.60.0.0/24
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.60.1.0/24
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 10.60.10.0/24
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 10.60.11.0/24
+
+  AvailabilityZone1:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: >
+      First AZ. MUST map to an AgentCore-supported AZ ID
+      (us-east-1: use1-az1/az2/az4). Verify with:
+      aws ec2 describe-subnets / describe-availability-zones --query AvailabilityZones[].[ZoneName,ZoneId]
+  AvailabilityZone2:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Second AZ (different from the first; also AgentCore-supported).
+
+  S3PrefixListId:
+    Type: String
+    Description: >
+      Managed prefix list ID for com.amazonaws.<region>.s3 (e.g. pl-63a5400a).
+      Look up with: aws ec2 describe-prefix-lists --region <region>
+      --filters Name=prefix-list-name,Values=com.amazonaws.<region>.s3
+      --query "PrefixLists[0].PrefixListId" --output text
+
+# ═══════════════════════════════════════════════════════════════════
+# RESOURCES
+# ═══════════════════════════════════════════════════════════════════
+Resources:
+  # ── VPC ──
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true # required for interface-endpoint private DNS
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-vpc"
+
+  # ── Internet Gateway (for the public subnets / NAT) ──
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-igw"
+
+  IgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  # ── Public subnets (host the NAT gateway) ──
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet1Cidr
+      AvailabilityZone: !Ref AvailabilityZone1
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-public-1"
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet2Cidr
+      AvailabilityZone: !Ref AvailabilityZone2
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-public-2"
+
+  # ── Private subnets (host the AgentCore runtime ENIs) ──
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      AvailabilityZone: !Ref AvailabilityZone1
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-private-1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      AvailabilityZone: !Ref AvailabilityZone2
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-private-2"
+
+  # ── Public route table (→ IGW) ──
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-public-rt"
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: IgwAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+  PublicSubnet2RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  # ── NAT Gateway (single, in public subnet 1) ──
+  NatEip:
+    Type: AWS::EC2::EIP
+    DependsOn: IgwAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-nat-eip"
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-nat"
+
+  # ── Private route table (→ NAT for internet-bound e.g. QuickSight) ──
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-private-rt"
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+  PrivateSubnet2RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  # ── Security group for the AgentCore runtime ENIs (egress-only) ──
+  RuntimeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: AgentCore runtime ENIs - egress only (no inbound; invocation is via managed API)
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        # S3 via the gateway endpoint — reference the managed S3 prefix list (private, free path)
+        - Description: HTTPS to Amazon S3 via gateway endpoint (S3 prefix list)
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          DestinationPrefixListId: !Ref S3PrefixListId
+        # QuickSight — must egress via NAT (QuickSight interface endpoint does NOT
+        # support the Action Connector APIs the migrator uses). No usable prefix
+        # list, so this stays open to 0.0.0.0/0 over the NAT path.
+        - Description: HTTPS to QuickSight (and other public AWS APIs) via NAT
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-runtime-sg"
+
+  # Egress from the runtime SG to the interface-endpoint SG (STS + Logs).
+  # Standalone resource to avoid a circular dependency between the two SGs.
+  RuntimeSgEgressToEndpoints:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref RuntimeSecurityGroup
+      Description: HTTPS to STS + CloudWatch Logs interface endpoints
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !Ref EndpointSecurityGroup
+
+  # ── Security group for the interface endpoints (inbound 443 from runtime SG) ──
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Interface VPC endpoints - inbound 443 from the runtime SG
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${NamePrefix}-endpoint-sg"
+
+  EndpointSgIngressFromRuntime:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EndpointSecurityGroup
+      Description: HTTPS from the runtime SG
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref RuntimeSecurityGroup
+
+  # ── S3 gateway endpoint (free; attached to the private route table) ──
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+
+  # ── STS interface endpoint ──
+  StsInterfaceEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.sts"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  # ── CloudWatch Logs interface endpoint ──
+  LogsInterfaceEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+# ═══════════════════════════════════════════════════════════════════
+# OUTPUTS (exported for the runtime stack)
+# ═══════════════════════════════════════════════════════════════════
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub "${NamePrefix}-vpc-id"
+
+  PrivateSubnetIds:
+    Description: Comma-delimited private subnet IDs for the AgentCore runtime.
+    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+    Export:
+      Name: !Sub "${NamePrefix}-private-subnet-ids"
+
+  RuntimeSecurityGroupId:
+    Description: Security group to attach to the AgentCore runtime.
+    Value: !Ref RuntimeSecurityGroup
+    Export:
+      Name: !Sub "${NamePrefix}-runtime-sg-id"
+
+  EndpointSecurityGroupId:
+    Value: !Ref EndpointSecurityGroup
+    Export:
+      Name: !Sub "${NamePrefix}-endpoint-sg-id"
+
+  NatGatewayId:
+    Value: !Ref NatGateway
+    Export:
+      Name: !Sub "${NamePrefix}-nat-id"

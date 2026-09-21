@@ -2,19 +2,19 @@ name: Security Scanning
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.py"
       - "pyproject.toml"
       - ".github/workflows/**"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.py"
       - "pyproject.toml"
       - ".github/workflows/**"
   schedule:
-    - cron: '0 12 * * 1'  # Weekly security scan on Monday at 12:00 UTC
+    - cron: "0 12 * * 1" # Weekly security scan on Monday at 12:00 UTC
 
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv package manager
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
@@ -95,6 +95,17 @@ jobs:
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           extra_args: --debug --only-verified
+
+      - name: Gitleaks secret scan
+        if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          # Point the action at the repo's AWS-tuned rules (.gitleaks.toml):
+          # hardened AWS access-key-ID rule, a .tfvars guard, and an allowlist
+          # for AWS documentation placeholders. Runs alongside TruffleHog.
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"
 
       - name: Skip message
         if: steps.changed-files.outputs.any_changed == 'false' && github.event_name != 'schedule'

@@ -1,16 +1,16 @@
-import { RemovalPolicy } from 'aws-cdk-lib';
+import { RemovalPolicy } from "aws-cdk-lib";
 
 export enum ProjectName {
-  QUICK_DESKTOP = 'QuickDesktop',
+  QUICK_DESKTOP = "QuickDesktop",
 }
 
 export enum ResourceName {
-  USER_POOL = 'UserPool',
-  APP_CLIENT = 'AppClient',
+  USER_POOL = "UserPool",
+  APP_CLIENT = "AppClient",
 }
 
 export enum CognitoDomainPrefix {
-  DEFAULT = 'quick-desktop',
+  DEFAULT = "quick-desktop",
 }
 
 export interface QuickDesktopConfig {
@@ -19,10 +19,8 @@ export interface QuickDesktopConfig {
   readonly mfaRequired?: boolean;
 }
 
-export const createResourceName = (
-  projectName: ProjectName,
-  resourceName: ResourceName,
-): string => `${projectName}${resourceName}`;
+export const createResourceName = (projectName: ProjectName, resourceName: ResourceName): string =>
+  `${projectName}${resourceName}`;
 
 export const createDomainPrefix = (
   domainPrefix: CognitoDomainPrefix,
@@ -33,10 +31,7 @@ export const createDomainPrefix = (
 export const createConstructId = (resourceName: string): string =>
   resourceName.charAt(0).toUpperCase() + resourceName.slice(1);
 
-export const createStackName = (
-  projectName: ProjectName,
-  stackName: string,
-): string => {
+export const createStackName = (projectName: ProjectName, stackName: string): string => {
   const pascal = stackName.charAt(0).toUpperCase() + stackName.slice(1);
   return `${projectName}${pascal}Stack`;
 };

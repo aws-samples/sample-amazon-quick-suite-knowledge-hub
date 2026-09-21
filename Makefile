@@ -1,12 +1,12 @@
 # Amazon Quick Knowledge Hub — developer commands
 #
-# The documentation site lives under external-docs/ (MkDocs Material). Code
-# projects live at the repository root. These targets wrap the common workflows
-# so you do not have to remember the external-docs/ paths.
+# The documentation site is built with MkDocs Material from mkdocs.yml at the
+# repo root, with content under docs/. Code projects live at the repository
+# root. These targets wrap the common workflows.
 
-.PHONY: help setup serve build build-strict lint format scan clean
+.PHONY: help setup install serve build build-strict lint format scan check fix clean
 
-MKDOCS := external-docs/mkdocs.yml
+MKDOCS := mkdocs.yml
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -15,10 +15,13 @@ help:  ## Show this help
 setup:  ## Install docs dependencies (uv)
 	uv sync --dev
 
+install:  ## Install pinned gitleaks + Prettier (uv run install)
+	uv run install
+
 serve:  ## Live-preview the docs site at http://127.0.0.1:8000
 	uv run mkdocs serve -f $(MKDOCS)
 
-build:  ## Build the docs site into external-docs/site/
+build:  ## Build the docs site into site/
 	uv run mkdocs build -f $(MKDOCS)
 
 build-strict:  ## Build the docs and fail on any warning
@@ -36,5 +39,14 @@ scan:  ## Run Bandit + Safety security scans (same as CI)
 	uv run bandit -q -r . -c pyproject.toml || true
 	uv run safety check || true
 
+check:  ## Run all quality + security checks (ruff, mdformat, prettier, gitleaks, typos, mkdocs)
+	uv run build
+
+fix:  ## Auto-fix everything fixable (ruff, mdformat, prettier, typos)
+	uv run fix
+
 clean:  ## Remove generated build output
-	rm -rf external-docs/site external-docs/docs/_projects site
+	rm -rf site
+	rm -rf docs/_projects docs/infrastructure \
+	       docs/integration \
+	       docs/examples docs/amazon-quick-on-desktop

@@ -1,0 +1,79 @@
+site_name: Amazon Quick Knowledge Hub
+site_url: https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/
+site_description: >-
+  Integration guides, infrastructure, and deployable reference
+  architectures for Amazon Quick — maintained by the Amazon Quick team.
+theme:
+  name: material
+  custom_dir: docs/static/overrides
+  logo: amazonquick.png
+  favicon: amazonquick.png
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.tracking
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: white
+      toggle:
+        icon: material/weather-night
+        name: "Switch to dark mode"
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: black
+      toggle:
+        icon: material/weather-sunny
+        name: "Switch to light mode"
+docs_dir: docs
+exclude_docs: |
+  **/LICENSE.md
+  hooks/
+  static/
+extra_css:
+  - stylesheets/extra.css
+extra:
+  static_path: static
+  generator: false
+watch:
+  - infrastructure
+  - examples
+  - integration
+  - amazon-quick-on-desktop
+  - docs/hooks
+hooks:
+  - docs/hooks/copy_project_docs.py
+plugins:
+  - search
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - tables
+  - fenced_code
+  - codehilite
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.snippets:
+      url_download: True
+      url_request_headers:
+repo_url: https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub
+edit_uri: edit/main/docs/

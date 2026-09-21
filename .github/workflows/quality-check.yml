@@ -2,7 +2,7 @@ name: Quality Check
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.md"
       - "**/*.py"
@@ -11,7 +11,7 @@ on:
       - "pyproject.toml"
       - "mkdocs.yml"
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.md"
       - "**/*.py"
@@ -26,111 +26,51 @@ permissions:
   pull-requests: write
 
 jobs:
-  quality-check:
-    name: Code Quality and Documentation Check
+  full-quality-gate:
+    name: Full Quality Gate (make check)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Amazon Quick Knowledge Hub
         uses: actions/checkout@v4
-
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v46
         with:
-          separator: ","
-          files_yaml: |
-            markdown:
-              - "**/*.md"
-            python:
-              - "**/*.py"
-            config:
-              - "**/*.yml"
-              - "**/*.yaml"
-              - "pyproject.toml"
-              - "mkdocs.yml"
+          # gitleaks (in `make check`) scans the working tree; fetch full
+          # history so secret scanning has complete context.
+          fetch-depth: 0
 
-      - name: Set up Python for Amazon Quick Knowledge Hub
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.12"
+
+      - name: Set up Node.js (for Prettier)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       - name: Install uv package manager
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
         uses: astral-sh/setup-uv@v3
 
-      - name: Install uv
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
-        uses: astral-sh/setup-uv@v3
-
-      - name: Install Python dependencies
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
+      - name: Install project dependencies
         run: uv sync --dev
 
-      - name: Install Python linting tools
-        if: steps.changed-files.outputs.python_any_changed == 'true'
-        run: |
-          uv tool install ruff
-          uv tool install bandit
+      - name: Install pinned tooling (gitleaks + Prettier)
+        run: uv run install
 
-      - name: Lint Python files
-        if: steps.changed-files.outputs.python_any_changed == 'true'
-        run: |
-          echo "🔍 Linting Python files for Amazon Quick Knowledge Hub:"
-          echo "${{ steps.changed-files.outputs.python_all_changed_files }}" | tr ',' '\n'
-          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.python_all_changed_files }}"
-          for file in "${FILES[@]}"; do
-            uv run ruff check --output-format=github "$file"
-          done
+      - name: Run full quality gate
+        # Single source of truth for quality + docs checks: ruff (lint +
+        # format), mdformat, Prettier, gitleaks, typos, and mkdocs build
+        # (non-strict) — identical to what developers run locally via
+        # `make check`. Bandit + Safety + TruffleHog secret scanning live in
+        # security-scan.yml, so they are intentionally not duplicated here.
+        run: make check
 
-      - name: Check Python code formatting
-        if: steps.changed-files.outputs.python_any_changed == 'true'
-        run: |
-          echo "📝 Checking Python code format:"
-          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.python_all_changed_files }}"
-          for file in "${FILES[@]}"; do
-            uv run ruff format --check "$file"
-          done
-
-      - name: Run Python security scan
-        if: steps.changed-files.outputs.python_any_changed == 'true'
-        run: |
-          echo "🔒 Running security scan on Python files:"
-          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.python_all_changed_files }}"
-          for file in "${FILES[@]}"; do
-            uv run bandit -r "$file" -f json || true
-          done
-
-      - name: Lint Markdown documentation
-        if: steps.changed-files.outputs.markdown_any_changed == 'true'
-        uses: DavidAnson/markdownlint-cli2-action@v16
-        with:
-          globs: |
-            ${{ steps.changed-files.outputs.markdown_all_changed_files }}
-
-      - name: Build MkDocs documentation
-        if: steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
-        run: |
-          echo "📚 Building Amazon Quick Knowledge Hub documentation..."
-          uv run mkdocs build
-
-      - name: Test MkDocs serve
-        if: steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
+      - name: Documentation server smoke test
+        # `make check` builds the site; this additionally confirms the served
+        # home page responds (catches serve-time/runtime issues a build misses).
+        # site_url has a subpath, so `/` 302-redirects to it — use -L to follow.
         run: |
           echo "🧪 Testing documentation server..."
-          uv run mkdocs serve --dev-addr=127.0.0.1:8000 &
+          uv run mkdocs serve -f mkdocs.yml --dev-addr=127.0.0.1:8000 &
           sleep 5
-          curl -f http://127.0.0.1:8000/ || exit 1
+          curl -fL http://127.0.0.1:8000/ || exit 1
           pkill -f "mkdocs serve" || true
-
-      - name: Upload documentation artifacts
-        if: steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: amazon-quick-suite-knowledge-hub-site
-          path: site/
-          retention-days: 7
-
-      - name: Skip message
-        if: steps.changed-files.outputs.python_any_changed == 'false' && steps.changed-files.outputs.markdown_any_changed == 'false' && steps.changed-files.outputs.config_any_changed == 'false'
-        run: echo "⏭️ No relevant files changed - skipping quality checks for Amazon Quick Knowledge Hub"

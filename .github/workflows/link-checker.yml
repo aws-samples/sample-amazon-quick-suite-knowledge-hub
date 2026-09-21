@@ -2,9 +2,9 @@ name: Link Checker
 
 on:
   schedule:
-    - cron: '0 0 * * 1'  # Weekly on Monday at midnight UTC
+    - cron: "0 0 * * 1" # Weekly on Monday at midnight UTC
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.md"
       - "mkdocs.yml"
@@ -33,7 +33,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -47,7 +47,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           echo "📚 Building Amazon Quick Knowledge Hub documentation for link checking..."
-          uv run mkdocs build
+          uv run mkdocs build -f mkdocs.yml
 
       - name: Install lychee link checker
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

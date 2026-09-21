@@ -2,7 +2,7 @@ name: Node.js Security Scanning
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/package.json"
       - "**/package-lock.json"
@@ -12,7 +12,7 @@ on:
       - "**/*.tsx"
       - ".github/workflows/**"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/package.json"
       - "**/package-lock.json"
@@ -22,7 +22,7 @@ on:
       - "**/*.tsx"
       - ".github/workflows/**"
   schedule:
-    - cron: '0 12 * * 2'  # Weekly security scan on Tuesday at 12:00 UTC
+    - cron: "0 12 * * 2" # Weekly security scan on Tuesday at 12:00 UTC
 
 permissions:
   contents: read
@@ -65,7 +65,7 @@ jobs:
         if: (steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule') && steps.check-nodejs.outputs.has_nodejs == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Find Node.js projects
         if: (steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule') && steps.check-nodejs.outputs.has_nodejs == 'true'
@@ -83,7 +83,7 @@ jobs:
         if: (steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule') && steps.check-nodejs.outputs.has_nodejs == 'true'
         run: |
           echo "🔒 Running security scans on Node.js projects..."
-          
+
           while IFS= read -r project; do
             if [ -f "$project/package.json" ]; then
               echo "🛡️ Scanning project: $project"

@@ -1,6 +1,6 @@
-import { RemovalPolicy, Stack } from 'aws-cdk-lib';
-import { UserPool, UserPoolClient, Mfa, OAuthScope } from 'aws-cdk-lib/aws-cognito';
-import { Construct } from 'constructs';
+import { RemovalPolicy, Stack } from "aws-cdk-lib";
+import { UserPool, UserPoolClient, Mfa, OAuthScope } from "aws-cdk-lib/aws-cognito";
+import { Construct } from "constructs";
 import {
   CognitoDomainPrefix,
   ProjectName,
@@ -8,7 +8,7 @@ import {
   createConstructId,
   createDomainPrefix,
   createResourceName,
-} from '../common/config';
+} from "../common/config";
 
 export interface IdentityProviderProps {
   readonly projectName: ProjectName;
@@ -29,7 +29,7 @@ export class IdentityProvider extends Construct {
     const { account, region } = Stack.of(this);
     const domainPrefix = createDomainPrefix(CognitoDomainPrefix.DEFAULT, account, region);
 
-    this.pool = new UserPool(this, createConstructId('Pool'), {
+    this.pool = new UserPool(this, createConstructId("Pool"), {
       userPoolName: createResourceName(projectName, ResourceName.USER_POOL),
       selfSignUpEnabled: false,
       signInAliases: { username: true, email: true },
@@ -40,17 +40,17 @@ export class IdentityProvider extends Construct {
       removalPolicy,
     });
 
-    this.pool.addDomain('Domain', {
+    this.pool.addDomain("Domain", {
       cognitoDomain: { domainPrefix },
     });
 
-    this.client = this.pool.addClient('Client', {
+    this.client = this.pool.addClient("Client", {
       userPoolClientName: createResourceName(projectName, ResourceName.APP_CLIENT),
       generateSecret: false,
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-        callbackUrls: ['http://localhost:18080'],
+        callbackUrls: ["http://localhost:18080"],
       },
       authFlows: { userSrp: true },
     });
