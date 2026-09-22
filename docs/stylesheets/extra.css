@@ -1,115 +1,644 @@
 :root > * {
-    --md-primary-fg-color: #14181C;
-    --md-primary-bg-color: #F0F6FC;
-    --md-primary-bg-color--light: #716F6F;
-    --md-accent-fg-color: #5E8BDE;
-    --md-typeset-a-color: #5E8BDE;
+  --md-primary-fg-color: #14181c;
+  --md-primary-bg-color: #f0f6fc;
+  --md-primary-bg-color--light: #716f6f;
+  --md-accent-fg-color: #d600ba;
+  --md-typeset-a-color: #7300e5;
+
+  /* Amazon Quick brand palette (from quick.aws.com) */
+  --quick-gradient: linear-gradient(100deg, #ff4b14 0%, #d600ba 33%, #7300e5 66%, #6842ff 100%);
+  --quick-orange: #ff4b14;
+  --quick-magenta: #d600ba;
+  --quick-purple: #7300e5;
+  --quick-indigo: #6842ff;
+  --quick-link: #a000b8;
+  --quick-ink: #14181c;
+}
+
+/* ── Amazon Quick brand accents ────────────────────────────────── */
+
+/* Gradient accent bar under the header for a fluid, branded feel */
+.md-header {
+  box-shadow:
+    0 0 0.2rem rgba(0, 0, 0, 0.1),
+    0 0.2rem 0.4rem rgba(0, 0, 0, 0.1);
+}
+.md-header::after {
+  content: "";
+  display: block;
+  height: 3px;
+  background: var(--quick-gradient);
+}
+
+/* Gradient accent on the active left-nav item */
+.md-nav__link--active,
+.md-nav__item .md-nav__link--active {
+  position: relative;
+  font-weight: 600;
+}
+.md-nav__link--active::before {
+  content: "";
+  position: absolute;
+  left: -0.6rem;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--quick-gradient);
+}
+
+/* Body links use the deep brand indigo (close to ink), not a loud magenta,
+   so running text stays readable. Hover brings out the brand color. */
+.md-typeset a {
+  color: var(--quick-purple);
+  text-decoration-color: rgba(115, 0, 229, 0.35);
+}
+.md-typeset a:hover {
+  color: var(--quick-magenta);
+}
+[data-md-color-scheme="slate"] .md-typeset a {
+  color: #c9a6ff;
+}
+[data-md-color-scheme="slate"] .md-typeset a:hover {
+  color: #e36ff5;
+}
+
+/* Primary buttons use the brand gradient */
+.md-typeset .md-button--primary {
+  background: var(--quick-gradient);
+  border-color: transparent;
+  color: #fff !important;
+  transition:
+    filter 0.2s ease,
+    transform 0.2s ease;
+}
+.md-typeset .md-button--primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* Headings are solid ink like quick.aws.com — brand color lives in
+   backgrounds and accents, never in the heading text itself. */
+.md-typeset h1 {
+  color: var(--quick-ink);
+  font-weight: 800;
+}
+[data-md-color-scheme="slate"] .md-typeset h1 {
+  color: #f0f6fc;
+}
+[data-md-color-scheme="slate"] .md-typeset h2 {
+  border-bottom: none;
+}
+.md-typeset h2 {
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid transparent;
+  border-image: var(--quick-gradient) 1;
+}
+
+/* Inline code stays near-ink for readability, with a soft brand-tinted
+   background instead of colored text. */
+.md-typeset code {
+  color: var(--quick-ink);
+  background-color: rgba(115, 0, 229, 0.07);
+}
+[data-md-color-scheme="slate"] .md-typeset code {
+  color: #f0f6fc;
+  background-color: rgba(201, 166, 255, 0.16);
+}
+
+/* Note/tip admonitions get a Quick-purple left border + icon */
+.md-typeset .admonition,
+.md-typeset details {
+  border-left: 0.2rem solid var(--quick-indigo);
+}
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-left-color: var(--quick-magenta);
+}
+.md-typeset .admonition.note .admonition-title,
+.md-typeset details.note > summary {
+  background-color: rgba(104, 66, 255, 0.1);
+}
+.md-typeset .admonition.tip .admonition-title,
+.md-typeset details.tip > summary {
+  background-color: rgba(214, 0, 186, 0.1);
+}
+
+/* Tables: header row uses a soft brand tint */
+.md-typeset table:not([class]) th {
+  background: linear-gradient(
+    100deg,
+    rgba(255, 75, 20, 0.08),
+    rgba(214, 0, 186, 0.08) 40%,
+    rgba(104, 66, 255, 0.08)
+  );
+  color: var(--quick-ink);
+}
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  color: #f0f6fc;
+}
+
+/* Brand-colored selection + code accents */
+::selection {
+  background: rgba(214, 0, 186, 0.18);
+}
+
+/* Footer top edge carries the brand gradient */
+.md-footer-meta {
+  border-top: 2px solid transparent;
+  border-image: var(--quick-gradient) 1;
 }
 
 [data-md-color-scheme="default"] .logo-light {
-    display: none !important;
+  display: none !important;
 }
 [data-md-color-scheme="slate"] .logo-dark {
-    display: none !important;
+  display: none !important;
 }
 
 [data-md-color-scheme="default"] {
-    .md-header, .md-tabs {
-        background-color: #FFF;
-        color: var(--md-primary-fg-color);
-    }
-    .md-search__form, .md-search__input, .md-search__icon {
-        background-color: #F0F0F0;
-        color: var(--md-primary-fg-color);
-    }
+  .md-header,
+  .md-tabs {
+    background-color: #fff;
+    color: var(--md-primary-fg-color);
+  }
+  .md-search__form,
+  .md-search__input,
+  .md-search__icon {
+    background-color: #f0f0f0;
+    color: var(--md-primary-fg-color);
+  }
 }
 
 .md-header__button.md-logo {
-    padding: 0 .2rem;
-    margin: 0;
+  padding: 0 0.2rem;
+  margin: 0;
 }
 .md-header__button.md-logo img,
 .md-header__button.md-logo svg,
 .md-nav__title .md-nav__button.md-logo img,
 .md-nav__title .md-nav__button.md-logo svg {
-    height: 1.5rem;
-    width: 1.5rem;
+  height: 1.5rem;
+  width: 1.5rem;
 }
 
 .md-tabs__link {
-    opacity: 1;
-    font-size: 1.6em;
+  opacity: 1;
+  font-size: 1.6em;
 }
 
 .md-tabs__item--active,
 .md-tabs__item:hover,
 .md-content a:hover {
-    text-decoration: underline;
-    text-underline-offset: .5em;
+  text-decoration: underline;
+  text-underline-offset: 0.5em;
 }
 .md-content a:hover {
-    text-underline-offset: .2em;
+  text-underline-offset: 0.2em;
 }
 
 .md-nav--lifted > .md-nav__list > .md-nav__item > [for],
 .md-nav__item--section > .md-nav__link[for],
 .md-nav__title {
-    font-size: 1.4em;
-}
-
-.md-typeset h1 {
-    color: inherit;
+  font-size: 1.4em;
 }
 
 .md-grid {
-    /* default was max-width: 61rem; */
+  /* default was max-width: 61rem; widened since the ToC column is hidden */
+  max-width: 68rem;
+}
+
+/* ── Clean two-column layout (nav + content, no right-hand ToC) ──────
+   Hide the on-page Table of Contents sidebar to free up horizontal
+   space and give a neat, uncluttered reading area. */
+
+/* Hide the right-hand ToC sidebar on wide screens */
+.md-sidebar--secondary {
+  display: none !important;
+}
+
+/* Align the body with the header/tabs. The header inner and tab bar are
+   capped at the theme grid width (.md-grid, 68rem) and centered, so the
+   main body must use the SAME max-width and centering — otherwise the body
+   stretches full-viewport and ends up wider than the header, with unequal
+   left/right margins. With this, the sidebar's left edge and the content's
+   right edge line up exactly with the header on every page. */
+@media screen and (min-width: 76.25em) {
+  .md-main__inner {
     max-width: 68rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .md-content {
+    max-width: none; /* content fills the grid beside the sidebar */
+    margin: 0;
+  }
+  .md-content__inner {
+    max-width: none;
+    margin: 0;
+  }
+}
+
+/* A touch more breathing room around content for the clean look */
+.md-content__inner {
+  margin-top: 1.2rem;
+  margin-bottom: 2.4rem;
+  padding: 0 1.2rem;
+}
+.md-typeset h1,
+.md-typeset h2 {
+  margin-top: 1.4em;
 }
 
 .mermaid {
-    text-align: center;
+  text-align: center;
 }
 
 /* Remove the font-enlargement that is on by default for the material theme */
 @media screen and (min-width: 100em) {
-    html {
-        font-size: 125%;
-    }
+  html {
+    font-size: 125%;
+  }
 }
 
 @media screen and (min-width: 125em) {
-    html {
-        font-size: 125%;
-    }
+  html {
+    font-size: 125%;
+  }
 }
 
 @media screen and (max-width: 76.2344em) {
-    .md-nav--lifted > .md-nav__list > .md-nav__item > [for],
-    .md-nav__item--section > .md-nav__link[for],
-    .md-nav__title {
-        font-size: 1em;
-    }
-    .md-nav--primary .md-nav__title {
-        height: auto;
-        padding: 2rem .8rem .2rem;
-    }
-    .md-nav--primary .md-nav__title .md-logo {
-        padding: .2rem;
-        margin: 0;
-    }
+  .md-nav--lifted > .md-nav__list > .md-nav__item > [for],
+  .md-nav__item--section > .md-nav__link[for],
+  .md-nav__title {
+    font-size: 1em;
+  }
+  .md-nav--primary .md-nav__title {
+    height: auto;
+    padding: 2rem 0.8rem 0.2rem;
+  }
+  .md-nav--primary .md-nav__title .md-logo {
+    padding: 0.2rem;
+    margin: 0;
+  }
 
-    [data-md-color-scheme="default"] .md-nav--primary .md-nav__title,
-    [data-md-color-scheme="default"] .md-nav--primary .md-nav__title[for="__drawer"] {
-        background-color: #FFF;
-        color: var(--md-primary-fg-color);
-    }
+  [data-md-color-scheme="default"] .md-nav--primary .md-nav__title,
+  [data-md-color-scheme="default"] .md-nav--primary .md-nav__title[for="__drawer"] {
+    background-color: #fff;
+    color: var(--md-primary-fg-color);
+  }
 }
 
 [data-md-color-scheme="slate"] {
-    /* Override the font color in dark mode - text is too light */
-    --md-default-fg-color: rgb(240, 246, 252)
+  /* Override the font color in dark mode - text is too light */
+  --md-default-fg-color: rgb(240, 246, 252);
 }
 
 [data-md-color-scheme="slate"] .md-button {
   color: rgb(140, 140, 140) !important;
+}
+
+/* ── Layout tweaks ─────────────────────────────────────────────── */
+
+/* Hide the default "Made with Material for MkDocs" footer attribution.
+   The whole .md-copyright block is only that attribution here, since no
+   custom `copyright:` is set in mkdocs.yml. */
+.md-footer-meta .md-copyright {
+  display: none !important;
+}
+
+/* Give the left navigation breathing room so items aren't flush left */
+.md-nav--primary {
+  padding-left: 0.6rem;
+}
+.md-nav--primary .md-nav__list {
+  padding-left: 0.2rem;
+}
+.md-nav--primary > .md-nav__list > .md-nav__item {
+  padding-left: 0.4rem;
+}
+@media screen and (max-width: 76.2344em) {
+  /* On the mobile drawer, reset the extra padding to avoid crowding */
+  .md-nav--primary {
+    padding-left: 0;
+  }
+}
+
+/* Make the top-level "Amazon Quick on desktop" entry bold like a section header */
+.md-nav--primary > .md-nav__list > .md-nav__item > .md-nav__link[href$="amazon-quick-on-desktop/"] {
+  font-weight: 700;
+  font-size: 1.4em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Knowledge Hub — landing gallery (hero, category cards, solution cards)
+   Inspired by a modern community-library layout, in the Quick brand.
+   All classes are prefixed qh- to avoid clashing with Material theme.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Give the landing page the full content width (hero + grids breathe) */
+.md-content a.qh-cat,
+.md-content a.qh-card {
+  text-decoration: none;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.qh-hero {
+  position: relative;
+  margin: 0.4rem 0 2.2rem;
+  padding: 3.2rem 2rem 3.4rem;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 75, 20, 0.14), transparent 42%),
+    radial-gradient(120% 140% at 100% 0%, rgba(104, 66, 255, 0.16), transparent 46%),
+    radial-gradient(140% 160% at 80% 120%, rgba(214, 0, 186, 0.14), transparent 50%),
+    var(--md-default-bg-color);
+  border: 1px solid rgba(115, 0, 229, 0.14);
+}
+.qh-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--quick-gradient);
+}
+.qh-hero__inner {
+  max-width: 46rem;
+}
+.qh-hero__eyebrow {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--quick-gradient);
+  margin-bottom: 1rem;
+}
+.qh-hero__title.qh-hero__title {
+  font-size: 2.5rem;
+  line-height: 1.08;
+  font-weight: 800;
+  margin: 0 0 0.9rem;
+  /* solid ink, not gradient — keeps the big headline crisp */
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--quick-ink);
+}
+[data-md-color-scheme="slate"] .qh-hero__title.qh-hero__title {
+  color: #f0f6fc;
+}
+.qh-hero__lead {
+  font-size: 1.02rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+  color: var(--md-default-fg-color--light);
+}
+.qh-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-bottom: 1.7rem;
+}
+.qh-hero__actions .md-button {
+  margin: 0;
+}
+/* Rounded (pill) corners for the two hero call-to-action buttons
+   — "Explore on GitHub" and "Official documentation". */
+.qh-hero__actions .md-button {
+  border-radius: 999px;
+  padding-left: 1.4rem;
+  padding-right: 1.4rem;
+}
+.qh-hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6rem;
+}
+.qh-hero__stats span {
+  font-size: 0.82rem;
+  color: var(--md-default-fg-color--light);
+}
+.qh-hero__stats strong {
+  display: block;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--quick-purple);
+}
+[data-md-color-scheme="slate"] .qh-hero__stats strong {
+  color: #c9a6ff;
+}
+
+/* ── Category cards (browse row) ──────────────────────────────────── */
+.qh-cats {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 1rem 0 1.6rem;
+}
+.qh-cat {
+  display: flex;
+  flex-direction: column;
+  padding: 1.4rem 1.3rem 1.2rem;
+  border-radius: 14px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+.qh-cat:hover {
+  transform: translateY(-3px);
+  border-color: transparent;
+  box-shadow: 0 0.5rem 1.4rem rgba(115, 0, 229, 0.16);
+}
+.qh-cat__count {
+  align-self: flex-start;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.12rem 0.5rem;
+  border-radius: 8px;
+  margin-bottom: 0.7rem;
+  color: #fff;
+  background: var(--quick-gradient);
+}
+.qh-cat__name {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+  margin-bottom: 0.35rem;
+}
+.qh-cat__desc {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+  flex-grow: 1;
+}
+.qh-cat__go {
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--quick-link);
+}
+[data-md-color-scheme="slate"] .qh-cat__go {
+  color: #e36ff5;
+}
+
+/* ── Solution cards (featured grid) ───────────────────────────────── */
+.qh-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  margin: 1rem 0 1.6rem;
+}
+.qh-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.3rem 1.3rem 1.15rem;
+  border-radius: 14px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+.qh-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--quick-gradient);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+.qh-card:hover {
+  transform: translateY(-3px);
+  border-color: transparent;
+  box-shadow: 0 0.5rem 1.4rem rgba(214, 0, 186, 0.16);
+}
+.qh-card:hover::before {
+  opacity: 1;
+}
+.qh-card__title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+  margin-bottom: 0.4rem;
+}
+.qh-card__desc {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+  flex-grow: 1;
+}
+.qh-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+}
+.qh-card__tags span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  color: var(--quick-purple);
+  background: rgba(115, 0, 229, 0.08);
+  border: 1px solid rgba(115, 0, 229, 0.16);
+}
+[data-md-color-scheme="slate"] .qh-card__tags span {
+  color: #c9a6ff;
+  background: rgba(115, 0, 229, 0.2);
+  border-color: rgba(201, 166, 255, 0.25);
+}
+
+/* On the landing page (nav hidden) align the gallery with the header/tabs.
+   The header and tabs are capped at the grid width (.md-grid, 68rem) and
+   centered; without this the body would stretch full-viewport and sit wider
+   than the header. Match that same max-width + centering so the hero and
+   card grids line up exactly with the header edges. */
+.md-content:has(.qh-hero) .md-content__inner {
+  max-width: 68rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media screen and (max-width: 44rem) {
+  .qh-hero {
+    padding: 2.2rem 1.2rem 2.4rem;
+  }
+  .qh-hero__title.qh-hero__title {
+    font-size: 1.9rem;
+  }
+  .qh-hero__stats {
+    gap: 1.1rem;
+  }
+}
+
+/* ── Links row (compact link cards on the landing page) ─────────────── */
+.qh-links {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  margin: 1rem 0 1.6rem;
+}
+.qh-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  text-decoration: none !important;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+.qh-link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--quick-gradient);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+.qh-link:hover {
+  transform: translateY(-2px);
+  border-color: transparent;
+  box-shadow: 0 0.4rem 1.1rem rgba(115, 0, 229, 0.15);
+}
+.qh-link:hover::before {
+  opacity: 1;
+}
+.qh-link__name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+}
+.qh-link__host {
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

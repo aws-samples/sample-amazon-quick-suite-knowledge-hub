@@ -1,0 +1,61 @@
+[extend]
+useDefault = true
+
+# gitleaks' default AWS rule changed between 8.26 and 8.30 and stopped matching
+# a bare access key ID. Since that's the single most important pattern in an AWS
+# repository, declare it here rather than depending on the upstream default.
+# Covers every AWS unique ID prefix, in any file type.
+[[rules]]
+id = "aws-access-key-id"
+description = "AWS access key ID"
+# The prefix group is non-capturing on purpose. gitleaks reports capture group
+# one as the secret, so a capturing group here would report just "AKIA" and the
+# allowlist below could never match the full key.
+regex = '''\b(?:A3T[A-Z0-9]|ABIA|ACCA|AGPA|AIDA|AIPA|AKIA|ANPA|ANVA|AROA|ASIA)[A-Z0-9]{16}\b'''
+keywords = [
+    "A3T",
+    "ABIA",
+    "ACCA",
+    "AGPA",
+    "AIDA",
+    "AIPA",
+    "AKIA",
+    "ANPA",
+    "ANVA",
+    "AROA",
+    "ASIA",
+]
+tags = ["aws", "key"]
+
+[[rules]]
+id = "tfvars-with-values"
+description = ".tfvars file with real values (only .tfvars.example may be committed)"
+regex = '''^[^#\s][^=]+=\s*\S'''
+path = '''\.tfvars$'''
+[rules.allowlist]
+paths = ['''\.tfvars\.example$''']
+
+[allowlist]
+description = "Placeholders that appear in documentation and examples"
+regexes = [
+    # Account IDs reserved for AWS documentation examples
+    '''123456789012''',
+    '''111111111111''',
+    '''222222222222''',
+    '''000000000000''',
+    # The access key and secret AWS uses throughout its own documentation
+    '''AKIAIOSFODNN7EXAMPLE''',
+    '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',
+    # Template references rather than real values
+    '''AWS::AccountId''',
+    '''\$\{AWS::AccountId\}''',
+    '''var\.aws_account_id''',
+    '''local\.account_id''',
+    # OAuth / JWT example tokens used in documentation and tutorials.
+    # A JWT always starts with the base64url of its header; the examples in our
+    # OAuth guides use the "RS256" header followed by an ellipsis (e.g.
+    # "eyJhbGciOiJSUzI1NiJ9...") — illustrative, never a real credential.
+    '''eyJhbGci[A-Za-z0-9_-]*\.\.\.''',
+    '''eyJhbGciOiJSUzI1NiJ9''',
+]
+

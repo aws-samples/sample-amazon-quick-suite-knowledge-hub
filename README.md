@@ -5,11 +5,11 @@
    </a>
   </div>
 
-  <h1>
+<h1>
       Amazon Quick Knowledge Hub
   </h1>
 
-  <div align="center">
+<div align="center">
     <a href="https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/graphs/commit-activity"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/aws-samples/sample-amazon-quick-suite-knowledge-hub"/></a>
     <a href="https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/issues"><img alt="GitHub open issues" src="https://img.shields.io/github/issues/aws-samples/sample-amazon-quick-suite-knowledge-hub"/></a>
     <a href="https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/pulls"><img alt="GitHub open pull requests" src="https://img.shields.io/github/issues-pr/aws-samples/sample-amazon-quick-suite-knowledge-hub"/></a>
@@ -19,21 +19,16 @@
 
 ## What is this?
 
-This is the knowledge hub for [Amazon Quick](https://aws.amazon.com/quick/). It contains integration guides, infrastructure-as-code templates, management documentation, and end-to-end use cases maintained by the Amazon Quick team. The content is published as a searchable documentation site and supplements the [official Amazon Quick documentation](https://docs.aws.amazon.com/quick/latest/userguide/).
+This is the knowledge hub for [Amazon Quick](https://aws.amazon.com/quick/): working, deployable code and step-by-step guides for connecting your data, building agents and MCP servers, embedding Quick in your apps, and running it in production. Maintained by the Amazon Quick team as a companion to the [official documentation](https://docs.aws.amazon.com/quick/latest/userguide/).
 
-**Read the docs here: [aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/)**
+## Explore by what you want to do
 
-## What's in it?
-
-The [Integration](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/integration/) section covers how to connect third-party services to Amazon Quick as knowledge base sources and action connectors, including MCP server implementations you can deploy directly.
-
-The [Manage Quick](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/manage-quick/) section covers identity configuration, observability (CloudWatch-based monitoring via MCP), customization, and security guardrails.
-
-The [Infrastructure as Code](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/infrastructure-as-code/) section provides a Terraform module for bootstrapping Amazon Quick with AWS IAM Identity Center, and a CDK app that points a custom domain at your Quick sign-in URL.
-
-The [Amazon Quick on desktop](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/amazon-quick-on-desktop/) section provides a CDK stack that deploys Amazon Cognito as an OpenID Connect (OIDC) provider for the desktop application.
-
-The [Use Cases](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/use-cases/) section contains complete, deployable solutions ranging from actuarial analysis with MCP tools and chat agent embedding in web apps to document generation via AgentCore, compliance automation, and exporting SharePoint lists to Amazon Quick Sight datasets.
+|     | Section                                                                                                            | Use it to                                                                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| 🔌  | [Integration](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/integration/)                  | Bring third-party services into Quick as knowledge sources and action connectors, or deploy a ready-made MCP server |
+| 🏗️  | [Infrastructure](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/infrastructure/)            | Stand up and operate Quick — account bootstrap, custom sign-in domains, observability, and row-level data security  |
+| 🚀  | [Use cases](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/examples/)                       | Ship a full solution end to end — embedding, document generation, compliance automation, and more                   |
+| 🖥️  | [Quick on desktop](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/amazon-quick-on-desktop/) | Wire up Amazon Cognito as an OIDC provider for the desktop app                                                      |
 
 ## Local development
 
@@ -49,7 +44,7 @@ The site is available at `http://127.0.0.1:8000`. Changes to files in `docs/` ar
 
 ## Contributing
 
-See [How to Contribute](docs/HOW-TO-CONTRIBUTE.md) for the full guide. Fork the repo, add your content under `docs/`, update the nav in `mkdocs.yml`, run `uv run mkdocs build --strict` to verify, and open a PR.
+See [How to Contribute](docs/HOW-TO-CONTRIBUTE.md) for the full guide. Fork the repo, add your project under the relevant top-level section folder (`infrastructure/`, `integration/`, `examples/`, or `amazon-quick-on-desktop/`) with a `README.md` as its landing page, run `make build` to verify, and open a PR. The documentation site (under `docs/`) picks up each project's `README.md` automatically.
 
 ## License
 

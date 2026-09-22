@@ -1,0 +1,682 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Bedrock Agent Gateway Infrastructure
+
+  This template creates a secure gateway to Amazon Bedrock AgentCore that provides 
+  CRUD operations on S3 buckets through a Lambda function. The system creates a new
+  S3 bucket with a unique name, uses JWT authentication with Amazon Cognito, and 
+  exposes MCP (Model Context Protocol) actions for client interactions.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "S3 Configuration"
+        Parameters:
+          - S3BucketName
+      - Label:
+          default: "Environment Configuration"
+        Parameters:
+          - Environment
+          - ProjectName
+      - Label:
+          default: "Deployment Configuration"
+        Parameters:
+          - EnableLogging
+          - TokenExpirationHours
+    ParameterLabels:
+      S3BucketName:
+        default: "S3 Bucket Base Name"
+      Environment:
+        default: "Environment"
+      ProjectName:
+        default: "Project Name"
+      EnableLogging:
+        default: "Enable CloudWatch Logging"
+      TokenExpirationHours:
+        default: "OAuth Token Expiration (Hours)"
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Base name for the S3 bucket (will be made unique with account ID and region)
+    Default: bedrock-gateway-bucket
+    MinLength: 3
+    MaxLength: 40
+    AllowedPattern: ^[a-z0-9][a-z0-9-]*[a-z0-9]$
+    ConstraintDescription: >
+      Bucket base name must be between 3 and 40 characters, start and end with lowercase 
+      letter or number, and contain only lowercase letters, numbers, and hyphens.
+
+  Environment:
+    Type: String
+    Description: Environment name for resource tagging and naming
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    ConstraintDescription: Must be one of dev, staging, or prod
+
+  ProjectName:
+    Type: String
+    Description: Project name for resource naming and tagging
+    Default: bedrock-agent-gateway
+    MinLength: 1
+    MaxLength: 50
+    AllowedPattern: ^[a-zA-Z][a-zA-Z0-9-]*$
+    ConstraintDescription: >
+      Project name must start with a letter and contain only letters, numbers, and hyphens.
+
+  EnableLogging:
+    Type: String
+    Description: Enable CloudWatch logging for Lambda and Gateway
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+
+  TokenExpirationHours:
+    Type: Number
+    Description: OAuth access token expiration time in hours
+    Default: 1
+    MinValue: 1
+    MaxValue: 24
+    ConstraintDescription: Token expiration must be between 1 and 24 hours
+
+Conditions:
+  EnableLoggingCondition: !Equals [!Ref EnableLogging, "true"]
+
+Resources:
+  # KMS Key for CloudWatch Logs encryption
+  LogsKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS key for encrypting CloudWatch Logs"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Sid: Allow CloudWatch Logs
+            Effect: Allow
+            Principal:
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action:
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:DescribeKey"
+            Resource: "*"
+            Condition:
+              ArnEquals:
+                "kms:EncryptionContext:aws:logs:arn": !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: "CloudWatch Logs encryption"
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # KMS Key Alias for easier reference
+  LogsKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${ProjectName}-${Environment}-logs-key"
+      TargetKeyId: !Ref LogsKMSKey
+
+  # S3 Bucket for CRUD operations (always creates a new bucket)
+  # NOTE: S3 Object Lock is intentionally NOT enabled for this bucket.
+  # Rationale: This bucket is designed for full CRUD operations including DELETE functionality
+  # via the s3_delete_object MCP action. Enabling Object Lock would prevent deletion operations
+  # and break the intended functionality of this gateway. Object Lock is appropriate for
+  # compliance/audit scenarios requiring immutable storage, but not for general-purpose
+  # CRUD operations where users need the ability to delete objects.
+  # Security Finding: S3_BUCKET_DEFAULT_LOCK_ENABLED - Accepted as design decision
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_21
+            comment: "Object Lock not enabled by design - bucket requires DELETE operations for CRUD functionality"
+      cfn_nag:
+        rules_to_suppress:
+          - id: S3_BUCKET_DEFAULT_LOCK_ENABLED
+            reason: "Object Lock intentionally disabled to support s3_delete_object MCP action"
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+    Properties:
+      BucketName: !Sub "${S3BucketName}-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: "S3 bucket for MCP CRUD operations"
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # IAM Role for Lambda function execution
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: "IAM role for Lambda function to execute S3 CRUD operations"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Managed policy for Lambda S3 access
+  LambdaS3AccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: S3BucketAccess
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:GetObjectAttributes
+            Resource:
+              - !GetAtt S3Bucket.Arn
+              - !Sub "${S3Bucket.Arn}/*"
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # IAM Role for Bedrock Gateway service
+  BedrockGatewayServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+
+  # Managed policy for Bedrock Gateway Lambda invocation
+  BedrockGatewayLambdaInvokePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: LambdaInvokePolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: !GetAtt S3CrudLambdaFunction.Arn
+      Roles:
+        - !Ref BedrockGatewayServiceRole
+
+  # Cognito User Pool for service-to-service OAuth authentication
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+
+  # Cognito User Pool Domain for OAuth endpoints
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    DependsOn: CognitoUserPool
+    Properties:
+      Domain: !Sub "${ProjectName}-${Environment}-${AWS::AccountId}"
+      UserPoolId: !Ref CognitoUserPool
+
+  # Cognito Resource Server for OAuth 2.0 scopes
+  CognitoResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    DependsOn: CognitoUserPool
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      Identifier: !Sub "${ProjectName}-${Environment}-api"
+      Name: !Sub "${ProjectName} ${Environment} API"
+      # Define OAuth 2.0 scopes for service authorization
+      Scopes:
+        - ScopeName: "s3:crud"
+          ScopeDescription: "Full CRUD access to S3 bucket operations"
+        - ScopeName: "gateway:invoke"
+          ScopeDescription: "Permission to invoke gateway MCP actions"
+
+  # Cognito User Pool Client for service-to-service authentication
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn:
+      - CognitoResourceServer
+      - CognitoUserPoolDomain
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      # Configure for client credentials grant type (service-to-service)
+      ExplicitAuthFlows: []
+      GenerateSecret: true
+      # Configure OAuth 2.0 settings
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - !Sub "${ProjectName}-${Environment}-api/s3:crud"
+        - !Sub "${ProjectName}-${Environment}-api/gateway:invoke"
+      # Configure token expiration policies
+      AccessTokenValidity: !Ref TokenExpirationHours
+      TokenValidityUnits:
+        AccessToken: hours
+      # Disable user-facing features
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+      # No callback URLs needed for client credentials flow
+      CallbackURLs: []
+      LogoutURLs: []
+      # Supported identity providers (none needed for client credentials)
+      SupportedIdentityProviders: []
+
+  # CloudWatch Log Group for Lambda function
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EnableLoggingCondition
+    Properties:
+      RetentionInDays: 14
+      KmsKeyId: !GetAtt LogsKMSKey.Arn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: "Lambda function logs for S3 CRUD operations"
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # CloudWatch Log Group for Bedrock Gateway
+  GatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EnableLoggingCondition
+    Properties:
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt LogsKMSKey.Arn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: "Bedrock Gateway request/response logs"
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # CloudWatch Log Group for Security Events
+  SecurityLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EnableLoggingCondition
+    Properties:
+      RetentionInDays: 90
+      KmsKeyId: !GetAtt LogsKMSKey.Arn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: "Security event logs for authentication and authorization"
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # Lambda function for S3 CRUD operations
+  S3CrudLambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - LambdaExecutionRole
+    Properties:
+      Description: "Lambda function providing S3 CRUD operations for Bedrock Agent Gateway"
+      Runtime: python3.11
+      Handler: index.handler
+      Timeout: 30
+      MemorySize: 256
+      ReservedConcurrentExecutions: 10
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import logging
+          import os
+          from botocore.exceptions import ClientError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          s3_client = boto3.client('s3')
+
+          def handler(event, context):
+              """S3 operations handler for MCP protocol"""
+              logger.info(f"Received event: {json.dumps(event, default=str)}")
+              
+              try:
+                  # Get S3 bucket name from environment variable
+                  bucket_name = os.environ.get('S3_BUCKET_NAME')
+                  if not bucket_name:
+                      return {'error': 'S3_BUCKET_NAME environment variable not set'}
+                  
+                  # Handle s3_put_object (create/update)
+                  if 'content' in event and 'key' in event:
+                      key = event['key']
+                      content = event['content']
+                      metadata = event.get('metadata', {})
+                      is_base64 = event.get('is_base64', False)
+                      
+                      # Convert metadata values to strings (S3 requirement)
+                      str_metadata = {k: str(v) for k, v in metadata.items()} if metadata else {}
+                      
+                      # Handle base64 encoded binary content
+                      if is_base64:
+                          import base64
+                          body = base64.b64decode(content)
+                      else:
+                          body = content
+                      
+                      s3_client.put_object(
+                          Bucket=bucket_name,
+                          Key=key,
+                          Body=body,
+                          Metadata=str_metadata
+                      )
+                      return {
+                          'success': True,
+                          'message': f'Object {key} saved successfully',
+                          'bucket': bucket_name,
+                          'key': key,
+                          'size': len(body) if isinstance(body, bytes) else len(content)
+                      }
+                  
+                  # Handle s3_get_object (read)
+                  elif 'key' in event and 'content' not in event and not event.get('confirm'):
+                      key = event['key']
+                      try:
+                          response = s3_client.get_object(Bucket=bucket_name, Key=key)
+                          raw_content = response['Body'].read()
+                          content_type = response.get('ContentType', 'binary/octet-stream')
+                          
+                          # Determine if content is text or binary
+                          is_text = (
+                              content_type.startswith('text/') or
+                              content_type in ['application/json', 'application/xml', 'application/javascript'] or
+                              key.lower().endswith(('.txt', '.json', '.xml', '.html', '.css', '.js', '.md', '.yaml', '.yml'))
+                          )
+                          
+                          if is_text:
+                              try:
+                                  content = raw_content.decode('utf-8')
+                                  is_base64 = False
+                              except UnicodeDecodeError:
+                                  # Fallback to base64 if UTF-8 decode fails
+                                  import base64
+                                  content = base64.b64encode(raw_content).decode('ascii')
+                                  is_base64 = True
+                          else:
+                              # Binary files (PDFs, images, etc.) - encode as base64
+                              import base64
+                              content = base64.b64encode(raw_content).decode('ascii')
+                              is_base64 = True
+                          
+                          return {
+                              'success': True,
+                              'content': content,
+                              'is_base64': is_base64,
+                              'metadata': response.get('Metadata', {}),
+                              'bucket': bucket_name,
+                              'key': key,
+                              'last_modified': response.get('LastModified').isoformat() if response.get('LastModified') else None,
+                              'content_length': response.get('ContentLength', 0),
+                              'content_type': content_type
+                          }
+                      except ClientError as e:
+                          if e.response['Error']['Code'] == 'NoSuchKey':
+                              return {'error': f'Object {key} not found in bucket {bucket_name}'}
+                          else:
+                              raise
+                  
+                  # Handle s3_delete_object
+                  elif 'key' in event and event.get('confirm') is not None:
+                      key = event['key']
+                      s3_client.delete_object(Bucket=bucket_name, Key=key)
+                      return {
+                          'success': True,
+                          'message': f'Object {key} deleted successfully',
+                          'bucket': bucket_name,
+                          'key': key
+                      }
+                  
+                  # Handle s3_list_objects (only if prefix is explicitly provided or max_keys is provided)
+                  elif event.get('prefix') is not None or event.get('max_keys') is not None:
+                      prefix = event.get('prefix', '')
+                      max_keys = min(event.get('max_keys', 100), 1000)
+                      
+                      response = s3_client.list_objects_v2(
+                          Bucket=bucket_name,
+                          Prefix=prefix,
+                          MaxKeys=max_keys
+                      )
+                      
+                      objects = []
+                      for obj in response.get('Contents', []):
+                          objects.append({
+                              'key': obj['Key'],
+                              'size': obj['Size'],
+                              'last_modified': obj['LastModified'].isoformat(),
+                              'etag': obj['ETag'].strip('"')
+                          })
+                      
+                      return {
+                          'success': True,
+                          'objects': objects,
+                          'count': len(objects),
+                          'bucket': bucket_name,
+                          'prefix': prefix,
+                          'is_truncated': response.get('IsTruncated', False)
+                      }
+                  
+                  else:
+                      return {'error': 'Invalid request parameters. Check the tool schema for required fields.'}
+                      
+              except ClientError as e:
+                  logger.error(f"S3 operation failed: {str(e)}")
+                  error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+                  return {'status': 'error', 'message': f'S3 error ({error_code}): {str(e)}'}
+              except Exception as e:
+                  logger.error(f"Handler error: {str(e)}", exc_info=True)
+                  return {'status': 'error', 'message': f'Internal error: {str(e)}'}
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3Bucket
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+          ENABLE_LOGGING: !Ref EnableLogging
+          LOG_LEVEL: !If [EnableLoggingCondition, "INFO", "ERROR"]
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: "S3 CRUD operations for Bedrock Agent Gateway"
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # Lambda permission for Bedrock Gateway to invoke the function
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - S3CrudLambdaFunction
+      - BedrockAgentGateway
+    Properties:
+      FunctionName: !Ref S3CrudLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock-agentcore.amazonaws.com
+      SourceArn: !GetAtt BedrockAgentGateway.GatewayArn
+      SourceAccount: !Ref AWS::AccountId
+
+  # Gateway Target for Lambda function
+  S3CrudGatewayTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    DependsOn:
+      - BedrockAgentGateway
+      - LambdaInvokePermission
+      - S3CrudLambdaFunction
+    Properties:
+      Name: !Sub "${ProjectName}-${Environment}-s3-crud-target-${AWS::StackName}"
+      Description: "Gateway target for S3 CRUD operations via Lambda function"
+      GatewayIdentifier: !Ref BedrockAgentGateway
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      # Configure Lambda target with MCP tool definitions
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !GetAtt S3CrudLambdaFunction.Arn
+            ToolSchema:
+              InlinePayload:
+                - Name: "s3_put_object"
+                  Description: "Create or update an object in the S3 bucket (supports text and binary files)"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      key:
+                        Type: "string"
+                        Description: "S3 object key (path) for the object"
+                      content:
+                        Type: "string"
+                        Description: "Content to store - text for text files, base64 encoded for binary files (PDFs, images)"
+                      is_base64:
+                        Type: "boolean"
+                        Description: "Set to true if content is base64 encoded binary data"
+                      metadata:
+                        Type: "object"
+                        Description: "Optional metadata for the S3 object"
+                    Required:
+                      - "key"
+                      - "content"
+                - Name: "s3_get_object"
+                  Description: "Read an existing object from the S3 bucket (returns text or base64 for binary files)"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      key:
+                        Type: "string"
+                        Description: "S3 object key (path) to read"
+                    Required:
+                      - "key"
+                - Name: "s3_delete_object"
+                  Description: "Delete an object from the S3 bucket"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      key:
+                        Type: "string"
+                        Description: "S3 object key (path) to delete"
+                      confirm:
+                        Type: "boolean"
+                        Description: "Confirmation flag to prevent accidental deletion"
+                    Required:
+                      - "key"
+                - Name: "s3_list_objects"
+                  Description: "List objects in the S3 bucket"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      prefix:
+                        Type: "string"
+                        Description: "Optional prefix to filter objects"
+                      max_keys:
+                        Type: "integer"
+                        Description: "Maximum number of objects to return (default: 100)"
+                    Required: []
+
+  # Bedrock AgentCore Gateway with OAuth inbound authorization
+  BedrockAgentGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    DependsOn:
+      - BedrockGatewayServiceRole
+      - CognitoUserPoolClient
+      - CognitoUserPoolDomain
+    Properties:
+      Name: !Sub "${ProjectName}-${Environment}-gateway-${AWS::StackName}"
+      Description: "Bedrock AgentCore Gateway providing secure access to S3 CRUD operations via MCP protocol"
+      RoleArn: !GetAtt BedrockGatewayServiceRole.Arn
+      ProtocolType: MCP
+      AuthorizerType: CUSTOM_JWT
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          AllowedClients:
+            - !Ref CognitoUserPoolClient
+          DiscoveryUrl: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPool}/.well-known/openid-configuration"
+
+Outputs:
+  GatewayEndpointURL:
+    Description: Bedrock AgentCore Gateway endpoint URL
+    Value: !GetAtt BedrockAgentGateway.GatewayUrl
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-gateway-endpoint"
+
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID for service authentication
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-client-id"
+
+  CognitoTokenEndpoint:
+    Description: Cognito OAuth 2.0 token endpoint for client credentials flow
+    Value: !Sub "https://${ProjectName}-${Environment}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-token-endpoint"
+
+  CognitoUserPoolClientSecret:
+    Description: Cognito User Pool Client Secret for OAuth authentication
+    Value: !GetAtt CognitoUserPoolClient.ClientSecret
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-cognito-client-secret"

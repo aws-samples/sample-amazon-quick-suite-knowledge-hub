@@ -18,9 +18,9 @@ stages:
 pages:
   stage: deploy
   script:
-    - uv run mkdocs build --clean --verbose --site-dir public
+    - uv run mkdocs build --clean --verbose -f mkdocs.yml --site-dir "$CI_PROJECT_DIR/public"
   artifacts:
     paths:
-    - public
+      - public
   rules:
     - if: $CI_COMMIT_BRANCH == "main"

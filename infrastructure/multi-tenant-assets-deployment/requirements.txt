@@ -1,0 +1,12 @@
+# Runtime dependencies for the Quick Resource Migrator MCP server.
+# Resolved from PyPI at package time by scripts/build.sh (Linux aarch64 / py3.14).
+#
+# mcp is pinned <2.0.0: mcp 2.0.0 removed the `mcp.server.fastmcp` module that
+# server.py imports; unpinning would break the AgentCore bundle.
+# Minimum is >=1.10.0 to resolve HIGH-severity CVEs in the MCP SDK:
+#   CVE-2025-53365 (Streamable HTTP transport DoS, fixed in 1.10.0)
+#   CVE-2025-53366 (FastMCP validation-error DoS, fixed in 1.9.4)
+boto3>=1.35.0
+botocore>=1.35.0
+mcp>=1.10.0,<2.0.0
+aws-opentelemetry-distro>=0.8.0

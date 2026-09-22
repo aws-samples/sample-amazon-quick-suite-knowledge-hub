@@ -1,0 +1,58 @@
+{
+  "name": "finance-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@aws-amplify/ui-react": "^6.0.0",
+    "amazon-quicksight-embedding-sdk": "^2.11.3",
+    "aws-amplify": "^6.0.0",
+    "axios": "^1.6.0",
+    "chart.js": "^4.4.0",
+    "react": "^18.2.0",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "overrides": {
+    "nth-check": "^2.1.1",
+    "css-select": "^5.1.0",
+    "svgo": "^3.3.2",
+    "postcss": "^8.4.31",
+    "serialize-javascript": "^6.0.2",
+    "webpack-dev-server": "^4.15.2",
+    "sockjs": "^0.3.24",
+    "resolve-url-loader": "^5.0.0",
+    "bfj": "^9.1.3",
+    "jsonpath": "^1.1.1",
+    "underscore": "^1.13.8",
+    "qs": "^6.14.0",
+    "http-proxy-agent": "^7.0.2",
+    "rollup-plugin-terser": "^7.0.2",
+    "amazon-quicksight-embedding-sdk": {
+      "uuid": "^11.1.1"
+    }
+  }
+}

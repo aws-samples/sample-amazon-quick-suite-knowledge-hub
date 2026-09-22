@@ -1,0 +1,23 @@
+compliance_analysis_task:
+  description: >
+    Conduct a thorough analysis about {topic}
+    Make sure you find relevant information given the current year is {current_year}.
+  expected_output: >
+    A list with 10 bullet points and details of the most relevant information about {topic}
+  agent: compliance_analyst
+
+compliance_reporting_task:
+  description: >
+    Review the context you got and expand each topic into a full section for a report.
+    Make sure the report is detailed and contains any and all relevant information for Financial Services Organization
+  expected_output: >
+    A fully fledged report with the main topics, each with a full section of information.
+    Formatted as markdown without '```'
+  agent: compliance_specialist
+
+compliance_solution_task:
+  description: >
+    Based on the report, recommend a detailed technology solution to address {topic}.
+  expected_output: >
+    A prescriptive solution to address the organizational requirements. Formatted as markdown without '```'
+  agent: solutions_architect

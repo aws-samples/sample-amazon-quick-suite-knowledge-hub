@@ -1,5 +1,17 @@
 site/
 
+# MkDocs build output + hook-staged project docs
+site/
+docs/_projects/
+docs/infrastructure/
+docs/integration/
+docs/examples/
+docs/amazon-quick-on-desktop/
+.cache/
+
+# Pinned tool binaries (gitleaks) fetched by `uv run install`
+.tools/
+
 # Python
 __pycache__/
 *.py[cod]
