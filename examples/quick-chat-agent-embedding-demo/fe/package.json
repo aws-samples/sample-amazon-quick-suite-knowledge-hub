@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "amazon-quicksight-embedding-sdk": "^2.11.3",
-    "next": "^15.5.25",
+    "next": "^16.3.5",
     "react": "^19.0.0",
     "react-chatbotify": "^2.5.0",
     "react-dom": "^19.0.0"
