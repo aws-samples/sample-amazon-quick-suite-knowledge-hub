@@ -1,5 +1,5 @@
-import datetime
 import base64
+import datetime
 import json
 import logging
 import os
@@ -20,6 +20,7 @@ def _read_unverified_jwt_claims(token: str) -> dict:
     payload_segment = token.split(".")[1]
     padded = payload_segment + "=" * (-len(payload_segment) % 4)
     return json.loads(base64.urlsafe_b64decode(padded))
+
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -81,6 +82,7 @@ def verify_cognito_id_token(id_token):
         decode_kwargs["audience"] = COGNITO_APP_CLIENT_ID
     return jwt.decode(id_token, signing_key.key, **decode_kwargs)
 
+
 CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
     "Access-Control-Allow-Origin": "*",
@@ -139,7 +141,10 @@ def lambda_handler(event, context):
                         "statusCode": 401,
                         "headers": CORS_HEADERS,
                         "body": json.dumps(
-                            {"embedUrl": "", "status": "ERROR: invalid or unverifiable idToken"}
+                            {
+                                "embedUrl": "",
+                                "status": "ERROR: invalid or unverifiable idToken",
+                            }
                         ),
                     }
 
@@ -178,16 +183,17 @@ def lambda_handler(event, context):
                     # public JWKS for these tokens, so we read the claims without
                     # signature verification. Source authenticity is guaranteed
                     # by the authenticated AWS SDK call above.
-                    claims = _read_unverified_jwt_claims(
-                        oidc_token_response["idToken"]
-                    )
+                    claims = _read_unverified_jwt_claims(oidc_token_response["idToken"])
                     if "sts:identity_context" not in claims:
                         logger.error("OIDC token missing sts:identity_context claim")
                         return {
                             "statusCode": 502,
                             "headers": CORS_HEADERS,
                             "body": json.dumps(
-                                {"embedUrl": "", "status": "ERROR: malformed OIDC token"}
+                                {
+                                    "embedUrl": "",
+                                    "status": "ERROR: malformed OIDC token",
+                                }
                             ),
                         }
                     logger.info("=== ASSUMING ROLE ===")

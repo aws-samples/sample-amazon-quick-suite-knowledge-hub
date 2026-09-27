@@ -18,25 +18,30 @@ All the actual Snowflake logic (create tables from schema.py, write_pandas,
 PUT+COPY INTO) now lives in
 :mod:`generate_synthetic_data.pipeline.loaders.snowflake_loader_engine`.
 """
+
 from __future__ import annotations
 
 import os
 import sys
-from typing import List, Optional
 
 # Support both "python -m generate_synthetic_data.pipeline.snowflake_loader" and direct execution.
 try:
     from .db_loader import run
 except ImportError:  # pragma: no cover - direct-run fallback
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
     from generate_synthetic_data.pipeline.db_loader import run
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     # Preserve the original behavior: this entrypoint defaults to Snowflake.
     # Only set DB_ENGINE when the caller has not chosen one explicitly.
     os.environ.setdefault("DB_ENGINE", "snowflake")
-    return run(argv, description="Create + load Snowflake structured data (DB_ENGINE=snowflake).")
+    return run(
+        argv,
+        description="Create + load Snowflake structured data (DB_ENGINE=snowflake).",
+    )
 
 
 if __name__ == "__main__":

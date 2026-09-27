@@ -19,6 +19,7 @@ TRUNCATEd (RESTART IDENTITY CASCADE) before load for idempotency.
 
 Safety: ``dry_run`` prints the plan and never imports psycopg or connects.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -73,7 +74,9 @@ class PostgresLoader(Loader):
 
         self._pg.validate()
         logger.info("Connecting to Postgres: %s", self._pg.redacted_dsn())
-        conn = with_retries(lambda: psycopg.connect(self._pg.dsn()), label="postgres.connect")
+        conn = with_retries(
+            lambda: psycopg.connect(self._pg.dsn()), label="postgres.connect"
+        )
         try:
             yield conn
             conn.commit()
@@ -95,8 +98,10 @@ class PostgresLoader(Loader):
 
         if self.dry_run:
             self._dry_run_header()
-            print(f"  1. CREATE {len(create_table_ddl(engine='postgres'))} tables "
-                  f"from schema.py (engine=postgres, schema={schema})")
+            print(
+                f"  1. CREATE {len(create_table_ddl(engine='postgres'))} tables "
+                f"from schema.py (engine=postgres, schema={schema})"
+            )
             self._print_config()
             return 0
 
@@ -109,7 +114,10 @@ class PostgresLoader(Loader):
             _compose("SET search_path TO {}", schema_ident),
         ]
         # DDL bodies are emitted by the schema generator; wrap them as sql.SQL.
-        ddl = [sql.SQL(stmt) for stmt in create_table_ddl(engine="postgres", schema_prefix=schema)]
+        ddl = [
+            sql.SQL(stmt)
+            for stmt in create_table_ddl(engine="postgres", schema_prefix=schema)
+        ]
         statements = [*prelude, *ddl]
 
         with self._connection() as conn:
@@ -132,18 +140,23 @@ class PostgresLoader(Loader):
         if self.dry_run:
             self._dry_run_header()
             if csvs:
-                print(f"  2. LOAD via COPY FROM STDIN ({len(csvs)} CSV(s) under "
-                      f"{generated_dir}/structured/tables/), schema={self._pg.schema}:")
+                print(
+                    f"  2. LOAD via COPY FROM STDIN ({len(csvs)} CSV(s) under "
+                    f"{generated_dir}/structured/tables/), schema={self._pg.schema}:"
+                )
                 for c in csvs:
                     print(f"       • TRUNCATE {c.stem.lower()} → COPY ← {c.name}")
             else:
-                print(f"  2. LOAD via COPY, but no per-table CSVs found under "
-                      f"{generated_dir}/structured/tables/. Run the generator first.")
+                print(
+                    f"  2. LOAD via COPY, but no per-table CSVs found under "
+                    f"{generated_dir}/structured/tables/. Run the generator first."
+                )
             self._print_config()
             return "dry-run"
 
         if not csvs:
             from ..config import ConfigError
+
             raise ConfigError(
                 f"No per-table CSVs found under {generated_dir}/structured/tables/. "
                 "Run: python generate_synthetic_data/generators/generate_all_data.py --output ./synthetic_data/"
@@ -155,7 +168,9 @@ class PostgresLoader(Loader):
             with conn.cursor() as cur:
                 validate_identifier(self._pg.schema, kind="schema")
                 # search_path takes an identifier, so compose with sql.Identifier.
-                search_path_sql = _compose("SET search_path TO {}", sql.Identifier(self._pg.schema))
+                search_path_sql = _compose(
+                    "SET search_path TO {}", sql.Identifier(self._pg.schema)
+                )
                 cur.execute(search_path_sql)
             for csv_path in csvs:
                 self._copy_csv(conn, csv_path.stem.lower(), csv_path)
@@ -173,12 +188,14 @@ class PostgresLoader(Loader):
 
         def _do() -> None:
             with conn.cursor() as cur:
-                truncate_sql = _compose("TRUNCATE TABLE {} RESTART IDENTITY CASCADE", qualified)
+                truncate_sql = _compose(
+                    "TRUNCATE TABLE {} RESTART IDENTITY CASCADE", qualified
+                )
                 cur.execute(truncate_sql)
                 logger.info("COPY %s ← %s", qualified_str, csv_path.name)
                 # Read the header to build an explicit column list so identity
                 # columns absent from the CSV are left to their defaults.
-                with open(csv_path, "r", encoding="utf-8") as fh:
+                with open(csv_path, encoding="utf-8") as fh:
                     header = fh.readline().rstrip("\n\r")
                 col_names = [c.strip() for c in header.split(",")]
                 for col in col_names:
@@ -186,7 +203,8 @@ class PostgresLoader(Loader):
                 cols = sql.SQL(", ").join(sql.Identifier(c) for c in col_names)
                 copy_sql = _compose(
                     "COPY {} ({}) FROM STDIN WITH (FORMAT CSV, HEADER TRUE)",
-                    qualified, cols,
+                    qualified,
+                    cols,
                 )
                 with open(csv_path, "rb") as fh, cur.copy(copy_sql) as cp:
                     while True:

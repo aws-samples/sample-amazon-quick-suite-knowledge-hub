@@ -28,6 +28,7 @@ Usage:
   python deploy_registry.py --dry-run       # preview, no changes
   python deploy_registry.py --region us-east-1
 """
+
 import argparse
 import json
 import os
@@ -68,14 +69,26 @@ A2A_SCHEMA_VERSION = "0.3.0"
 # Logical record name -> live gateway name to resolve via list_gateways.
 # (record_name, gateway_name, description)
 MCP_GATEWAY_MAP = [
-    ("sc-quoting-mcp", "sc-quoting-gateway",
-     "Supply Chain Quoting MCP - Pricing engine"),
-    ("sc-governance-mcp", "sc-governance-gateway",
-     "Supply Chain Governance MCP - compliance checks"),
-    ("sc-invoice-processing-mcp", "sc-invoice-gateway",
-     "Supply Chain Invoice Processing MCP - approval rules"),
-    ("sc-disruption-alert-mcp", "sc-disruption-alert-gateway",
-     "Supply Chain Disruption Alert MCP - monitoring, mitigation"),
+    (
+        "sc-quoting-mcp",
+        "sc-quoting-gateway",
+        "Supply Chain Quoting MCP - Pricing engine",
+    ),
+    (
+        "sc-governance-mcp",
+        "sc-governance-gateway",
+        "Supply Chain Governance MCP - compliance checks",
+    ),
+    (
+        "sc-invoice-processing-mcp",
+        "sc-invoice-gateway",
+        "Supply Chain Invoice Processing MCP - approval rules",
+    ),
+    (
+        "sc-disruption-alert-mcp",
+        "sc-disruption-alert-gateway",
+        "Supply Chain Disruption Alert MCP - monitoring, mitigation",
+    ),
 ]
 
 
@@ -86,7 +99,11 @@ _MCP_DESC_MAX = 100
 def _clamp_desc(text: str) -> str:
     """Clamp a description to the MCP schema's 100-char limit (ASCII-safe)."""
     t = (text or "").encode("ascii", "replace").decode("ascii")
-    return t if len(t) <= _MCP_DESC_MAX else t[: _MCP_DESC_MAX - 1].rstrip() + "…".encode("ascii", "replace").decode()
+    return (
+        t
+        if len(t) <= _MCP_DESC_MAX
+        else t[: _MCP_DESC_MAX - 1].rstrip() + "…".encode("ascii", "replace").decode()
+    )
 
 
 def endpoint_for(gateway_id: str, region: str) -> str:
@@ -99,22 +116,31 @@ def mcp_data(name, gateway_id, client_id, user_pool_id, domain, region, descript
     The gateway endpoint goes in remotes[].url. Cognito 3LO consumer hints are
     carried in _meta (namespaced), since the gateways use CUSTOM_JWT auth.
     """
-    return json.dumps({
-        "name": f"io.supplychain/{name}",
-        "description": _clamp_desc(description),
-        "version": "1.0.0",
-        "remotes": [{
-            "type": "streamable-http",
-            "url": endpoint_for(gateway_id, region),
-        }],
-        "_meta": {
-            "com.supplychain": {
-                "gatewayId": gateway_id,
-                "auth": {"type": "cognito_3lo", "userPoolId": user_pool_id,
-                         "clientId": client_id, "domain": domain},
-            }
+    return json.dumps(
+        {
+            "name": f"io.supplychain/{name}",
+            "description": _clamp_desc(description),
+            "version": "1.0.0",
+            "remotes": [
+                {
+                    "type": "streamable-http",
+                    "url": endpoint_for(gateway_id, region),
+                }
+            ],
+            "_meta": {
+                "com.supplychain": {
+                    "gatewayId": gateway_id,
+                    "auth": {
+                        "type": "cognito_3lo",
+                        "userPoolId": user_pool_id,
+                        "clientId": client_id,
+                        "domain": domain,
+                    },
+                }
+            },
         },
-    }, separators=(",", ":"))
+        separators=(",", ":"),
+    )
 
 
 def runtime_invocation_url(runtime_arn: str, region: str) -> str:
@@ -124,11 +150,15 @@ def runtime_invocation_url(runtime_arn: str, region: str) -> str:
       https://bedrock-agentcore.<region>.amazonaws.com/runtimes/<ARN>/invocations?qualifier=DEFAULT
     """
     encoded = _urlquote(runtime_arn, safe="")
-    return (f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/"
-            f"{encoded}/invocations?qualifier=DEFAULT")
+    return (
+        f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/"
+        f"{encoded}/invocations?qualifier=DEFAULT"
+    )
 
 
-def agent_a2a_card(runtime_arn, runtime_id, client_id, user_pool_id, domain, region, description):
+def agent_a2a_card(
+    runtime_arn, runtime_id, client_id, user_pool_id, domain, region, description
+):
     """Produce an A2A Agent Card (application/json) for the order-fulfillment
     AgentCore Runtime, registered as an AGENT-type record. The agent is reached at
     its direct runtime invocation URL. NOTE: A2A agent records are catalog entries —
@@ -136,35 +166,55 @@ def agent_a2a_card(runtime_arn, runtime_id, client_id, user_pool_id, domain, reg
     connector for this runtime is configured manually.
     """
     url = runtime_invocation_url(runtime_arn, region)
-    return json.dumps({
-        "protocolVersion": "0.3.0",
-        "name": "sc-order-fulfillment-agent",
-        "description": _clamp_desc(description),
-        "url": url,
-        "preferredTransport": "JSONRPC",
-        "version": "1.0.0",
-        "capabilities": {"streaming": True, "pushNotifications": False,
-                         "stateTransitionHistory": False},
-        "defaultInputModes": ["application/json", "text/plain"],
-        "defaultOutputModes": ["application/json", "text/plain"],
-        "skills": [{
-            "id": "order-fulfillment-orchestration",
-            "name": "Order fulfillment orchestration",
-            "description": ("Multi-step supply chain reasoning: chains the quoting, "
-                            "governance, invoice-processing, and disruption MCP tools "
-                            "to fulfill orders and produce contingency plans."),
-            "tags": ["supply-chain", "orchestration", "quoting", "governance",
-                     "invoice", "disruption"],
-        }],
-        "_meta": {
-            "com.supplychain": {
-                "runtimeId": runtime_id,
-                "runtimeArn": runtime_arn,
-                "auth": {"type": "cognito_3lo", "userPoolId": user_pool_id,
-                         "clientId": client_id, "domain": domain},
-            }
+    return json.dumps(
+        {
+            "protocolVersion": "0.3.0",
+            "name": "sc-order-fulfillment-agent",
+            "description": _clamp_desc(description),
+            "url": url,
+            "preferredTransport": "JSONRPC",
+            "version": "1.0.0",
+            "capabilities": {
+                "streaming": True,
+                "pushNotifications": False,
+                "stateTransitionHistory": False,
+            },
+            "defaultInputModes": ["application/json", "text/plain"],
+            "defaultOutputModes": ["application/json", "text/plain"],
+            "skills": [
+                {
+                    "id": "order-fulfillment-orchestration",
+                    "name": "Order fulfillment orchestration",
+                    "description": (
+                        "Multi-step supply chain reasoning: chains the quoting, "
+                        "governance, invoice-processing, and disruption MCP tools "
+                        "to fulfill orders and produce contingency plans."
+                    ),
+                    "tags": [
+                        "supply-chain",
+                        "orchestration",
+                        "quoting",
+                        "governance",
+                        "invoice",
+                        "disruption",
+                    ],
+                }
+            ],
+            "_meta": {
+                "com.supplychain": {
+                    "runtimeId": runtime_id,
+                    "runtimeArn": runtime_arn,
+                    "auth": {
+                        "type": "cognito_3lo",
+                        "userPoolId": user_pool_id,
+                        "clientId": client_id,
+                        "domain": domain,
+                    },
+                }
+            },
         },
-    }, separators=(",", ":"))
+        separators=(",", ":"),
+    )
 
 
 class LiveResourceResolver:
@@ -177,8 +227,10 @@ class LiveResourceResolver:
         self.user_pool_id = None
         self.domain = None
         self.client_id = None
-        self.resource_server_id = os.environ.get("RESOURCE_SERVER_ID", DEFAULT_RESOURCE_SERVER_ID)
-        self.gateway_ids = {}      # gateway_name -> gatewayId
+        self.resource_server_id = os.environ.get(
+            "RESOURCE_SERVER_ID", DEFAULT_RESOURCE_SERVER_ID
+        )
+        self.gateway_ids = {}  # gateway_name -> gatewayId
         self.runtime_id = None
         self.runtime_arn = None
 
@@ -209,13 +261,17 @@ class LiveResourceResolver:
                 break
             kwargs["NextToken"] = resp["NextToken"]
         if not pool_id:
-            sys.exit(f"ERROR: Cognito user pool '{COGNITO_USER_POOL_NAME}' not found in {self.region}")
+            sys.exit(
+                f"ERROR: Cognito user pool '{COGNITO_USER_POOL_NAME}' not found in {self.region}"
+            )
         self.user_pool_id = pool_id
 
         pool = idp.describe_user_pool(UserPoolId=pool_id)["UserPool"]
         domain = pool.get("Domain")
         if not domain:
-            sys.exit(f"ERROR: Cognito user pool '{COGNITO_USER_POOL_NAME}' has no hosted UI domain")
+            sys.exit(
+                f"ERROR: Cognito user pool '{COGNITO_USER_POOL_NAME}' has no hosted UI domain"
+            )
         self.domain = domain
 
         # Exactly one non-default app client is expected after the single-client refactor.
@@ -231,9 +287,13 @@ class LiveResourceResolver:
             sys.exit(f"ERROR: no app clients found on user pool {pool_id}")
         if len(clients) > 1:
             names = ", ".join(c.get("ClientName", "?") for c in clients)
-            self.log(f"WARNING: expected 1 app client, found {len(clients)}: {names}. Using the first.")
+            self.log(
+                f"WARNING: expected 1 app client, found {len(clients)}: {names}. Using the first."
+            )
         self.client_id = clients[0]["ClientId"]
-        self.log(f"Cognito: pool={self.user_pool_id} domain={self.domain} clientId={self.client_id}")
+        self.log(
+            f"Cognito: pool={self.user_pool_id} domain={self.domain} clientId={self.client_id}"
+        )
 
     def _resolve_gateways(self):
         ctrl = self.session.client("bedrock-agentcore-control")
@@ -255,18 +315,22 @@ class LiveResourceResolver:
             if name.startswith("sc-") and gid:
                 by_name[name] = gid
 
-        for record_name, gateway_name, _desc in MCP_GATEWAY_MAP:
+        for _record_name, gateway_name, _desc in MCP_GATEWAY_MAP:
             match = by_name.get(gateway_name)
             if not match:
                 # Allow suffixed live names (e.g. sc-quoting-gateway-cnq4wbqwq9).
                 candidates = sorted(
-                    (n for n in by_name if n == gateway_name or n.startswith(gateway_name + "-"))
+                    n
+                    for n in by_name
+                    if n == gateway_name or n.startswith(gateway_name + "-")
                 )
                 if candidates:
                     match = by_name[candidates[0]]
             if not match:
-                sys.exit(f"ERROR: live MCP gateway '{gateway_name}' not found "
-                         f"(available sc- gateways: {sorted(by_name) or 'none'})")
+                sys.exit(
+                    f"ERROR: live MCP gateway '{gateway_name}' not found "
+                    f"(available sc- gateways: {sorted(by_name) or 'none'})"
+                )
             self.gateway_ids[gateway_name] = match
             self.log(f"Gateway {gateway_name} -> {match}")
 
@@ -283,12 +347,17 @@ class LiveResourceResolver:
             kwargs["nextToken"] = token
 
         candidates = [
-            r for r in runtimes
-            if (r.get("agentRuntimeName") or r.get("name") or "").startswith(AGENT_RUNTIME_NAME_PREFIX)
+            r
+            for r in runtimes
+            if (r.get("agentRuntimeName") or r.get("name") or "").startswith(
+                AGENT_RUNTIME_NAME_PREFIX
+            )
         ]
         if not candidates:
-            sys.exit(f"ERROR: no agent runtime whose name starts with "
-                     f"'{AGENT_RUNTIME_NAME_PREFIX}' was found in {self.region}")
+            sys.exit(
+                f"ERROR: no agent runtime whose name starts with "
+                f"'{AGENT_RUNTIME_NAME_PREFIX}' was found in {self.region}"
+            )
 
         def version_key(r):
             v = r.get("agentRuntimeVersion") or r.get("version") or "0"
@@ -306,8 +375,10 @@ class LiveResourceResolver:
         # Fall back to constructing it from account/region/runtime_id if the list
         # response did not include it.
         if not self.runtime_arn:
-            self.runtime_arn = (f"arn:aws:bedrock-agentcore:{self.region}:"
-                                f"{self.account_id}:runtime/{self.runtime_id}")
+            self.runtime_arn = (
+                f"arn:aws:bedrock-agentcore:{self.region}:"
+                f"{self.account_id}:runtime/{self.runtime_id}"
+            )
         self.log(f"Agent runtime: {self.runtime_id} (arn: {self.runtime_arn})")
 
 
@@ -353,12 +424,16 @@ class RegistryDeployer:
             self.destroy(existing)
             existing = None
         if existing:
-            self.log(f"Already exists: {existing} — reusing. (use --recreate to rebuild)")
+            self.log(
+                f"Already exists: {existing} — reusing. (use --recreate to rebuild)"
+            )
             self.registry_id = existing
             self._wait_ready()
             return
         if self.dry_run:
-            self.log("[DRY RUN] create_registry AWS_IAM + autoApprovalRules=[APPROVE_ALL]")
+            self.log(
+                "[DRY RUN] create_registry AWS_IAM + autoApprovalRules=[APPROVE_ALL]"
+            )
             self.registry_id = "DRY_RUN_REGISTRY_ID"
             return
         resp = self.c.create_registry(
@@ -386,64 +461,110 @@ class RegistryDeployer:
     def _delete_if_exists(self, name):
         if self.dry_run and self.registry_id == "DRY_RUN_REGISTRY_ID":
             return
-        for rec in self.c.list_registry_records(registryId=self.registry_id).get("registryRecords", []):
+        for rec in self.c.list_registry_records(registryId=self.registry_id).get(
+            "registryRecords", []
+        ):
             if rec["name"] == name:
                 self.log(f"Replacing existing record '{name}' ({rec['recordId']})")
                 if not self.dry_run:
-                    self.c.delete_registry_record(registryId=self.registry_id, recordId=rec["recordId"])
+                    self.c.delete_registry_record(
+                        registryId=self.registry_id, recordId=rec["recordId"]
+                    )
 
     def _create(self, name, record_type, descriptors, description, record_version=None):
         self._delete_if_exists(name)
         if self.dry_run:
             self.log(f"[DRY RUN] create_registry_record {record_type} {name}")
             return
-        kwargs = dict(registryId=self.registry_id, name=name, description=description,
-                      recordType=record_type, descriptors=descriptors)
+        kwargs = {
+            "registryId": self.registry_id,
+            "name": name,
+            "description": description,
+            "recordType": record_type,
+            "descriptors": descriptors,
+        }
         if record_version:
             kwargs["recordVersion"] = record_version
         self.c.create_registry_record(**kwargs)
         self.log(f"  registered {name} ({record_type}).")
 
     def register_mcps(self):
-        print("\n" + "=" * 60); print("  Registering business MCP records (4)")
+        print("\n" + "=" * 60)
+        print("  Registering business MCP records (4)")
         for record_name, gateway_name, desc in MCP_GATEWAY_MAP:
             gateway_id = self.r.gateway_ids[gateway_name]
             self.log(f"→ {record_name}  ({gateway_id})")
-            self._create(record_name, "MCP",
-                         {"mcpServer": {"data": mcp_data(
-                             record_name, gateway_id, self.r.client_id,
-                             self.r.user_pool_id, self.r.domain, self.region, desc),
-                             "dataSchemaVersion": MCP_SCHEMA_VERSION}}, desc)
+            self._create(
+                record_name,
+                "MCP",
+                {
+                    "mcpServer": {
+                        "data": mcp_data(
+                            record_name,
+                            gateway_id,
+                            self.r.client_id,
+                            self.r.user_pool_id,
+                            self.r.domain,
+                            self.region,
+                            desc,
+                        ),
+                        "dataSchemaVersion": MCP_SCHEMA_VERSION,
+                    }
+                },
+                desc,
+            )
 
     def register_agent(self):
-        print("\n" + "=" * 60); print("  Registering Agent record (1)")
+        print("\n" + "=" * 60)
+        print("  Registering Agent record (1)")
         desc = "Supply Chain Order Fulfillment Agent (AgentCore Runtime) - multi-step orchestration"
         self.log(f"→ sc-order-fulfillment-agent  (AGENT, runtime {self.r.runtime_id})")
-        self._create("sc-order-fulfillment-agent", "AGENT",
-                     {"a2aAgentCard": {"data": agent_a2a_card(
-                         self.r.runtime_arn, self.r.runtime_id, self.r.client_id,
-                         self.r.user_pool_id, self.r.domain, self.region, desc),
-                         "dataSchemaVersion": A2A_SCHEMA_VERSION}},
-                     desc)
+        self._create(
+            "sc-order-fulfillment-agent",
+            "AGENT",
+            {
+                "a2aAgentCard": {
+                    "data": agent_a2a_card(
+                        self.r.runtime_arn,
+                        self.r.runtime_id,
+                        self.r.client_id,
+                        self.r.user_pool_id,
+                        self.r.domain,
+                        self.region,
+                        desc,
+                    ),
+                    "dataSchemaVersion": A2A_SCHEMA_VERSION,
+                }
+            },
+            desc,
+        )
 
     def register_skill(self):
-        print("\n" + "=" * 60); print("  Registering Skill record (1)")
+        print("\n" + "=" * 60)
+        print("  Registering Skill record (1)")
         if not SKILL_MD_PATH.exists():
             sys.exit(f"ERROR: skill markdown not found at {SKILL_MD_PATH}")
         self.log(f"→ supply-chain-ops  (skill from {SKILL_MD_PATH})")
         skill_md = SKILL_MD_PATH.read_text(encoding="utf-8")
         self._create(
-            "supply-chain-ops", "SKILL",
-            {"agentSkillsDefinition": {"additionalData": {"skillMd": {"data": skill_md}}}},
+            "supply-chain-ops",
+            "SKILL",
+            {
+                "agentSkillsDefinition": {
+                    "additionalData": {"skillMd": {"data": skill_md}}
+                }
+            },
             "Orchestrates supply chain operations by combining Snowflake data queries with "
             "business-rule MCPs (Quoting, Governance, Invoice Processing, Disruption Alerts). "
             "Handles quotes, invoices, orders, inventory, suppliers, disruptions, pricing, "
             "compliance, shipments, procurement, fulfillment, and payment queues. Generates "
             "professional company-branded HTML documents.",
-            record_version="1.0.0")
+            record_version="1.0.0",
+        )
 
     def submit_all(self):
-        print("\n" + "=" * 60); print("  Submitting records for approval (APPROVE_ALL → APPROVED)")
+        print("\n" + "=" * 60)
+        print("  Submitting records for approval (APPROVE_ALL → APPROVED)")
         if self.dry_run:
             self.log("[DRY RUN] submit all DRAFT records for approval")
             return
@@ -451,8 +572,10 @@ class RegistryDeployer:
         # and APPROVE_ALL moves them DRAFT→APPROVED shortly after submit. Poll until
         # no record is CREATING, submit every DRAFT, and repeat until none remain
         # DRAFT (or a bounded number of attempts).
-        for attempt in range(15):
-            recs = self.c.list_registry_records(registryId=self.registry_id).get("registryRecords", [])
+        for _attempt in range(15):
+            recs = self.c.list_registry_records(registryId=self.registry_id).get(
+                "registryRecords", []
+            )
             if any(r.get("status") == "CREATING" for r in recs):
                 _poll_wait(4)
                 continue
@@ -462,29 +585,41 @@ class RegistryDeployer:
             for rec in drafts:
                 try:
                     self.c.submit_registry_record_for_approval(
-                        registryId=self.registry_id, recordId=rec["recordId"])
+                        registryId=self.registry_id, recordId=rec["recordId"]
+                    )
                     self.log(f"submitted {rec['name']}")
                 except ClientError as e:
                     self.log(f"submit retry {rec['name']}: {str(e)[:80]}")
             _poll_wait(6)
 
     def summary(self):
-        print("\n" + "=" * 60); print("  Summary")
+        print("\n" + "=" * 60)
+        print("  Summary")
         if self.dry_run:
             self.log("Dry run complete — no changes made.")
             return
         self.log(f"Registry: {self.registry_id}")
-        recs = self.c.list_registry_records(registryId=self.registry_id).get("registryRecords", [])
+        recs = self.c.list_registry_records(registryId=self.registry_id).get(
+            "registryRecords", []
+        )
         for r in sorted(recs, key=lambda x: x["name"]):
             self.log(f"  {r['status']:<10} {r['recordType']:<8} {r['name']}")
 
 
 def main():
     default_region = os.environ.get("AWS_REGION") or "us-east-1"
-    ap = argparse.ArgumentParser(description="Deploy the standalone AWS Agent Registry (IaC)")
+    ap = argparse.ArgumentParser(
+        description="Deploy the standalone AWS Agent Registry (IaC)"
+    )
     ap.add_argument("--region", default=default_region)
-    ap.add_argument("--recreate", action="store_true", help="delete + rebuild the registry")
-    ap.add_argument("--delete", action="store_true", help="delete the registry (records + registry) and exit")
+    ap.add_argument(
+        "--recreate", action="store_true", help="delete + rebuild the registry"
+    )
+    ap.add_argument(
+        "--delete",
+        action="store_true",
+        help="delete the registry (records + registry) and exit",
+    )
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 

@@ -2,19 +2,19 @@ name: Security Scanning
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.py"
       - "pyproject.toml"
       - ".github/workflows/**"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "**/*.py"
       - "pyproject.toml"
       - ".github/workflows/**"
   schedule:
-    - cron: '0 12 * * 1'  # Weekly security scan on Monday at 12:00 UTC
+    - cron: "0 12 * * 1" # Weekly security scan on Monday at 12:00 UTC
 
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv package manager
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'

@@ -20,6 +20,7 @@ Approach
 Safety: ``dry_run`` prints the plan and never imports SQLAlchemy/pandas or
 connects.
 """
+
 from __future__ import annotations
 
 import logging
@@ -96,8 +97,10 @@ class SQLAlchemyLoader(Loader):
 
         if self.dry_run:
             self._dry_run_header()
-            print(f"  1. CREATE {len(statements)} tables from schema.py "
-                  f"(engine=ansi) via SQLAlchemy engine")
+            print(
+                f"  1. CREATE {len(statements)} tables from schema.py "
+                f"(engine=ansi) via SQLAlchemy engine"
+            )
             self._print_config()
             return 0
 
@@ -130,19 +133,26 @@ class SQLAlchemyLoader(Loader):
             self._dry_run_header()
             if csvs:
                 schema = self._sa.schema or "(default)"
-                print(f"  2. LOAD via pandas.to_sql(method='multi', chunksize=1000) "
-                      f"({len(csvs)} CSV(s) under {generated_dir}/structured/tables/), "
-                      f"schema={schema}:")
+                print(
+                    f"  2. LOAD via pandas.to_sql(method='multi', chunksize=1000) "
+                    f"({len(csvs)} CSV(s) under {generated_dir}/structured/tables/), "
+                    f"schema={schema}:"
+                )
                 for c in csvs:
-                    print(f"       • TRUNCATE/DELETE {c.stem.lower()} → to_sql ← {c.name}")
+                    print(
+                        f"       • TRUNCATE/DELETE {c.stem.lower()} → to_sql ← {c.name}"
+                    )
             else:
-                print(f"  2. LOAD via to_sql, but no per-table CSVs found under "
-                      f"{generated_dir}/structured/tables/. Run the generator first.")
+                print(
+                    f"  2. LOAD via to_sql, but no per-table CSVs found under "
+                    f"{generated_dir}/structured/tables/. Run the generator first."
+                )
             self._print_config()
             return "dry-run"
 
         if not csvs:
             from ..config import ConfigError
+
             raise ConfigError(
                 f"No per-table CSVs found under {generated_dir}/structured/tables/. "
                 "Run: python generate_synthetic_data/generators/generate_all_data.py --output ./synthetic_data/"
@@ -172,8 +182,13 @@ class SQLAlchemyLoader(Loader):
                     )
                 with_retries(
                     lambda d=df, t=table: d.to_sql(
-                        t, engine, if_exists="append", index=False,
-                        schema=schema, method="multi", chunksize=1000,
+                        t,
+                        engine,
+                        if_exists="append",
+                        index=False,
+                        schema=schema,
+                        method="multi",
+                        chunksize=1000,
                     ),
                     label=f"to_sql {table}",
                 )

@@ -10,7 +10,6 @@ import json
 import os
 import re
 import shutil
-import uuid
 
 from aws_cdk import (
     CfnOutput,
@@ -454,8 +453,7 @@ class ActuarialToolsStack(Stack):
         )
         h = hashlib.sha256(raw_prefix.encode("utf-8")).hexdigest()[:6]
         domain_prefix = (
-            self.node.try_get_context("cognito_domain_prefix")
-            or f"{sanitized}-{h}"
+            self.node.try_get_context("cognito_domain_prefix") or f"{sanitized}-{h}"
         )
 
         # Cognito User Pool (machine-to-machine auth via client credentials)

@@ -31,14 +31,15 @@ regenerate the documents with any agentic tool.
 Requirements (optional):
     pip install reportlab      # for PDF output; TXT is always produced
 """
-import os
-import csv
-import argparse
 
+import argparse
+import csv
+import os
 
 # ═══════════════════════════════════════════════════════════════
 # CSV loading helpers
 # ═══════════════════════════════════════════════════════════════
+
 
 def _tables_dir(data_dir):
     return os.path.join(data_dir, "structured", "tables")
@@ -134,6 +135,7 @@ Cause: 30 days cure period
 # Entity selection from synthetic CSVs
 # ═══════════════════════════════════════════════════════════════
 
+
 def select_entities(data_dir):
     """Pick the specific rows the 4 documents encode, from the synthetic CSVs."""
     invoices = load_table(data_dir, "INVOICES")
@@ -149,24 +151,36 @@ def select_entities(data_dir):
 
     # Invoice #1: matches PO exactly (AUTO_APPROVE).
     match_inv = next(
-        (i for i in invoices
-         if i["APPROVAL_ACTION"] == "AUTO_APPROVE"
-         and i["PO_NUMBER"] in pos
-         and abs(_f(i["TOTAL_AMOUNT"]) - _f(pos[i["PO_NUMBER"]]["TOTAL_COST"])) < 0.01),
+        (
+            i
+            for i in invoices
+            if i["APPROVAL_ACTION"] == "AUTO_APPROVE"
+            and i["PO_NUMBER"] in pos
+            and abs(_f(i["TOTAL_AMOUNT"]) - _f(pos[i["PO_NUMBER"]]["TOTAL_COST"]))
+            < 0.01
+        ),
         None,
     )
     # Invoice #2: ~6% variance vs PO (review).
     var_inv = next(
-        (i for i in invoices
-         if i["PO_NUMBER"] in pos
-         and abs(_f(i["TOTAL_AMOUNT"]) - _f(pos[i["PO_NUMBER"]]["TOTAL_COST"])) >= 0.01),
+        (
+            i
+            for i in invoices
+            if i["PO_NUMBER"] in pos
+            and abs(_f(i["TOTAL_AMOUNT"]) - _f(pos[i["PO_NUMBER"]]["TOTAL_COST"]))
+            >= 0.01
+        ),
         None,
     )
 
     # Contracts: volume-tier one = largest VOLUME_COMMITMENT; early-payment one
     # = shortest payment terms (Net 15) among the first two.
     contracts_sorted = contracts[:]
-    volume_contract = max(contracts_sorted, key=lambda c: int(c["VOLUME_COMMITMENT"])) if contracts else None
+    volume_contract = (
+        max(contracts_sorted, key=lambda c: int(c["VOLUME_COMMITMENT"]))
+        if contracts
+        else None
+    )
     early_pay = next((c for c in contracts if c["PAYMENT_TERMS"] == "Net 15"), None)
     if early_pay is None and len(contracts) >= 2:
         early_pay = contracts[1]
@@ -187,6 +201,7 @@ def select_entities(data_dir):
 # Fill templates
 # ═══════════════════════════════════════════════════════════════
 
+
 def render_invoice(inv, ctx, *, variance):
     po = ctx["pos"].get(inv["PO_NUMBER"], {})
     line = ctx["po_line_by_po"].get(inv["PO_NUMBER"], {})
@@ -203,9 +218,11 @@ def render_invoice(inv, ctx, *, variance):
     if variance:
         po_total = _f(po.get("TOTAL_COST", 0))
         pct = round((total - po_total) / po_total * 100, 1) if po_total else 0.0
-        note = (f"⚠️  VARIANCE NOTE: PO {inv['PO_NUMBER']} total was "
-                f"${po_total:,.2f}. Invoice total ${total:,.2f} = {pct}% increase.\n"
-                f"    Exceeds tolerance → requires DIRECTOR/MANAGER REVIEW.")
+        note = (
+            f"⚠️  VARIANCE NOTE: PO {inv['PO_NUMBER']} total was "
+            f"${po_total:,.2f}. Invoice total ${total:,.2f} = {pct}% increase.\n"
+            f"    Exceeds tolerance → requires DIRECTOR/MANAGER REVIEW."
+        )
     else:
         note = f"This invoice matches PO {inv['PO_NUMBER']} exactly. No variance → AUTO_APPROVE."
 
@@ -235,17 +252,23 @@ def render_contract(contract, ctx, *, early_payment):
     discount = _f(contract["DISCOUNT_PCT"])
 
     if early_payment:
-        pricing_block = (f"Volume Tiers:\n"
-                         f"  Standard order:  {discount:.0f}% discount\n"
-                         f"  Bulk order:      {discount + 4:.0f}% discount")
-        payment_block = ("*** EARLY PAYMENT DISCOUNT: 2/10 Net 15 ***\n"
-                         "  2% discount if paid within 10 days of invoice date.\n"
-                         "  (Annualized benefit ~36% — strongly recommended)")
+        pricing_block = (
+            f"Volume Tiers:\n"
+            f"  Standard order:  {discount:.0f}% discount\n"
+            f"  Bulk order:      {discount + 4:.0f}% discount"
+        )
+        payment_block = (
+            "*** EARLY PAYMENT DISCOUNT: 2/10 Net 15 ***\n"
+            "  2% discount if paid within 10 days of invoice date.\n"
+            "  (Annualized benefit ~36% — strongly recommended)"
+        )
     else:
-        pricing_block = (f"Volume Tiers:\n"
-                         f"  100+ units/order:   {discount:.0f}% discount\n"
-                         f"  500+ units/order:   {discount + 3:.0f}% discount\n"
-                         f"  1000+ units/order:  {discount + 6:.0f}% discount")
+        pricing_block = (
+            f"Volume Tiers:\n"
+            f"  100+ units/order:   {discount:.0f}% discount\n"
+            f"  500+ units/order:   {discount + 3:.0f}% discount\n"
+            f"  1000+ units/order:  {discount + 6:.0f}% discount"
+        )
         payment_block = "Late Payment Interest: 1.5% per month"
 
     return CONTRACT_TEMPLATE.format(
@@ -270,6 +293,7 @@ def render_contract(contract, ctx, *, early_payment):
 # ═══════════════════════════════════════════════════════════════
 # Output writers
 # ═══════════════════════════════════════════════════════════════
+
 
 def _write_txt(output_dir, name, text):
     path = os.path.join(output_dir, name + ".txt")
@@ -383,12 +407,21 @@ def write_guide(output_dir):
 # MAIN
 # ═══════════════════════════════════════════════════════════════
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Generate template-driven documents from synthetic CSVs")
-    parser.add_argument("--data-dir", default="./synthetic_data/",
-                        help="Synthetic data root (contains structured/tables/)")
-    parser.add_argument("--output", default="./synthetic_data/documents/",
-                        help="Output directory for documents")
+    parser = argparse.ArgumentParser(
+        description="Generate template-driven documents from synthetic CSVs"
+    )
+    parser.add_argument(
+        "--data-dir",
+        default="./synthetic_data/",
+        help="Synthetic data root (contains structured/tables/)",
+    )
+    parser.add_argument(
+        "--output",
+        default="./synthetic_data/documents/",
+        help="Output directory for documents",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
@@ -409,20 +442,32 @@ def main():
 
     if ctx["match_invoice"]:
         inv = ctx["match_invoice"]
-        write_document(args.output, f"Invoice_{inv['INVOICE_NUMBER']}",
-                       render_invoice(inv, ctx, variance=False))
+        write_document(
+            args.output,
+            f"Invoice_{inv['INVOICE_NUMBER']}",
+            render_invoice(inv, ctx, variance=False),
+        )
     if ctx["variance_invoice"]:
         inv = ctx["variance_invoice"]
-        write_document(args.output, f"Invoice_{inv['INVOICE_NUMBER']}",
-                       render_invoice(inv, ctx, variance=True))
+        write_document(
+            args.output,
+            f"Invoice_{inv['INVOICE_NUMBER']}",
+            render_invoice(inv, ctx, variance=True),
+        )
     if ctx["volume_contract"]:
         c = ctx["volume_contract"]
-        write_document(args.output, f"Contract_{c['CONTRACT_ID']}_volume",
-                       render_contract(c, ctx, early_payment=False))
+        write_document(
+            args.output,
+            f"Contract_{c['CONTRACT_ID']}_volume",
+            render_contract(c, ctx, early_payment=False),
+        )
     if ctx["early_pay_contract"]:
         c = ctx["early_pay_contract"]
-        write_document(args.output, f"Contract_{c['CONTRACT_ID']}_earlypay",
-                       render_contract(c, ctx, early_payment=True))
+        write_document(
+            args.output,
+            f"Contract_{c['CONTRACT_ID']}_earlypay",
+            render_contract(c, ctx, early_payment=True),
+        )
 
     write_guide(args.output)
 

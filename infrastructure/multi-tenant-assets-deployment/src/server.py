@@ -67,6 +67,7 @@ def _poll_wait(seconds: float) -> None:
     """Wait ``seconds`` between polls."""
     _POLL_IDLE.wait(timeout=seconds)
 
+
 # ═══════════════════════════════════════════════════════════════════
 # ENV CONFIG (set these in AgentCore runtime config)
 # ═══════════════════════════════════════════════════════════════════
@@ -1528,9 +1529,7 @@ def _migrate_spaces(
                     {
                         "ResourceType": res.get("resourceType"),
                         "ResourceDetails": {
-                            "resourceArn": remap_arn(
-                                src_arn, target_account_id, region
-                            )
+                            "resourceArn": remap_arn(src_arn, target_account_id, region)
                         },
                     }
                 )
@@ -1816,9 +1815,7 @@ def preview_migration(
 
     rtype = _normalize_type(resource_type)
     types = (
-        ["agent", "connector", "knowledge_base", "space"]
-        if rtype == "all"
-        else [rtype]
+        ["agent", "connector", "knowledge_base", "space"] if rtype == "all" else [rtype]
     )
     if rtype != "all" and rtype not in _MIGRATABLE_TYPES:
         return json.dumps(

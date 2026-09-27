@@ -9,6 +9,7 @@ Why MCP (not the HTTP /invocations runtime protocol): a plain HTTP runtime expos
 no MCP tools, so a Quick connector to it only shows `listTools` with nothing to
 call. Exposing an @mcp.tool() gives Quick a real, invocable tool.
 """
+
 import base64
 import hashlib
 import hmac
@@ -97,10 +98,10 @@ def _get_agent():
     if _init_error is not None:
         raise RuntimeError(_init_error)
     try:
+        from mcp.client.streamable_http import streamablehttp_client
         from strands import Agent
         from strands.models import BedrockModel
         from strands.tools.mcp import MCPClient
-        from mcp.client.streamable_http import streamablehttp_client
 
         token = get_cognito_token()
         headers = {"Authorization": f"Bearer {token}"}
@@ -117,13 +118,15 @@ def _get_agent():
         return _agent
     except Exception:
         _init_error = traceback.format_exc()
-        raise RuntimeError(_init_error)
+        raise RuntimeError(_init_error) from None
 
 
 # ═══════════════════════════════════════════════════════════════
 # MCP server + tool
 # ═══════════════════════════════════════════════════════════════
-mcp = FastMCP("sc-order-fulfillment-agent", host=BIND_HOST, port=BIND_PORT, stateless_http=True)
+mcp = FastMCP(
+    "sc-order-fulfillment-agent", host=BIND_HOST, port=BIND_PORT, stateless_http=True
+)
 
 
 @mcp.tool()

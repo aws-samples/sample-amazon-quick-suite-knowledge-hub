@@ -42,6 +42,7 @@ def _poll_wait(seconds: float) -> None:
     """Wait `seconds` between polls."""
     _POLL_IDLE.wait(timeout=seconds)
 
+
 logs_client = boto3.client("logs")
 cloudwatch_client = boto3.client("cloudwatch")
 cloudtrail_client = boto3.client("cloudtrail")

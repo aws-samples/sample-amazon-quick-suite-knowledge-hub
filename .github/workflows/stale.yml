@@ -2,7 +2,7 @@ name: Amazon Quick Knowledge Hub Issue Management
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Daily at midnight UTC
+    - cron: "0 0 * * *" # Daily at midnight UTC
   workflow_dispatch:
 
 permissions:
@@ -64,13 +64,13 @@ jobs:
           days-before-pr-close: 7
 
           # Label configuration
-          stale-issue-label: 'stale'
-          stale-pr-label: 'stale'
-          exempt-issue-labels: 'pinned,security,enhancement,documentation'
-          exempt-pr-labels: 'pinned,security,work-in-progress'
+          stale-issue-label: "stale"
+          stale-pr-label: "stale"
+          exempt-issue-labels: "pinned,security,enhancement,documentation"
+          exempt-pr-labels: "pinned,security,work-in-progress"
 
           # Team exemption
-          assignees-exempt: '@aws-samples/quick-suite-team'
+          assignees-exempt: "@aws-samples/quick-suite-team"
 
           # Limits
           operations-per-run: 50

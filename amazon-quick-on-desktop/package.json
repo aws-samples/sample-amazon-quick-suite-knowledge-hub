@@ -18,5 +18,8 @@
     "@types/node": "^22.0.0",
     "ts-node": "^10.9.0",
     "typescript": "~5.6.0"
+  },
+  "overrides": {
+    "minimatch": "^10.2.4"
   }
 }

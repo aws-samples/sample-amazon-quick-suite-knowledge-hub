@@ -115,8 +115,7 @@ CHECK_KEYS: list[str] = [tool.key.value for tool in TOOLS]
 _ALLOWED_ARGV: dict[str, list[str]] = {
     cmd: shlex.split(cmd)
     for cmd in (
-        [tool.check for tool in TOOLS]
-        + [fix for tool in TOOLS for fix in tool.fixes]
+        [tool.check for tool in TOOLS] + [fix for tool in TOOLS for fix in tool.fixes]
     )
 }
 
@@ -177,7 +176,9 @@ class CommandRunner:
                     argv = allowed_argv
                     break
             if argv is None:
-                raise ValueError(f"Refusing to run non-allowlisted command: {step.name}")
+                raise ValueError(
+                    f"Refusing to run non-allowlisted command: {step.name}"
+                )
             process = _run(argv, shell=False)
             status = StepStatus.PASSED if process.returncode == 0 else StepStatus.FAILED
 

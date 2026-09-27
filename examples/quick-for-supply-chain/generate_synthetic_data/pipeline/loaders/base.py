@@ -21,6 +21,7 @@ and NEVER open a network connection or import a DB driver. This lets
 Retries with exponential backoff are provided via :func:`with_retries` for the
 transient errors that matter (network blips, throttling, warehouse resume).
 """
+
 from __future__ import annotations
 
 import abc
@@ -28,7 +29,6 @@ import logging
 import re
 from pathlib import Path
 from threading import Event
-from typing import List, Optional
 
 logger = logging.getLogger("generate_synthetic_data.pipeline.loaders")
 
@@ -38,6 +38,7 @@ _POLL_IDLE = Event()
 def _poll_wait(seconds: float) -> None:
     """Wait `seconds` between polls."""
     _POLL_IDLE.wait(timeout=seconds)
+
 
 # ── Project paths (repo root is four levels up: generate_synthetic_data/pipeline/loaders/) ──
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -99,15 +100,15 @@ def validate_qualified_name(name: str) -> str:
 
 
 # ── SQL parsing (shared) ────────────────────────────────────────
-def split_sql_statements(sql_text: str) -> List[str]:
+def split_sql_statements(sql_text: str) -> list[str]:
     """Split a SQL script into individual statements on ';'.
 
     Handles single/double-quoted strings and line/block comments so a ';'
     inside a string literal or comment does not split a statement. Pragmatic
     (not a full parser) but sufficient for the DDL/DML scripts in this repo.
     """
-    statements: List[str] = []
-    buf: List[str] = []
+    statements: list[str] = []
+    buf: list[str] = []
     i = 0
     n = len(sql_text)
     in_single = in_double = in_line_comment = in_block_comment = False
@@ -195,9 +196,11 @@ def _is_retryable(exc: Exception) -> bool:
     return any(sub in msg for sub in _RETRYABLE_SUBSTRINGS)
 
 
-def with_retries(fn, *, attempts: int = 3, base_delay: float = 1.5, label: str = "operation"):
+def with_retries(
+    fn, *, attempts: int = 3, base_delay: float = 1.5, label: str = "operation"
+):
     """Call ``fn`` with exponential backoff on transient errors."""
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
             return fn()
@@ -208,14 +211,18 @@ def with_retries(fn, *, attempts: int = 3, base_delay: float = 1.5, label: str =
             delay = base_delay * (2 ** (attempt - 1))
             logger.warning(
                 "%s failed (attempt %d/%d): %s — retrying in %.1fs",
-                label, attempt, attempts, exc, delay,
+                label,
+                attempt,
+                attempts,
+                exc,
+                delay,
             )
             _poll_wait(delay)
     if last_exc:  # pragma: no cover - defensive
         raise last_exc
 
 
-def discover_generated_csvs(generated_dir: Path) -> List[Path]:
+def discover_generated_csvs(generated_dir: Path) -> list[Path]:
     """Find per-table CSVs under ``synthetic_data/structured/tables/<TABLE>.csv``.
 
     Returns an empty list when none are present.
@@ -275,13 +282,17 @@ def get_loader(cfg, *, dry_run: bool = False) -> Loader:
 
     if engine == "snowflake":
         from .snowflake_loader_engine import SnowflakeLoader
+
         return SnowflakeLoader(cfg, dry_run=dry_run)
     if engine == "postgres":
         from .postgres_loader import PostgresLoader
+
         return PostgresLoader(cfg, dry_run=dry_run)
     if engine == "sqlalchemy":
         from .sqlalchemy_loader import SQLAlchemyLoader
+
         return SQLAlchemyLoader(cfg, dry_run=dry_run)
 
     from ..config import ConfigError
+
     raise ConfigError(f"Unsupported DB_ENGINE '{engine}'.")

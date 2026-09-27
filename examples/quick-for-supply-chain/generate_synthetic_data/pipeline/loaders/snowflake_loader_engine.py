@@ -14,12 +14,12 @@ Scalability
 Idempotency: DDL uses CREATE TABLE IF NOT EXISTS; loads TRUNCATE first.
 Safety: ``dry_run`` prints the plan and never opens a connection.
 """
+
 from __future__ import annotations
 
 import contextlib
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 from .base import (
     DEFAULT_GENERATED_DIR,
@@ -100,8 +100,12 @@ def snowflake_connection(sf_cfg):
     kwargs = sf_cfg.connect_kwargs()
     logger.info(
         "Connecting to Snowflake account=%s user=%s db=%s schema=%s warehouse=%s auth=%s",
-        sf_cfg.account, sf_cfg.user, sf_cfg.database, sf_cfg.schema,
-        sf_cfg.warehouse, sf_cfg.authenticator,
+        sf_cfg.account,
+        sf_cfg.user,
+        sf_cfg.database,
+        sf_cfg.schema,
+        sf_cfg.warehouse,
+        sf_cfg.authenticator,
     )
     conn = with_retries(lambda: sf.connect(**kwargs), label="snowflake.connect")
     try:
@@ -126,8 +130,10 @@ class SnowflakeLoader(Loader):
         statements = create_table_ddl(engine="snowflake")
         if self.dry_run:
             self._dry_run_header()
-            print(f"  1. CREATE {len(statements)} tables from schema.py "
-                  f"(engine=snowflake)")
+            print(
+                f"  1. CREATE {len(statements)} tables from schema.py "
+                f"(engine=snowflake)"
+            )
             self._print_config()
             return 0
 
@@ -150,18 +156,23 @@ class SnowflakeLoader(Loader):
             self._dry_run_header()
             if csvs:
                 strategy = "PUT+COPY INTO" if use_copy else "write_pandas"
-                print(f"  2. LOAD via {strategy} ({len(csvs)} CSV(s) under "
-                      f"{generated_dir}/structured/tables/):")
+                print(
+                    f"  2. LOAD via {strategy} ({len(csvs)} CSV(s) under "
+                    f"{generated_dir}/structured/tables/):"
+                )
                 for c in csvs:
                     print(f"       • {c.stem.upper()} ← {c.name}")
             else:
-                print(f"  2. LOAD requested but no per-table CSVs found under "
-                      f"{generated_dir}/structured/tables/. Run the generator first.")
+                print(
+                    f"  2. LOAD requested but no per-table CSVs found under "
+                    f"{generated_dir}/structured/tables/. Run the generator first."
+                )
             self._print_config()
             return "dry-run"
 
         if not csvs:
             from ..config import ConfigError
+
             raise ConfigError(
                 f"No per-table CSVs found under {generated_dir}/structured/tables/. "
                 "Run: python generate_synthetic_data/generators/generate_all_data.py --output ./synthetic_data/"
@@ -181,7 +192,7 @@ class SnowflakeLoader(Loader):
         print("═" * 60)
 
     @staticmethod
-    def _run_statements(conn, statements: List[str], *, label: str) -> None:
+    def _run_statements(conn, statements: list[str], *, label: str) -> None:
         cur = conn.cursor()
         try:
             for idx, stmt in enumerate(statements, 1):
@@ -195,7 +206,7 @@ class SnowflakeLoader(Loader):
         table: str,
         csv_path: Path,
         *,
-        stage: Optional[str] = None,
+        stage: str | None = None,
         truncate: bool = True,
     ) -> None:
         csv_path = Path(csv_path)
@@ -240,7 +251,9 @@ class SnowflakeLoader(Loader):
             cur.close()
         logger.info("✅ COPY complete: %s", table)
 
-    def load_dataframe_write_pandas(self, conn, df, table: str, *, truncate: bool = True) -> int:
+    def load_dataframe_write_pandas(
+        self, conn, df, table: str, *, truncate: bool = True
+    ) -> int:
         """Bulk-load a pandas DataFrame into ``table`` via write_pandas."""
         from ..config import ConfigError
 

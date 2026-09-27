@@ -29,13 +29,13 @@ override the corresponding env values)::
       "authenticator": "snowflake"
     }
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 from dataclasses import dataclass, field, fields
-from typing import Optional
 
 logger = logging.getLogger("generate_synthetic_data.pipeline.config")
 
@@ -60,7 +60,7 @@ DEFAULT_PG_DATABASE = "supply_chain"
 DEFAULT_PG_SCHEMA = "scm"
 
 
-def _env(name: str, default: Optional[str] = None) -> Optional[str]:
+def _env(name: str, default: str | None = None) -> str | None:
     """Read an env var, treating empty strings as unset."""
     val = os.environ.get(name)
     if val is None or val.strip() == "":
@@ -85,11 +85,11 @@ class AWSConfig:
     """AWS + S3 settings. Credentials come from the default boto3 chain."""
 
     region: str = DEFAULT_AWS_REGION
-    s3_bucket: Optional[str] = None
+    s3_bucket: str | None = None
     s3_prefix: str = DEFAULT_S3_PREFIX
 
     @classmethod
-    def from_env(cls) -> "AWSConfig":
+    def from_env(cls) -> AWSConfig:
         prefix = _env("S3_PREFIX", DEFAULT_S3_PREFIX) or DEFAULT_S3_PREFIX
         # Normalize to a single trailing slash, no leading slash.
         prefix = prefix.lstrip("/")
@@ -120,24 +120,25 @@ class SnowflakeConfig:
     With ``externalbrowser`` SSO, no password is needed.
     """
 
-    account: Optional[str] = None
-    user: Optional[str] = None
-    password: Optional[str] = None
-    role: Optional[str] = None
+    account: str | None = None
+    user: str | None = None
+    password: str | None = None
+    role: str | None = None
     warehouse: str = DEFAULT_WAREHOUSE
     database: str = DEFAULT_DATABASE
     schema: str = DEFAULT_SCHEMA
     authenticator: str = DEFAULT_AUTHENTICATOR
-    secret_arn: Optional[str] = None
+    secret_arn: str | None = None
 
     @classmethod
-    def from_env(cls) -> "SnowflakeConfig":
+    def from_env(cls) -> SnowflakeConfig:
         cfg = cls(
             account=_env("SNOWFLAKE_ACCOUNT"),
             user=_env("SNOWFLAKE_USER"),
             password=_env("SNOWFLAKE_PASSWORD"),
             role=_env("SNOWFLAKE_ROLE"),
-            warehouse=_env("SNOWFLAKE_WAREHOUSE", DEFAULT_WAREHOUSE) or DEFAULT_WAREHOUSE,
+            warehouse=_env("SNOWFLAKE_WAREHOUSE", DEFAULT_WAREHOUSE)
+            or DEFAULT_WAREHOUSE,
             database=_env("SNOWFLAKE_DATABASE", DEFAULT_DATABASE) or DEFAULT_DATABASE,
             schema=_env("SNOWFLAKE_SCHEMA", DEFAULT_SCHEMA) or DEFAULT_SCHEMA,
             authenticator=_env("SNOWFLAKE_AUTHENTICATOR", DEFAULT_AUTHENTICATOR)
@@ -174,7 +175,9 @@ class SnowflakeConfig:
         if not self.user:
             missing.append("SNOWFLAKE_USER")
         if self.authenticator == "snowflake" and not self.password:
-            missing.append("SNOWFLAKE_PASSWORD (required unless authenticator=externalbrowser)")
+            missing.append(
+                "SNOWFLAKE_PASSWORD (required unless authenticator=externalbrowser)"
+            )
         if missing:
             raise ConfigError(
                 "Missing required Snowflake configuration: "
@@ -209,16 +212,16 @@ class PostgresConfig:
     connecting. ``schema`` is always used to qualify table names.
     """
 
-    host: Optional[str] = None
+    host: str | None = None
     port: str = DEFAULT_PG_PORT
     database: str = DEFAULT_PG_DATABASE
-    user: Optional[str] = None
-    password: Optional[str] = None
+    user: str | None = None
+    password: str | None = None
     schema: str = DEFAULT_PG_SCHEMA
-    database_url: Optional[str] = None
+    database_url: str | None = None
 
     @classmethod
-    def from_env(cls) -> "PostgresConfig":
+    def from_env(cls) -> PostgresConfig:
         return cls(
             host=_env("PGHOST"),
             port=_env("PGPORT", DEFAULT_PG_PORT) or DEFAULT_PG_PORT,
@@ -306,11 +309,11 @@ class SQLAlchemyConfig:
     ``schema`` is optional (used by df.to_sql when the backend supports it).
     """
 
-    url: Optional[str] = None
-    schema: Optional[str] = None
+    url: str | None = None
+    schema: str | None = None
 
     @classmethod
-    def from_env(cls) -> "SQLAlchemyConfig":
+    def from_env(cls) -> SQLAlchemyConfig:
         return cls(
             url=_env("SQLALCHEMY_URL"),
             # Reuse PGSCHEMA as an optional schema hint; may be None.
@@ -354,7 +357,7 @@ def _redact_url(url: str) -> str:
 
 
 # ── Secrets Manager helper ──────────────────────────────────────
-def get_secret(secret_arn: str, region: Optional[str] = None) -> dict:
+def get_secret(secret_arn: str, region: str | None = None) -> dict:
     """Fetch a JSON secret from AWS Secrets Manager.
 
     Parameters
@@ -418,10 +421,10 @@ class PipelineConfig:
     postgres: PostgresConfig = field(default_factory=PostgresConfig)
     sqlalchemy: SQLAlchemyConfig = field(default_factory=SQLAlchemyConfig)
     db_engine: str = DEFAULT_DB_ENGINE
-    db_secret_arn: Optional[str] = None
+    db_secret_arn: str | None = None
 
     @classmethod
-    def load(cls, resolve_secret: bool = True) -> "PipelineConfig":
+    def load(cls, resolve_secret: bool = True) -> PipelineConfig:
         """Load config from the environment.
 
         Secrets are resolved only when ``resolve_secret`` is True (so --dry-run
@@ -461,7 +464,8 @@ class PipelineConfig:
             if db_secret_arn:
                 logger.info(
                     "Resolving %s credentials from Secrets Manager: %s",
-                    engine, db_secret_arn,
+                    engine,
+                    db_secret_arn,
                 )
                 secret = get_secret(db_secret_arn, region=aws.region)
                 cfg.active_db_config().apply_secret_overrides(secret)

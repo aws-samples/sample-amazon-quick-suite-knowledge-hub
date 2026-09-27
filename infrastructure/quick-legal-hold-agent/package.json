@@ -1,7 +1,9 @@
 {
   "name": "quick-legal-hold-agent",
   "version": "0.1.0",
-  "bin": { "quick-legal-hold-agent": "bin/app.js" },
+  "bin": {
+    "quick-legal-hold-agent": "bin/app.js"
+  },
   "scripts": {
     "build": "tsc",
     "synth": "cdk synth",
@@ -16,7 +18,10 @@
     "typescript": "~5.4.5"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.147.0",
+    "aws-cdk-lib": "^2.270.0",
     "constructs": "^10.3.0"
+  },
+  "overrides": {
+    "minimatch": "^10.2.4"
   }
 }

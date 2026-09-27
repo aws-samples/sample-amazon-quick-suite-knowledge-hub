@@ -20,6 +20,7 @@ If ``simple-salesforce`` is installed AND ``SF_USERNAME`` / ``SF_PASSWORD`` /
 
 ``--dry-run`` prints the plan and never calls out.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,14 +30,15 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 _run = subprocess.run
 
 try:
     from .config import ConfigError
 except ImportError:  # pragma: no cover
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
     from generate_synthetic_data.pipeline.config import ConfigError
 
 logging.basicConfig(
@@ -47,12 +49,14 @@ logger = logging.getLogger("generate_synthetic_data.pipeline.salesforce_prep")
 
 # Module now lives at generate_synthetic_data/pipeline/, so repo root is three levels up.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-GENERATOR = PROJECT_ROOT / "generate_synthetic_data" / "generators" / "generate_all_data.py"
+GENERATOR = (
+    PROJECT_ROOT / "generate_synthetic_data" / "generators" / "generate_all_data.py"
+)
 DEFAULT_SF_DIR = PROJECT_ROOT / "synthetic_data" / "salesforce"
 
 # FK-safe load order + required columns per object.
-LOAD_ORDER: List[str] = ["Accounts", "Contacts", "Opportunities"]
-REQUIRED_COLUMNS: Dict[str, List[str]] = {
+LOAD_ORDER: list[str] = ["Accounts", "Contacts", "Opportunities"]
+REQUIRED_COLUMNS: dict[str, list[str]] = {
     "Accounts": ["External_ID__c", "Name"],
     "Contacts": ["Account_External_ID__c", "LastName"],
     "Opportunities": [
@@ -82,16 +86,29 @@ def ensure_csvs(sf_dir: Path = DEFAULT_SF_DIR, dry_run: bool = False) -> Path:
         return sf_dir
 
     output_root = sf_dir.parent  # generate_all_data writes <output>/salesforce/
-    cmd = [sys.executable, str(GENERATOR), "--salesforce-only", "--output", str(output_root)]
+    cmd = [
+        sys.executable,
+        str(GENERATOR),
+        "--salesforce-only",
+        "--output",
+        str(output_root),
+    ]
     if dry_run:
-        logger.info("[dry-run] Missing CSVs %s — would run: %s",
-                    [p.name for p in missing], " ".join(cmd))
+        logger.info(
+            "[dry-run] Missing CSVs %s — would run: %s",
+            [p.name for p in missing],
+            " ".join(cmd),
+        )
         return sf_dir
 
-    logger.info("Missing CSVs %s — generating via %s",
-                [p.name for p in missing], GENERATOR.name)
+    logger.info(
+        "Missing CSVs %s — generating via %s", [p.name for p in missing], GENERATOR.name
+    )
     result = _run(
-        cmd, capture_output=True, text=True, shell=False,
+        cmd,
+        capture_output=True,
+        text=True,
+        shell=False,
     )
     if result.returncode != 0:
         raise RuntimeError(
@@ -101,13 +118,13 @@ def ensure_csvs(sf_dir: Path = DEFAULT_SF_DIR, dry_run: bool = False) -> Path:
     return sf_dir
 
 
-def validate_csvs(sf_dir: Path = DEFAULT_SF_DIR) -> Dict[str, int]:
+def validate_csvs(sf_dir: Path = DEFAULT_SF_DIR) -> dict[str, int]:
     """Validate required columns + FK order. Returns {object: row_count}.
 
     Raises ConfigError on the first structural problem.
     """
     sf_dir = Path(sf_dir)
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     account_ids = set()
 
     for obj in LOAD_ORDER:
@@ -156,7 +173,7 @@ def validate_csvs(sf_dir: Path = DEFAULT_SF_DIR) -> Dict[str, int]:
     return counts
 
 
-def print_load_instructions(sf_dir: Path, counts: Dict[str, int]) -> None:
+def print_load_instructions(sf_dir: Path, counts: dict[str, int]) -> None:
     print("═" * 60)
     print("  Salesforce Import Plan")
     print("═" * 60)
@@ -174,7 +191,7 @@ def print_load_instructions(sf_dir: Path, counts: Dict[str, int]) -> None:
     print("═" * 60)
 
 
-def _sf_env() -> Optional[Dict[str, str]]:
+def _sf_env() -> dict[str, str] | None:
     u = os.environ.get("SF_USERNAME")
     p = os.environ.get("SF_PASSWORD")
     t = os.environ.get("SF_TOKEN")
@@ -203,12 +220,15 @@ def load_salesforce(sf_dir: Path = DEFAULT_SF_DIR, dry_run: bool = False) -> dic
         ) from exc
 
     sf_dir = Path(sf_dir)
-    summary: Dict[str, int] = {}
+    summary: dict[str, int] = {}
 
     if dry_run:
         for obj in LOAD_ORDER:
-            logger.info("[dry-run] Would bulk-upsert %s from %s.csv on External_ID__c",
-                        SF_OBJECT_API[obj], obj)
+            logger.info(
+                "[dry-run] Would bulk-upsert %s from %s.csv on External_ID__c",
+                SF_OBJECT_API[obj],
+                obj,
+            )
         return summary
 
     logger.info("Connecting to Salesforce as %s", creds["username"])
@@ -222,7 +242,9 @@ def load_salesforce(sf_dir: Path = DEFAULT_SF_DIR, dry_run: bool = False) -> dic
         # Contacts upsert on the parent external id relationship uses a
         # different external field; Account/Opportunity upsert on External_ID__c.
         ext_field = "Account_External_ID__c" if obj == "Contacts" else "External_ID__c"
-        logger.info("Bulk upsert %s: %d record(s) on %s", api_name, len(records), ext_field)
+        logger.info(
+            "Bulk upsert %s: %d record(s) on %s", api_name, len(records), ext_field
+        )
         handler = getattr(sf.bulk, api_name)
         handler.upsert(records, ext_field)
         summary[obj] = len(records)
@@ -231,12 +253,17 @@ def load_salesforce(sf_dir: Path = DEFAULT_SF_DIR, dry_run: bool = False) -> dic
     return summary
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Prepare/validate Salesforce import CSVs.")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Prepare/validate Salesforce import CSVs."
+    )
     parser.add_argument("--sf-dir", default=str(DEFAULT_SF_DIR))
-    parser.add_argument("--load", action="store_true",
-                        help="Perform live Bulk API upsert (requires simple-salesforce "
-                             "and SF_* env vars). Default: prep + validate only.")
+    parser.add_argument(
+        "--load",
+        action="store_true",
+        help="Perform live Bulk API upsert (requires simple-salesforce "
+        "and SF_* env vars). Default: prep + validate only.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
@@ -257,11 +284,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             creds = _sf_env()
             if creds:
-                logger.info("SF_* creds detected. Re-run with --load to perform a live "
-                            "Bulk upsert. (Default stays offline.)")
+                logger.info(
+                    "SF_* creds detected. Re-run with --load to perform a live "
+                    "Bulk upsert. (Default stays offline.)"
+                )
             else:
-                logger.info("No live load requested. Use Dataloader with the plan above, "
-                            "or set SF_USERNAME/SF_PASSWORD/SF_TOKEN and pass --load.")
+                logger.info(
+                    "No live load requested. Use Dataloader with the plan above, "
+                    "or set SF_USERNAME/SF_PASSWORD/SF_TOKEN and pass --load."
+                )
     except ConfigError as exc:
         logger.error("%s", exc)
         return 2

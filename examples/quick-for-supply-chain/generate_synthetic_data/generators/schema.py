@@ -19,13 +19,13 @@ BOOLEAN); :func:`create_table_ddl` maps them to each engine's dialect.
 NOTE: Natural keys are supplied by the generator as data, so no surrogate
 auto-increment ``ID`` columns or PRIMARY KEY constraints are emitted.
 """
+
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Tuple
 
 # Each entry: TABLE -> list of (COLUMN_NAME, SQL_TYPE) in CSV/emit order.
-SCHEMA: Dict[str, List[Tuple[str, str]]] = {
+SCHEMA: dict[str, list[tuple[str, str]]] = {
     "PRODUCTS": [
         ("SKU", "VARCHAR(20)"),
         ("NAME", "VARCHAR(200)"),
@@ -251,17 +251,17 @@ SCHEMA: Dict[str, List[Tuple[str, str]]] = {
 }
 
 # Ordered list of tables the demo needs (emit order).
-TABLES: List[str] = list(SCHEMA.keys())
+TABLES: list[str] = list(SCHEMA.keys())
 
 
-def columns(table: str) -> List[str]:
+def columns(table: str) -> list[str]:
     """Return the ordered column names for ``table``."""
     return [c for c, _ in SCHEMA[table]]
 
 
-def types(table: str) -> Dict[str, str]:
+def types(table: str) -> dict[str, str]:
     """Return {column: sql_type} for ``table``."""
-    return {c: t for c, t in SCHEMA[table]}
+    return dict(SCHEMA[table])
 
 
 # ── DDL generation (single source of truth → per-engine CREATE TABLE) ──
@@ -277,7 +277,7 @@ _ENGINE_ALIASES = {
     "postgresql": "postgres",
 }
 
-_TYPE_MAPS: Dict[str, Dict[str, str]] = {
+_TYPE_MAPS: dict[str, dict[str, str]] = {
     # family -> engine-native rendering. VARCHAR/DECIMAL use "{args}" for params.
     "snowflake": {
         "VARCHAR": "VARCHAR({args})",
@@ -332,7 +332,7 @@ def create_table_ddl(
     engine: str = "ansi",
     if_not_exists: bool = True,
     schema_prefix: str | None = None,
-) -> List[str]:
+) -> list[str]:
     """Generate one ``CREATE TABLE`` statement per table from :data:`SCHEMA`.
 
     Args:
@@ -357,20 +357,18 @@ def create_table_ddl(
     prefix = f"{schema_prefix}." if schema_prefix else ""
     exists_clause = "IF NOT EXISTS " if if_not_exists else ""
 
-    statements: List[str] = []
+    statements: list[str] = []
     for table in TABLES:
         cols = SCHEMA[table]
         col_defs = ",\n".join(
             f"    {name} {_map_sql_type(sql_type, key)}" for name, sql_type in cols
         )
-        stmt = (
-            f"CREATE TABLE {exists_clause}{prefix}{table} (\n{col_defs}\n)"
-        )
+        stmt = f"CREATE TABLE {exists_clause}{prefix}{table} (\n{col_defs}\n)"
         statements.append(stmt)
     return statements
 
 
-def _main(argv: List[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     """Optional CLI: print CREATE TABLE DDL for an engine.
 
     Usage: ``python -m generate_synthetic_data.generators.schema [engine]``

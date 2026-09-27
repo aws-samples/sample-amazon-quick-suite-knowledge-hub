@@ -1,5 +1,8 @@
 site/
 
+# Pinned tool binaries (downloaded on demand via `uv run install`)
+.tools/
+
 # Python
 __pycache__/
 *.py[cod]

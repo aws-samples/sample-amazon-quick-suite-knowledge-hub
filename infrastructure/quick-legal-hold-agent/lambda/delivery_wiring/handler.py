@@ -24,7 +24,9 @@ DELETE (stack destroy):
   - NEVER delete the shared source or any other (CWL / other-S3) delivery.
   - Only delete a source we created if ManageSourceLifecycle == "true".
 """
+
 import json
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -42,7 +44,10 @@ def _find_chat_logs_source(account: str):
                 continue
             # Match a QuickSight resource in this account.
             arns = s.get("resourceArns", []) or []
-            if any((":" + account + ":") in a and ":quicksight:" in a for a in arns) or arns:
+            if (
+                any((":" + account + ":") in a and ":quicksight:" in a for a in arns)
+                or arns
+            ):
                 return s["name"], (arns[0] if arns else None)
     return None, None
 
@@ -74,7 +79,10 @@ def _find_our_delivery(source_name: str, dest_arn: str):
     paginator = logs.get_paginator("describe_deliveries")
     for page in paginator.paginate():
         for d in page.get("deliveries", []):
-            if d.get("deliverySourceName") == source_name and d.get("deliveryDestinationArn") == dest_arn:
+            if (
+                d.get("deliverySourceName") == source_name
+                and d.get("deliveryDestinationArn") == dest_arn
+            ):
                 return d["id"]
     return None
 
@@ -82,7 +90,9 @@ def _find_our_delivery(source_name: str, dest_arn: str):
 def _ensure_delivery(source_name: str, dest_arn: str) -> str:
     existing = _find_our_delivery(source_name, dest_arn)
     if existing:
-        print(f"[wiring] adopting existing delivery {existing} ({source_name} -> {dest_arn})")
+        print(
+            f"[wiring] adopting existing delivery {existing} ({source_name} -> {dest_arn})"
+        )
         return existing
     resp = logs.create_delivery(
         deliverySourceName=source_name,
@@ -132,7 +142,9 @@ def _on_delete(props, physical_id, account):
     (unless ManageSourceLifecycle == 'true' and we created it) and never any
     other delivery."""
     dest_name = props["DestinationName"]
-    manage_source = (props.get("ManageSourceLifecycle") or "false").strip().lower() == "true"
+    manage_source = (
+        props.get("ManageSourceLifecycle") or "false"
+    ).strip().lower() == "true"
     override = (props.get("ChatLogsSourceName") or "").strip()
 
     # Resolve source name to scope our delivery deletion.
@@ -154,16 +166,22 @@ def _on_delete(props, physical_id, account):
         logs.delete_delivery_destination(name=dest_name)
         print(f"[wiring] deleted delivery-destination {dest_name}")
     except ClientError as exc:
-        print(f"[wiring] delete_delivery_destination {dest_name} error (continuing): {exc}")
+        print(
+            f"[wiring] delete_delivery_destination {dest_name} error (continuing): {exc}"
+        )
 
     # Only delete the source if we manage its lifecycle (default: leave it).
     if manage_source and source_name:
-        print(f"[wiring] ManageSourceLifecycle=true: NOT implemented to delete shared "
-              f"source {source_name} by default; leaving it to protect other deliveries.")
+        print(
+            f"[wiring] ManageSourceLifecycle=true: NOT implemented to delete shared "
+            f"source {source_name} by default; leaving it to protect other deliveries."
+        )
 
 
 def handler(event, context):
-    print(f"[wiring] event={json.dumps({k: event.get(k) for k in ('RequestType','LogicalResourceId','PhysicalResourceId')})}")
+    print(
+        f"[wiring] event={json.dumps({k: event.get(k) for k in ('RequestType', 'LogicalResourceId', 'PhysicalResourceId')})}"
+    )
     request_type = event["RequestType"]
     props = event.get("ResourceProperties", {}) or {}
     account = context.invoked_function_arn.split(":")[4]

@@ -26,7 +26,6 @@ from threading import Event
 
 import boto3
 
-
 _POLL_IDLE = Event()
 
 

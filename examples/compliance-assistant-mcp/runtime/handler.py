@@ -40,6 +40,7 @@ def _poll_wait(seconds: float) -> None:
     """Wait `seconds` between polls."""
     _POLL_IDLE.wait(timeout=seconds)
 
+
 REGION = os.environ.get("DEPLOY_REGION", "us-east-1")
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 s3 = boto3.client("s3", region_name=REGION)

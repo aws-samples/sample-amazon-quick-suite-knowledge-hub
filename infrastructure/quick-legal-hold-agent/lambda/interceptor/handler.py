@@ -16,6 +16,7 @@ Input  (MCP request interceptor):
 Output:
   {"interceptorOutputVersion":"1.0","mcp":{"transformedGatewayRequest":{"body": <body>}}}
 """
+
 import base64
 import json
 import logging
@@ -38,7 +39,11 @@ def _find_bearer(obj) -> str | None:
     """Recursively search the event for an 'authorization' header value."""
     if isinstance(obj, dict):
         for k, v in obj.items():
-            if isinstance(k, str) and k.lower() == "authorization" and isinstance(v, str):
+            if (
+                isinstance(k, str)
+                and k.lower() == "authorization"
+                and isinstance(v, str)
+            ):
                 return v
             found = _find_bearer(v)
             if found:
@@ -61,15 +66,20 @@ def _caller_from_claims(claims: dict):
     email = claims.get("email")
     sub = claims.get("sub")
     client_id = claims.get("client_id")
-    is_machine = (not username and not email and sub and client_id and sub == client_id)
+    is_machine = not username and not email and sub and client_id and sub == client_id
     if is_machine:
         return None
     identity = email or username or sub
     if not identity:
         return None
     source = "jwt:email" if email else ("jwt:username" if username else "jwt:sub")
-    return {"identity": str(identity), "source": source,
-            "email": email, "sub": sub, "username": username}
+    return {
+        "identity": str(identity),
+        "source": source,
+        "email": email,
+        "sub": sub,
+        "username": username,
+    }
 
 
 def lambda_handler(event, context):
@@ -77,7 +87,7 @@ def lambda_handler(event, context):
     try:
         red = json.dumps(event)[:1200]
         logger.info(f"[interceptor] event(redacted-preview)={red}")
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110 - redacted preview logging is best-effort
         pass
 
     mcp = event.get("mcp", {}) if isinstance(event, dict) else {}
@@ -91,8 +101,10 @@ def lambda_handler(event, context):
 
     # Only augment tools/call requests.
     if not isinstance(body, dict) or body.get("method") != "tools/call":
-        return {"interceptorOutputVersion": "1.0",
-                "mcp": {"transformedGatewayRequest": {"body": body}}}
+        return {
+            "interceptorOutputVersion": "1.0",
+            "mcp": {"transformedGatewayRequest": {"body": body}},
+        }
 
     auth = _find_bearer(event) or ""
     token = auth[7:] if auth.lower().startswith("bearer ") else auth
@@ -103,9 +115,15 @@ def lambda_handler(event, context):
     args = params.setdefault("arguments", {})
     if caller:
         args["_caller"] = caller
-        logger.info(f"[interceptor] injected _caller identity={caller['identity']} source={caller['source']}")
+        logger.info(
+            f"[interceptor] injected _caller identity={caller['identity']} source={caller['source']}"
+        )
     else:
-        logger.info("[interceptor] no human identity in token (M2M/2LO) - no _caller injected")
+        logger.info(
+            "[interceptor] no human identity in token (M2M/2LO) - no _caller injected"
+        )
 
-    return {"interceptorOutputVersion": "1.0",
-            "mcp": {"transformedGatewayRequest": {"body": body}}}
+    return {
+        "interceptorOutputVersion": "1.0",
+        "mcp": {"transformedGatewayRequest": {"body": body}},
+    }

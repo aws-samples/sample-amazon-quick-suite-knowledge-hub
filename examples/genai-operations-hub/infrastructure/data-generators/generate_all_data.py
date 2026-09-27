@@ -17,8 +17,10 @@ def run_generator(script_name):
     print("=" * 60)
 
     result = _run(
-        [sys.executable, script_name], cwd=Path(__file__).parent,
-        capture_output=False, shell=False,
+        [sys.executable, script_name],
+        cwd=Path(__file__).parent,
+        capture_output=False,
+        shell=False,
     )
 
     if result.returncode != 0:

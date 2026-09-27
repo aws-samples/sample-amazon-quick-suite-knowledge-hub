@@ -19,6 +19,7 @@ Features
 
 Credentials come from the default boto3 chain — never hard-coded.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,13 +28,18 @@ import mimetypes
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 try:
-    from .config import PipelineConfig, AWSConfig, ConfigError
+    from .config import AWSConfig, ConfigError, PipelineConfig
 except ImportError:  # pragma: no cover
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    from generate_synthetic_data.pipeline.config import PipelineConfig, AWSConfig, ConfigError
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
+    from generate_synthetic_data.pipeline.config import (
+        AWSConfig,
+        ConfigError,
+        PipelineConfig,
+    )
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -65,9 +71,9 @@ def _make_s3_client(region: str):
     return boto3.client("s3", config=cfg)
 
 
-def discover_documents(source_dirs: List[Path]) -> List[Path]:
+def discover_documents(source_dirs: list[Path]) -> list[Path]:
     """Return all uploadable document files across the given source dirs."""
-    files: List[Path] = []
+    files: list[Path] = []
     for d in source_dirs:
         d = Path(d)
         if not d.exists():
@@ -139,7 +145,7 @@ def with_suppressed_errors(fn, *, label: str):
         return None
 
 
-def _remote_size(s3, bucket: str, key: str) -> Optional[int]:
+def _remote_size(s3, bucket: str, key: str) -> int | None:
     from botocore.exceptions import ClientError
 
     try:
@@ -154,7 +160,7 @@ def _remote_size(s3, bucket: str, key: str) -> Optional[int]:
 
 def upload_documents(
     aws: AWSConfig,
-    source_dirs: Optional[List[Path]] = None,
+    source_dirs: list[Path] | None = None,
     dry_run: bool = False,
 ) -> dict:
     """Upload all discovered documents. Returns a summary dict."""
@@ -164,13 +170,19 @@ def upload_documents(
 
     summary = {"uploaded": 0, "skipped": 0, "planned": 0, "total": len(docs)}
     if not docs:
-        logger.warning("No documents found in: %s", ", ".join(str(d) for d in source_dirs))
+        logger.warning(
+            "No documents found in: %s", ", ".join(str(d) for d in source_dirs)
+        )
         return summary
 
     s3 = None if dry_run else _make_s3_client(aws.region)
     if dry_run:
-        logger.info("[dry-run] Target: s3://%s/%s (region %s)",
-                    aws.s3_bucket, aws.s3_prefix, aws.region)
+        logger.info(
+            "[dry-run] Target: s3://%s/%s (region %s)",
+            aws.s3_bucket,
+            aws.s3_prefix,
+            aws.region,
+        )
         ensure_bucket(_MockS3(), aws.s3_bucket, aws.region, dry_run=True)
     else:
         ensure_bucket(s3, aws.s3_bucket, aws.region, dry_run=False)
@@ -180,8 +192,13 @@ def upload_documents(
         local_size = path.stat().st_size
 
         if dry_run:
-            logger.info("[dry-run] Would upload %s → s3://%s/%s (%d bytes, AES256)",
-                        path.name, aws.s3_bucket, key, local_size)
+            logger.info(
+                "[dry-run] Would upload %s → s3://%s/%s (%d bytes, AES256)",
+                path.name,
+                aws.s3_bucket,
+                key,
+                local_size,
+            )
             summary["planned"] += 1
             continue
 
@@ -192,8 +209,13 @@ def upload_documents(
             continue
 
         content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        logger.info("Upload %s → s3://%s/%s (%d bytes)",
-                    path.name, aws.s3_bucket, key, local_size)
+        logger.info(
+            "Upload %s → s3://%s/%s (%d bytes)",
+            path.name,
+            aws.s3_bucket,
+            key,
+            local_size,
+        )
         s3.upload_file(
             Filename=str(path),
             Bucket=aws.s3_bucket,
@@ -204,7 +226,10 @@ def upload_documents(
 
     logger.info(
         "✅ S3 upload done: uploaded=%d skipped=%d planned=%d total=%d",
-        summary["uploaded"], summary["skipped"], summary["planned"], summary["total"],
+        summary["uploaded"],
+        summary["skipped"],
+        summary["planned"],
+        summary["total"],
     )
     return summary
 
@@ -218,13 +243,20 @@ class _MockS3:
         raise ClientError({"Error": {"Code": "404"}}, "HeadBucket")
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Upload unstructured docs to S3.")
-    parser.add_argument("--source-dir", action="append", default=None,
-                        help="Override source dir(s). Repeatable. "
-                             "Defaults to synthetic_data/documents/.")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print planned uploads without touching AWS.")
+    parser.add_argument(
+        "--source-dir",
+        action="append",
+        default=None,
+        help="Override source dir(s). Repeatable. "
+        "Defaults to synthetic_data/documents/.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print planned uploads without touching AWS.",
+    )
     args = parser.parse_args(argv)
 
     cfg = PipelineConfig.load(resolve_secret=False)  # S3 step needs no Snowflake secret

@@ -13,6 +13,7 @@ Expected CHAT_LOGS-shaped record (JSON), tolerant of a couple of shapes:
   { "user_arn": "...", "prompt": "...", "response": "...", "timestamp": "...", ... }
 or nested under "identity"/"principal".
 """
+
 import base64
 import json
 import os
@@ -76,8 +77,11 @@ def _partition_keys(item: dict, user_arn: str) -> dict:
     # Prefer the directory UserName captured on the hold item; fall back to the
     # trailing token of the matched ARN. This equals the CHAT_LOGS
     # user/default/<UserName> token.
-    usr_raw = item.get("idc_user_name") or item.get("subject_key") \
+    usr_raw = (
+        item.get("idc_user_name")
+        or item.get("subject_key")
         or user_arn.rstrip("/").split("/")[-1]
+    )
     usr = _s3_safe(usr_raw, "user")
     return {"grp": grp, "usr": usr}
 
@@ -115,12 +119,14 @@ def handler(event, context):
             # carry partition keys. Writes under chat-logs/<grp>/<usr>/Y/M/D/.
             pk = _partition_keys(matched_item, matched_arn)
             print(f"[filter] keep grp={pk['grp']} usr={pk['usr']}")
-            output.append({
-                "recordId": record_id,
-                "result": "Ok",
-                "data": data,  # original data unchanged
-                "metadata": {"partitionKeys": pk},
-            })
+            output.append(
+                {
+                    "recordId": record_id,
+                    "result": "Ok",
+                    "data": data,  # original data unchanged
+                    "metadata": {"partitionKeys": pk},
+                }
+            )
         else:
             dropped += 1
             output.append({"recordId": record_id, "result": result, "data": data})

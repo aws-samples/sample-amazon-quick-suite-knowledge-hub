@@ -36,6 +36,7 @@ def _poll_wait(seconds: float) -> None:
     """Wait `seconds` between polls."""
     _POLL_IDLE.wait(timeout=seconds)
 
+
 # Heavy imports deferred to first invocation to stay within 30s init limit.
 # strands, strands_tools, base64, re are imported inside create_agent() / _extract_file().
 

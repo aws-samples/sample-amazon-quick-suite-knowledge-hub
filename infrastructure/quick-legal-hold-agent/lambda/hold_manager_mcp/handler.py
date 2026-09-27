@@ -16,9 +16,10 @@ Tools:
 
 Identity resolution is pluggable via IDENTITY_MODE ("direct" default | "idc").
 """
+
+import datetime
 import json
 import os
-import datetime
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -38,8 +39,13 @@ class ResolutionError(Exception):
 
 
 # botocore error codes that mean the directory could not be queried (denied).
-_DENIED_CODES = {"AccessDeniedException", "AccessDenied", "UnauthorizedException",
-                 "NotAuthorizedException", "ForbiddenException"}
+_DENIED_CODES = {
+    "AccessDeniedException",
+    "AccessDenied",
+    "UnauthorizedException",
+    "NotAuthorizedException",
+    "ForbiddenException",
+}
 
 
 def _idc():
@@ -47,7 +53,7 @@ def _idc():
 
 
 def _now_iso() -> str:
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return datetime.datetime.now(datetime.UTC).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +61,9 @@ def _now_iso() -> str:
 # ---------------------------------------------------------------------------
 def _tool_name(context) -> str:
     name = ""
-    cc = getattr(context, "client_context", None) or getattr(context, "clientContext", None)
+    cc = getattr(context, "client_context", None) or getattr(
+        context, "clientContext", None
+    )
     if cc is not None:
         custom = getattr(cc, "custom", None) or {}
         if isinstance(custom, dict):
@@ -77,6 +85,7 @@ def _account_id(context) -> str:
 def _b64url_json(segment: str):
     """Decode a base64url JWT segment to a dict (best-effort)."""
     import base64
+
     try:
         pad = "=" * (-len(segment) % 4)
         return json.loads(base64.urlsafe_b64decode(segment + pad).decode("utf-8"))
@@ -96,7 +105,9 @@ def _claims_from_context(context, event) -> dict:
       3. event-level fallbacks (some setups pass claims in the event).
     Returns a claims dict (possibly empty).
     """
-    cc = getattr(context, "client_context", None) or getattr(context, "clientContext", None)
+    cc = getattr(context, "client_context", None) or getattr(
+        context, "clientContext", None
+    )
     custom = {}
     if cc is not None:
         c = getattr(cc, "custom", None)
@@ -111,8 +122,10 @@ def _claims_from_context(context, event) -> dict:
         identity = c.get("identity")
         if identity:
             # Pass through the interceptor's chosen identity + source verbatim.
-            return {"_resolved_custodian": str(identity),
-                    "_resolved_source": c.get("source", "jwt")}
+            return {
+                "_resolved_custodian": str(identity),
+                "_resolved_source": c.get("source", "jwt"),
+            }
     for key in ("bedrockAgentCoreIdentity", "claims", "identityClaims", "jwtClaims"):
         val = custom.get(key)
         if isinstance(val, dict) and val:
@@ -120,11 +133,11 @@ def _claims_from_context(context, event) -> dict:
         if isinstance(val, str) and val.strip().startswith("{"):
             try:
                 return json.loads(val)
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110 - best-effort parse; fall through to other strategies
                 pass
 
     # 2. A raw JWT string anywhere in custom -> decode payload segment.
-    for k, v in custom.items():
+    for _k, v in custom.items():
         if isinstance(v, str) and v.count(".") == 2 and len(v) > 40:
             payload = _b64url_json(v.split(".")[1])
             if payload:
@@ -136,7 +149,11 @@ def _claims_from_context(context, event) -> dict:
             val = event.get(key)
             if isinstance(val, dict):
                 # API-GW-style nested authorizer claims
-                nested = val.get("authorizer", {}).get("claims") if key == "requestContext" else val
+                nested = (
+                    val.get("authorizer", {}).get("claims")
+                    if key == "requestContext"
+                    else val
+                )
                 if isinstance(nested, dict) and nested:
                     return nested
     return {}
@@ -172,7 +189,11 @@ def _synthetic_arn(name: str, account: str) -> str:
 
 def _region() -> str:
     """Region the Lambda runs in — derived, never hardcoded."""
-    return os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
+    return (
+        os.environ.get("AWS_REGION")
+        or os.environ.get("AWS_DEFAULT_REGION")
+        or "us-east-1"
+    )
 
 
 def _quicksight_arn(user_name: str, account: str) -> str:
@@ -228,20 +249,26 @@ def _resolve_users_idc(target_type: str, name: str, account: str) -> list:
                     f"IAM Identity Center could not be queried (access denied resolving user "
                     f"'{name}'); no hold placed. Supply an exact identifier or use direct mode."
                 ) from exc
-            raise ResolutionError(f"error resolving user '{name}': {code or exc}; no hold placed") from exc
+            raise ResolutionError(
+                f"error resolving user '{name}': {code or exc}; no hold placed"
+            ) from exc
         users = resp.get("Users", [])
         if not users:
-            raise ResolutionError(f"user '{name}' not found in IAM Identity Center; no hold placed")
+            raise ResolutionError(
+                f"user '{name}' not found in IAM Identity Center; no hold placed"
+            )
         out = []
         for u in users:
             uname = u.get("UserName") or name
-            out.append({
-                "user_arn": _quicksight_arn(uname, account),
-                "display": uname,
-                "idc_user_id": u["UserId"],
-                "idc_user_name": uname,
-                "subject_key": uname,
-            })
+            out.append(
+                {
+                    "user_arn": _quicksight_arn(uname, account),
+                    "display": uname,
+                    "idc_user_id": u["UserId"],
+                    "idc_user_name": uname,
+                    "subject_key": uname,
+                }
+            )
         return out
 
     # group: resolve group id, then expand memberships.
@@ -249,7 +276,10 @@ def _resolve_users_idc(target_type: str, name: str, account: str) -> list:
         gid = idc.get_group_id(
             IdentityStoreId=IDENTITY_STORE_ID,
             AlternateIdentifier={
-                "UniqueAttribute": {"AttributePath": "DisplayName", "AttributeValue": name}
+                "UniqueAttribute": {
+                    "AttributePath": "DisplayName",
+                    "AttributeValue": name,
+                }
             },
         )["GroupId"]
     except ClientError as exc:
@@ -261,7 +291,9 @@ def _resolve_users_idc(target_type: str, name: str, account: str) -> list:
                 f"IAM Identity Center could not be queried (access denied resolving group "
                 f"'{name}'); no hold placed. Supply an exact identifier or use direct mode."
             ) from exc
-        raise ResolutionError(f"error resolving group '{name}': {code or exc}; no hold placed") from exc
+        raise ResolutionError(
+            f"error resolving group '{name}': {code or exc}; no hold placed"
+        ) from exc
 
     members = []
     try:
@@ -289,14 +321,16 @@ def _resolve_users_idc(target_type: str, name: str, account: str) -> list:
                     raise ResolutionError(
                         f"member {uid} of group '{name}' has no UserName; no hold placed."
                     )
-                members.append({
-                    "user_arn": _quicksight_arn(uname, account),
-                    "display": uname,
-                    "idc_user_id": uid,
-                    "idc_user_name": uname,
-                    "subject_key": uname,
-                    "group_name": name,
-                })
+                members.append(
+                    {
+                        "user_arn": _quicksight_arn(uname, account),
+                        "display": uname,
+                        "idc_user_id": uid,
+                        "idc_user_name": uname,
+                        "subject_key": uname,
+                        "group_name": name,
+                    }
+                )
     except ResolutionError:
         raise
     except ClientError as exc:
@@ -306,7 +340,9 @@ def _resolve_users_idc(target_type: str, name: str, account: str) -> list:
                 f"IAM Identity Center could not be queried (access denied expanding group "
                 f"'{name}'); no hold placed."
             ) from exc
-        raise ResolutionError(f"error expanding group '{name}': {code or exc}; no hold placed") from exc
+        raise ResolutionError(
+            f"error expanding group '{name}': {code or exc}; no hold placed"
+        ) from exc
     if not members:
         raise ResolutionError(f"group '{name}' has no members; no hold placed")
     return members
@@ -321,24 +357,45 @@ def tool_search_identities(args) -> dict:
         idc = _idc()
         try:
             users = idc.list_users(IdentityStoreId=IDENTITY_STORE_ID).get("Users", [])
-            groups = idc.list_groups(IdentityStoreId=IDENTITY_STORE_ID).get("Groups", [])
+            groups = idc.list_groups(IdentityStoreId=IDENTITY_STORE_ID).get(
+                "Groups", []
+            )
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             if code in _DENIED_CODES:
-                return {"error": "IAM Identity Center could not be queried (access denied); "
-                                 "search unavailable. Supply exact identifiers or use direct mode."}
+                return {
+                    "error": "IAM Identity Center could not be queried (access denied); "
+                    "search unavailable. Supply exact identifiers or use direct mode."
+                }
             return {"error": f"error searching identities: {code or exc}"}
-        mu = lambda u: not query or query in u.get("UserName", "").lower() or query in u.get("DisplayName", "").lower()
-        mg = lambda g: not query or query in g.get("DisplayName", "").lower()
+
+        def mu(u):
+            return (
+                not query
+                or query in u.get("UserName", "").lower()
+                or query in u.get("DisplayName", "").lower()
+            )
+
+        def mg(g):
+            return not query or query in g.get("DisplayName", "").lower()
+
         return {
             "mode": "idc",
-            "users": [{"id": u["UserId"], "name": u.get("UserName")} for u in users if mu(u)],
-            "groups": [{"id": g["GroupId"], "name": g.get("DisplayName")} for g in groups if mg(g)],
+            "users": [
+                {"id": u["UserId"], "name": u.get("UserName")} for u in users if mu(u)
+            ],
+            "groups": [
+                {"id": g["GroupId"], "name": g.get("DisplayName")}
+                for g in groups
+                if mg(g)
+            ],
         }
     return {
         "mode": "direct",
         "note": "IDENTITY_MODE=direct: search disabled; supply names directly.",
-        "query": query, "users": [], "groups": [],
+        "query": query,
+        "users": [],
+        "groups": [],
     }
 
 
@@ -346,12 +403,19 @@ def tool_list_group_members(args, account) -> dict:
     name = args.get("group_name") or args.get("name") or ""
     if IDENTITY_MODE == "idc" and IDENTITY_STORE_ID:
         try:
-            return {"mode": "idc", "group": name,
-                    "members": _resolve_users_idc("group", name, account)}
+            return {
+                "mode": "idc",
+                "group": name,
+                "members": _resolve_users_idc("group", name, account),
+            }
         except ResolutionError as exc:
             return {"error": str(exc)}
-    return {"mode": "direct", "note": "IDENTITY_MODE=direct: group expansion disabled.",
-            "group": name, "members": []}
+    return {
+        "mode": "direct",
+        "note": "IDENTITY_MODE=direct: group expansion disabled.",
+        "group": name,
+        "members": [],
+    }
 
 
 def tool_place_hold(args, account, claims) -> dict:
@@ -378,8 +442,8 @@ def tool_place_hold(args, account, claims) -> dict:
         print(f"[mcp] place_hold resolution failed: {exc}")
         return {"error": str(exc)}
 
-    newly_held = []       # items created now (hold_start = now)
-    already_held = []     # {name, hold_start} for members already active (date preserved)
+    newly_held = []  # items created now (hold_start = now)
+    already_held = []  # {name, hold_start} for members already active (date preserved)
     for r in resolved:
         user_arn = r["user_arn"]
         member_name = r.get("display", name)
@@ -389,18 +453,31 @@ def tool_place_hold(args, account, claims) -> dict:
             existing = _table.get_item(Key={"user_arn": user_arn}).get("Item")
         except Exception as exc:  # noqa: BLE001 - fail closed: do not overwrite on read error
             print(f"[mcp] place_hold get_item error for {user_arn}: {exc}")
-            return {"error": f"could not verify existing hold for '{member_name}'; no changes made"}
+            return {
+                "error": f"could not verify existing hold for '{member_name}'; no changes made"
+            }
 
         if existing and existing.get("status") == "active":
-            already_held.append({"name": member_name, "user_arn": user_arn,
-                                  "hold_start": existing.get("hold_start")})
+            already_held.append(
+                {
+                    "name": member_name,
+                    "user_arn": user_arn,
+                    "hold_start": existing.get("hold_start"),
+                }
+            )
             continue
 
         item = {
-            "user_arn": user_arn, "status": "active", "matter_id": matter_id,
-            "hold_start": _now_iso(), "custodian": custodian,
-            "custodian_source": custodian_source, "display": member_name,
-            "target_type": target_type, "target_name": name, "control_path": "mcp",
+            "user_arn": user_arn,
+            "status": "active",
+            "matter_id": matter_id,
+            "hold_start": _now_iso(),
+            "custodian": custodian,
+            "custodian_source": custodian_source,
+            "display": member_name,
+            "target_type": target_type,
+            "target_name": name,
+            "control_path": "mcp",
         }
         # Audit attributes from IDC resolution (present in idc mode). Keep the
         # partition key equal to the CHAT_LOGS user_arn; retain the directory
@@ -412,10 +489,13 @@ def tool_place_hold(args, account, claims) -> dict:
         newly_held.append(item)
 
     result = {
-        "mode": IDENTITY_MODE, "custodian": custodian,
+        "mode": IDENTITY_MODE,
+        "custodian": custodian,
         "custodian_source": custodian_source,
-        "newly_held": newly_held, "newly_held_count": len(newly_held),
-        "already_held": already_held, "already_held_count": len(already_held),
+        "newly_held": newly_held,
+        "newly_held_count": len(newly_held),
+        "already_held": already_held,
+        "already_held_count": len(already_held),
     }
 
     if target_type == "group":
@@ -434,7 +514,9 @@ def tool_place_hold(args, account, claims) -> dict:
                 f"Nothing to do."
             )
         else:
-            result["message"] = f"{name} placed on legal hold (since {newly_held[0]['hold_start']})."
+            result["message"] = (
+                f"{name} placed on legal hold (since {newly_held[0]['hold_start']})."
+            )
     return result
 
 
@@ -446,7 +528,9 @@ def tool_release_hold(args, account, claims) -> dict:
 
     claim_custodian, claim_source = _custodian_from_claims(claims)
     released_by = claim_custodian or args.get("custodian") or "system"
-    released_by_source = claim_source or ("request" if args.get("custodian") else "default")
+    released_by_source = claim_source or (
+        "request" if args.get("custodian") else "default"
+    )
     print(f"[mcp] release_hold released_by={released_by!r} source={released_by_source}")
 
     try:
@@ -463,15 +547,22 @@ def tool_release_hold(args, account, claims) -> dict:
                 ConditionExpression=Attr("user_arn").exists(),
                 ExpressionAttributeNames={"#s": "status"},
                 ExpressionAttributeValues={
-                    ":released": "released", ":ts": _now_iso(),
-                    ":rb": released_by, ":rbs": released_by_source,
+                    ":released": "released",
+                    ":ts": _now_iso(),
+                    ":rb": released_by,
+                    ":rbs": released_by_source,
                 },
             )
             released.append(r["user_arn"])
         except Exception as exc:  # noqa: BLE001
             print(f"[mcp] release skip {r['user_arn']}: {exc}")
-    return {"released": released, "count": len(released), "mode": IDENTITY_MODE,
-            "released_by": released_by, "released_by_source": released_by_source}
+    return {
+        "released": released,
+        "count": len(released),
+        "mode": IDENTITY_MODE,
+        "released_by": released_by,
+        "released_by_source": released_by_source,
+    }
 
 
 def tool_list_holds(args) -> dict:
@@ -489,14 +580,24 @@ def _dump_context(context, event):
     exactly where the Gateway carries the caller's JWT claims. Redacts long
     token-like values."""
     try:
-        cc = getattr(context, "client_context", None) or getattr(context, "clientContext", None)
+        cc = getattr(context, "client_context", None) or getattr(
+            context, "clientContext", None
+        )
         custom = {}
         if cc is not None:
             c = getattr(cc, "custom", None)
             if isinstance(c, dict):
-                custom = {k: (f"<redacted len={len(v)}>" if isinstance(v, str) and v.count(".") == 2 else v)
-                          for k, v in c.items()}
-        print(f"[mcp][diag] clientContext.custom keys={list(custom.keys())} custom={json.dumps(custom, default=str)[:1500]}")
+                custom = {
+                    k: (
+                        f"<redacted len={len(v)}>"
+                        if isinstance(v, str) and v.count(".") == 2
+                        else v
+                    )
+                    for k, v in c.items()
+                }
+        print(
+            f"[mcp][diag] clientContext.custom keys={list(custom.keys())} custom={json.dumps(custom, default=str)[:1500]}"
+        )
         if isinstance(event, dict):
             print(f"[mcp][diag] event keys={list(event.keys())}")
     except Exception as exc:  # noqa: BLE001
@@ -514,10 +615,23 @@ def handler(event, context):
     claims = _claims_from_context(context, event)
     if claims:
         # Redact nothing sensitive beyond noting which identity fields exist.
-        idfields = {k: claims.get(k) for k in ("email", "cognito:username", "username", "sub", "token_use", "client_id") if k in claims}
+        idfields = {
+            k: claims.get(k)
+            for k in (
+                "email",
+                "cognito:username",
+                "username",
+                "sub",
+                "token_use",
+                "client_id",
+            )
+            if k in claims
+        }
         print(f"[mcp] caller claims present: {json.dumps(idfields, default=str)}")
     else:
-        print("[mcp] no caller claims found in context (2LO/M2M or claims not surfaced)")
+        print(
+            "[mcp] no caller claims found in context (2LO/M2M or claims not surfaced)"
+        )
 
     print(f"[mcp] tool={tool} account={account} args={json.dumps(args, default=str)}")
 
@@ -532,6 +646,13 @@ def handler(event, context):
     if tool == "list_holds":
         return tool_list_holds(args)
 
-    return {"error": f"unknown tool: {tool!r}",
-            "known_tools": ["search_identities", "list_group_members",
-                            "place_hold", "release_hold", "list_holds"]}
+    return {
+        "error": f"unknown tool: {tool!r}",
+        "known_tools": [
+            "search_identities",
+            "list_group_members",
+            "place_hold",
+            "release_hold",
+            "list_holds",
+        ],
+    }

@@ -35,6 +35,7 @@ def _poll_wait(seconds: float) -> None:
     """Wait `seconds` between polls."""
     _POLL_IDLE.wait(timeout=seconds)
 
+
 # Validate HTTPS configuration on module load
 try:
     Config.validate_https_configuration()

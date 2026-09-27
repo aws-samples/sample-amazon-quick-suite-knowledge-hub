@@ -24,6 +24,7 @@ are no ``.sql`` files. The factory (:func:`get_loader`) returns the
 engine-specific loader; all loaders honor ``--dry-run`` without importing
 their driver.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,18 +32,19 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 # Support both "python -m generate_synthetic_data.pipeline.db_loader" and direct execution.
 try:
-    from .config import PipelineConfig, ConfigError
+    from .config import ConfigError, PipelineConfig
     from .loaders import (
         DEFAULT_GENERATED_DIR,
         get_loader,
     )
 except ImportError:  # pragma: no cover - direct-run fallback
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    from generate_synthetic_data.pipeline.config import PipelineConfig, ConfigError
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
+    from generate_synthetic_data.pipeline.config import ConfigError, PipelineConfig
     from generate_synthetic_data.pipeline.loaders import (
         DEFAULT_GENERATED_DIR,
         get_loader,
@@ -58,16 +60,26 @@ logger = logging.getLogger("generate_synthetic_data.pipeline.db_loader")
 def build_parser(description: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--generated-dir", default=str(DEFAULT_GENERATED_DIR))
-    parser.add_argument("--use-copy", action="store_true",
-                        help="Use the bulk COPY path where the engine supports it.")
-    parser.add_argument("--skip-create", action="store_true", help="Skip DDL, load only.")
+    parser.add_argument(
+        "--use-copy",
+        action="store_true",
+        help="Use the bulk COPY path where the engine supports it.",
+    )
+    parser.add_argument(
+        "--skip-create", action="store_true", help="Skip DDL, load only."
+    )
     parser.add_argument("--skip-load", action="store_true", help="Create tables only.")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print the plan without connecting to any database.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the plan without connecting to any database.",
+    )
     return parser
 
 
-def run(argv: Optional[List[str]] = None, *, description: str = "Database-agnostic loader.") -> int:
+def run(
+    argv: list[str] | None = None, *, description: str = "Database-agnostic loader."
+) -> int:
     parser = build_parser(description)
     args = parser.parse_args(argv)
 
@@ -106,8 +118,10 @@ def run(argv: Optional[List[str]] = None, *, description: str = "Database-agnost
     return 0
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-    return run(argv, description="Database-agnostic structured-data loader (honors DB_ENGINE).")
+def main(argv: list[str] | None = None) -> int:
+    return run(
+        argv, description="Database-agnostic structured-data loader (honors DB_ENGINE)."
+    )
 
 
 if __name__ == "__main__":
