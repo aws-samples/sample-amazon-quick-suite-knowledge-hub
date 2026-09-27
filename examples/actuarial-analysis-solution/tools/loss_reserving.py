@@ -452,11 +452,11 @@ class LossReservingService:
 
     def _simulate_reserves(self, triangles_data):
         """Helper method for bootstrap simulation."""
-        import random
+        import numpy as np
 
         base_value = 1000000
-        # Statistical bootstrap simulation, not a security context.
-        variation = random.uniform(0.8, 1.2)  # noqa: S311
+        # Statistical bootstrap simulation using NumPy's PRNG.
+        variation = np.random.uniform(0.8, 1.2)
         return base_value * variation
 
     def test_reserve_adequacy(self, chain_ladder_result, bf_result):

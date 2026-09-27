@@ -20,13 +20,21 @@ Environment variables (all optional, with defaults):
 
 import json
 import os
-import time
+from threading import Event
 
 import boto3
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 AGENT_NAME = os.environ.get("AGENT_NAME", "ComplianceResearchAgent")
 MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-pro-v1:0")
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
+
 
 iam = boto3.client("iam")
 sts = boto3.client("sts")
@@ -134,7 +142,7 @@ def prepare_agent(agent_id):
             print("  Agent preparation FAILED")
             raise Exception("Agent preparation failed")
         print(f"    Status: {status}...")
-        time.sleep(5)
+        _poll_wait(5)
 
     raise Exception("Timed out waiting for agent preparation")
 
@@ -160,7 +168,7 @@ def create_alias(agent_id):
         if status == "FAILED":
             raise Exception("Alias creation failed")
         print(f"    Alias status: {status}...")
-        time.sleep(3)
+        _poll_wait(3)
 
     raise Exception("Timed out waiting for alias")
 
@@ -174,7 +182,7 @@ def main():
     role_arn = create_agent_role()
 
     print("  Waiting 10s for IAM propagation...")
-    time.sleep(10)
+    _poll_wait(10)
 
     print("\n[2/4] Creating Bedrock Agent...")
     agent_id = create_agent(role_arn)
@@ -188,7 +196,7 @@ def main():
             print(f"  Agent status: {status}")
             break
         print(f"    Status: {status}...")
-        time.sleep(5)
+        _poll_wait(5)
 
     print("\n[3/4] Preparing agent...")
     prepare_agent(agent_id)

@@ -53,6 +53,7 @@ Resources:
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:group/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:namespace/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:space/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:user/*"
             Action:
               # Action connectors
@@ -72,17 +73,19 @@ Resources:
               - quicksight:DescribeKnowledgeBase
               - quicksight:DescribeKnowledgeBasePermissions
               - quicksight:UpdateKnowledgeBasePermissions
+              # Spaces
+              - quicksight:CreateSpace
+              - quicksight:DescribeSpace
+              - quicksight:DescribeSpacePermissions
+              - quicksight:UpdateSpace
+              - quicksight:UpdateSpacePermissions
+              - quicksight:UpdateSpaceResources
+              - quicksight:ListSpaceResources
               # Principal resolution (target account)
               - quicksight:DescribeGroup
               - quicksight:DescribeUser
               - quicksight:ListUsers
   QuickMigrationPolicyAccount:
-    # checkov:skip=CKV_AWS_111: These QuickSight actions (Create*/Update*/List*
-    # for data sources, knowledge bases, and connector/KB enumeration) do NOT
-    # support resource-level IAM permissions — Create* runs before a resource
-    # ARN exists and List* enumerates account-wide. Resource "*" is required by
-    # the service; QuickSight still confines the calls to the caller's own
-    # AwsAccountId. See the QuickSight Service Authorization Reference.
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: !Sub "${RoleName}-quicksight-account-policy"
@@ -106,6 +109,7 @@ Resources:
               # List ops used by resource resolution (search_by = name | all)
               - quicksight:ListActionConnectors
               - quicksight:ListKnowledgeBases
+              - quicksight:ListSpaces
 
   # ── S3 permissions to create/manage the knowledge-base-* buckets ──
   KnowledgeBaseS3Policy:

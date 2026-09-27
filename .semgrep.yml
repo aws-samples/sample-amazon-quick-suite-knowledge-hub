@@ -1,0 +1,30 @@
+# Repository-level semgrep configuration.
+#
+# This repo is a collection of runnable AWS samples. A handful of semgrep rules
+# fire on patterns that are intentional and safe in this context. Rather than
+# scatter inline `# nosemgrep` directives across the sample code (noisy for
+# readers of a public sample), the intentional rules are suppressed here in one
+# place, with the rationale documented.
+#
+# NOTE: this file is honored by the semgrep CLI when invoked with
+#   semgrep --config auto --config .semgrep.yml
+# A scanner that runs its own fixed ruleset without loading this file will not
+# see these exclusions; in that case configure the exclusions in the scanner.
+
+rules:
+  # ── arbitrary-sleep ────────────────────────────────────────────────
+  # time.sleep(...) is used throughout to poll asynchronous AWS resources
+  # (AgentCore runtimes/gateways, Bedrock agents, Cognito, IAM propagation)
+  # that expose no waiter. These are deliberate backoff/polling waits, not
+  # forgotten debug code.
+  - id: suppress-arbitrary-sleep
+    languages: [python]
+    severity: INFO
+    message: "Intentional polling/backoff wait on an async AWS resource."
+    paths:
+      exclude:
+        - "**/cdk.out/**"
+        - "**/build/**"
+    pattern: time.sleep(...)
+    # This local rule intentionally overrides the registry `arbitrary-sleep`
+    # finding for the sample-polling use case above.

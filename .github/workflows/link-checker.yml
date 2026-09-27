@@ -2,9 +2,9 @@ name: Link Checker
 
 on:
   schedule:
-    - cron: "0 0 * * 1" # Weekly on Monday at midnight UTC
+    - cron: '0 0 * * 1'  # Weekly on Monday at midnight UTC
   pull_request:
-    branches: [main]
+    branches: [ main ]
     paths:
       - "**/*.md"
       - "mkdocs.yml"
@@ -33,7 +33,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install uv
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -47,14 +47,14 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           echo "📚 Building Amazon Quick Knowledge Hub documentation for link checking..."
-          uv run mkdocs build -f mkdocs.yml
+          uv run mkdocs build
 
       - name: Install lychee link checker
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           # Install lychee using curl for better reliability
           curl -sSL https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          sudo mv lychee-x86_64-unknown-linux-gnu/lychee /usr/local/bin/
+          sudo mv lychee /usr/local/bin/
 
       - name: Check links in Amazon Quick Knowledge Hub
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

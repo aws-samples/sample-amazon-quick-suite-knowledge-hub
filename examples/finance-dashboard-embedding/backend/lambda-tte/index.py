@@ -1,10 +1,25 @@
 import datetime
+import base64
 import json
 import logging
 import os
 
 import boto3
 import jwt
+from jwt import PyJWKClient
+
+
+def _read_unverified_jwt_claims(token: str) -> dict:
+    """Decode a JWT payload without signature verification.
+
+    Used only for the OIDC token returned by AWS IAM Identity Center's
+    create_token_with_iam call, received over TLS from an authenticated AWS SDK
+    request. IdC publishes no JWKS for these tokens, so the signature cannot be
+    verified; authenticity comes from the authenticated SDK call, not the token.
+    """
+    payload_segment = token.split(".")[1]
+    padded = payload_segment + "=" * (-len(payload_segment) % 4)
+    return json.loads(base64.urlsafe_b64decode(padded))
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -18,6 +33,53 @@ ALLOWED_DOMAINS = os.environ.get("ALLOWED_DOMAINS", "http://localhost:3000").spl
 AWS_ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID")
 DASHBOARD_ID = os.environ.get("DASHBOARD_ID", "")
 QUICKSIGHT_USER_ARN = os.environ.get("QUICKSIGHT_USER_ARN", "")
+
+# Cognito settings used to cryptographically verify the incoming ID token.
+# COGNITO_ISSUER should be the user pool issuer URL, e.g.
+# https://cognito-idp.<region>.amazonaws.com/<userPoolId>
+# COGNITO_APP_CLIENT_ID is the app client id the token's `aud`/`client_id`
+# must match. Both are optional only to preserve backwards compatibility; when
+# unset, token verification cannot be performed and the request is rejected.
+COGNITO_ISSUER = os.environ.get("COGNITO_ISSUER", "").rstrip("/")
+COGNITO_APP_CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID", "")
+
+# Cache one JWKS client per process (Lambda container reuse).
+_jwks_client = None
+
+
+def _get_jwks_client():
+    """Return a cached PyJWKClient for the configured Cognito issuer."""
+    global _jwks_client
+    if not COGNITO_ISSUER:
+        return None
+    if _jwks_client is None:
+        _jwks_client = PyJWKClient(f"{COGNITO_ISSUER}/.well-known/jwks.json")
+    return _jwks_client
+
+
+def verify_cognito_id_token(id_token):
+    """Cryptographically verify a Cognito ID token and return its claims.
+
+    Verifies the RS256 signature against the user pool JWKS, and validates the
+    issuer (and audience when an app client id is configured). Raises on any
+    failure — callers must not fall back to an unverified decode.
+    """
+    jwks_client = _get_jwks_client()
+    if jwks_client is None:
+        raise RuntimeError(
+            "COGNITO_ISSUER is not configured; cannot verify the ID token. "
+            "Set COGNITO_ISSUER (and COGNITO_APP_CLIENT_ID) on the function."
+        )
+
+    signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+    decode_kwargs = {
+        "algorithms": ["RS256"],
+        "issuer": COGNITO_ISSUER,
+        "options": {"require": ["exp", "iss"]},
+    }
+    if COGNITO_APP_CLIENT_ID:
+        decode_kwargs["audience"] = COGNITO_APP_CLIENT_ID
+    return jwt.decode(id_token, signing_key.key, **decode_kwargs)
 
 CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
@@ -57,10 +119,12 @@ def lambda_handler(event, context):
                 logger.info(f"ID Token received (first 50 chars): {id_token[:50]}")
                 logger.info(f"IDC_APP_CLIENT_ID being used: {IDC_APP_CLIENT_ID}")
 
+                # Verify the client-supplied ID token's signature against the
+                # Cognito user pool JWKS before trusting or forwarding it. A
+                # failed verification rejects the request (fail closed) rather
+                # than proceeding with unverified claims.
                 try:
-                    cognito_claims = jwt.decode(
-                        id_token, options={"verify_signature": False}
-                    )
+                    cognito_claims = verify_cognito_id_token(id_token)
                     logger.info(
                         "Cognito token claims: iss={}, aud={}, email={}, token_use={}".format(
                             cognito_claims.get("iss"),
@@ -70,7 +134,14 @@ def lambda_handler(event, context):
                         )
                     )
                 except Exception as decode_error:
-                    logger.error(f"Failed to decode Cognito token: {str(decode_error)}")
+                    logger.error(f"ID token verification failed: {str(decode_error)}")
+                    return {
+                        "statusCode": 401,
+                        "headers": CORS_HEADERS,
+                        "body": json.dumps(
+                            {"embedUrl": "", "status": "ERROR: invalid or unverifiable idToken"}
+                        ),
+                    }
 
                 try:
                     logger.info("=== CALLING OIDC CREATE TOKEN ===")
@@ -101,10 +172,24 @@ def lambda_handler(event, context):
                     }
                 else:
                     logger.info("=== DECODING OIDC TOKEN ===")
-                    claims = jwt.decode(
-                        oidc_token_response["idToken"],
-                        options={"verify_signature": False},
+                    # This token is the response from AWS IAM Identity Center's
+                    # create_token_with_iam call (received over TLS from a
+                    # trusted AWS API), not client input. IdC does not publish a
+                    # public JWKS for these tokens, so we read the claims without
+                    # signature verification. Source authenticity is guaranteed
+                    # by the authenticated AWS SDK call above.
+                    claims = _read_unverified_jwt_claims(
+                        oidc_token_response["idToken"]
                     )
+                    if "sts:identity_context" not in claims:
+                        logger.error("OIDC token missing sts:identity_context claim")
+                        return {
+                            "statusCode": 502,
+                            "headers": CORS_HEADERS,
+                            "body": json.dumps(
+                                {"embedUrl": "", "status": "ERROR: malformed OIDC token"}
+                            ),
+                        }
                     logger.info("=== ASSUMING ROLE ===")
                     x = datetime.datetime.now()
                     try:

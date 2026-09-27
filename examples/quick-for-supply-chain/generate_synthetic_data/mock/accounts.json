@@ -1,0 +1,122 @@
+[
+  {
+    "account_id": "ACC-001",
+    "name": "TechVision Industries",
+    "industry": "Technology",
+    "address": "100 Innovation Blvd, San Jose, CA 95134",
+    "contact": "Sarah Chen",
+    "email": "sarah.chen@techvision.com",
+    "phone": "408-555-0101",
+    "credit_terms": "Net 30",
+    "credit_limit": 500000,
+    "tier": "Enterprise"
+  },
+  {
+    "account_id": "ACC-002",
+    "name": "Global Manufacturing Corp",
+    "industry": "Manufacturing",
+    "address": "2500 Factory Way, Detroit, MI 48201",
+    "contact": "Robert Martinez",
+    "email": "r.martinez@globalmanuf.com",
+    "phone": "313-555-0202",
+    "credit_terms": "Net 45",
+    "credit_limit": 750000,
+    "tier": "Enterprise"
+  },
+  {
+    "account_id": "ACC-003",
+    "name": "MedTech Solutions",
+    "industry": "Healthcare",
+    "address": "789 Research Park Dr, Boston, MA 02108",
+    "contact": "Dr. Amanda Foster",
+    "email": "afoster@medtechsol.com",
+    "phone": "617-555-0303",
+    "credit_terms": "Net 30",
+    "credit_limit": 300000,
+    "tier": "Premium"
+  },
+  {
+    "account_id": "ACC-004",
+    "name": "Pacific Retail Group",
+    "industry": "Retail",
+    "address": "450 Commerce St, Seattle, WA 98101",
+    "contact": "Kevin Park",
+    "email": "kpark@pacificretail.com",
+    "phone": "206-555-0404",
+    "credit_terms": "Net 15",
+    "credit_limit": 200000,
+    "tier": "Standard"
+  },
+  {
+    "account_id": "ACC-005",
+    "name": "Apex Aerospace",
+    "industry": "Aerospace",
+    "address": "1200 Flight Path Rd, Houston, TX 77058",
+    "contact": "Maria Gonzalez",
+    "email": "m.gonzalez@apexaero.com",
+    "phone": "281-555-0505",
+    "credit_terms": "Net 60",
+    "credit_limit": 1000000,
+    "tier": "Enterprise"
+  },
+  {
+    "account_id": "ACC-006",
+    "name": "Sunrise Energy Co",
+    "industry": "Energy",
+    "address": "800 Solar Ave, Phoenix, AZ 85001",
+    "contact": "James Williams",
+    "email": "jwilliams@sunriseenergy.com",
+    "phone": "602-555-0606",
+    "credit_terms": "Net 30",
+    "credit_limit": 450000,
+    "tier": "Premium"
+  },
+  {
+    "account_id": "ACC-007",
+    "name": "NorthStar Logistics",
+    "industry": "Transportation",
+    "address": "333 Freight Ln, Chicago, IL 60601",
+    "contact": "Lisa Thompson",
+    "email": "l.thompson@northstarlog.com",
+    "phone": "312-555-0707",
+    "credit_terms": "Net 30",
+    "credit_limit": 350000,
+    "tier": "Premium"
+  },
+  {
+    "account_id": "ACC-008",
+    "name": "DataStream Analytics",
+    "industry": "Technology",
+    "address": "900 Data Center Blvd, Austin, TX 78701",
+    "contact": "Raj Patel",
+    "email": "rpatel@datastream.io",
+    "phone": "512-555-0808",
+    "credit_terms": "Net 30",
+    "credit_limit": 250000,
+    "tier": "Standard"
+  },
+  {
+    "account_id": "ACC-009",
+    "name": "Oceanic Foods International",
+    "industry": "Food & Beverage",
+    "address": "1500 Harbor Dr, Miami, FL 33101",
+    "contact": "Carlos Rivera",
+    "email": "crivera@oceanicfoods.com",
+    "phone": "305-555-0909",
+    "credit_terms": "Net 30",
+    "credit_limit": 400000,
+    "tier": "Premium"
+  },
+  {
+    "account_id": "ACC-010",
+    "name": "Summit Construction",
+    "industry": "Construction",
+    "address": "2200 Builder Rd, Denver, CO 80201",
+    "contact": "Mike O'Brien",
+    "email": "mobrien@summitconst.com",
+    "phone": "303-555-1010",
+    "credit_terms": "Net 45",
+    "credit_limit": 600000,
+    "tier": "Enterprise"
+  }
+]

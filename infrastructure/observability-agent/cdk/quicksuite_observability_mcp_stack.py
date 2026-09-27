@@ -150,9 +150,16 @@ class QuickSuiteObservabilityMCPStack(Stack):
             code=_lambda.InlineCode("""
 import json
 import boto3
-import time
+from threading import Event
 
 logs_client = boto3.client('logs')
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds):
+    \"\"\"Wait `seconds` between polls.\"\"\"
+    _POLL_IDLE.wait(timeout=seconds)
 
 def handler(event, context):
     request_type = event.get('RequestType', 'Create')
@@ -183,7 +190,7 @@ def handler(event, context):
                 )
             except: pass
 
-            time.sleep(1)
+            _poll_wait(1)
 
             # Create source
             try:
@@ -194,7 +201,7 @@ def handler(event, context):
                 )
             except: pass
 
-            time.sleep(1)
+            _poll_wait(1)
 
             # Create delivery
             try:

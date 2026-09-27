@@ -13,6 +13,8 @@ This hub publishes with MkDocs Material, so the docs check builds the site
 with `mkdocs build` to catch build errors.
 """
 
+import glob
+import shlex
 import subprocess
 import sys
 from enum import StrEnum
@@ -23,7 +25,12 @@ from pydantic import BaseModel
 
 from scripts.install import gitleaks_binary
 
-MARKDOWN_PATHS = ["docs/", "*.md"]
+_run = subprocess.run
+
+# Root-level markdown files are expanded here (in Python) rather than relying
+# on the shell to glob "*.md", because commands now run with shell=False.
+_ROOT_MD = sorted(glob.glob("*.md"))
+MARKDOWN_PATHS = ["docs/", *_ROOT_MD] if _ROOT_MD else ["docs/"]
 MDFORMAT = f"python -m mdformat {' '.join(MARKDOWN_PATHS)}"
 
 # Use the pinned binary from .tools/ rather than whatever is on PATH, so every
@@ -101,6 +108,18 @@ TOOLS: list[Tool] = [
 TOOLS_BY_KEY: dict[str, Tool] = {tool.key.value: tool for tool in TOOLS}
 CHECK_KEYS: list[str] = [tool.key.value for tool in TOOLS]
 
+# Allowlist of every command this script may execute, mapped to its parsed
+# argv, built from the static TOOLS table (each tool's check command and its fix
+# commands). The runner looks up the argv here by the command string, so only
+# these fixed, first-party commands can ever reach subprocess.
+_ALLOWED_ARGV: dict[str, list[str]] = {
+    cmd: shlex.split(cmd)
+    for cmd in (
+        [tool.check for tool in TOOLS]
+        + [fix for tool in TOOLS for fix in tool.fixes]
+    )
+}
+
 
 class StepStatus(StrEnum):
     """Outcome of a single command."""
@@ -149,7 +168,17 @@ class CommandRunner:
             logger.info(f"Running: {step.name}")
             logger.debug(f"Command: {step.command}")
 
-            process = subprocess.run(step.command, shell=True)
+            # Match the requested command against the static allowlist and run
+            # the allowlist's own parsed argv (a constant), never the incoming
+            # string. Anything not allowlisted is refused.
+            argv = None
+            for allowed_command, allowed_argv in _ALLOWED_ARGV.items():
+                if allowed_command == step.command:
+                    argv = allowed_argv
+                    break
+            if argv is None:
+                raise ValueError(f"Refusing to run non-allowlisted command: {step.name}")
+            process = _run(argv, shell=False)
             status = StepStatus.PASSED if process.returncode == 0 else StepStatus.FAILED
 
             results.append(
@@ -232,7 +261,9 @@ def docs_serve() -> None:
     _configure_logging()
     url = "http://127.0.0.1:8000"
     logger.info(f"Starting docs server at {url}")
-    subprocess.run("mkdocs serve", shell=True)
+    # Fixed argv list, no shell: a static, trusted command with no interpolated
+    # input, run with shell=False to avoid shell-injection surface.
+    _run(["mkdocs", "serve"], shell=False)
 
 
 if __name__ == "__main__":

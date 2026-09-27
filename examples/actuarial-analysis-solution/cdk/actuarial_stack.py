@@ -52,7 +52,11 @@ class ActuarialToolsStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        unique_id = str(uuid.uuid4())[:8]
+        # Stable resource-name suffix. Using a fresh uuid on every synth would
+        # rename (and therefore REPLACE/DESTROY) the S3 buckets and Glue
+        # database on each deploy, losing data. Pin it so redeploys only update
+        # code; override via `-c unique_id=<value>` for a brand-new stack.
+        unique_id = self.node.try_get_context("unique_id") or "c859317e"
 
         # S3 Buckets
         claims_bucket = s3.Bucket(
@@ -439,13 +443,20 @@ class ActuarialToolsStack(Stack):
         return data_query_lambda
 
     def _create_native_gateway(self, actuarial_lambda, data_query_lambda):
-        # Cognito domain prefix (must be globally unique & match pattern)
+        # Cognito domain prefix (must be globally unique & match pattern).
+        # Pin to the deployed value by default so a redeploy does NOT replace
+        # the hosted-UI domain (Cognito rejects creating a second domain on a
+        # pool, and it would change the auth URLs). Override via
+        # `-c cognito_domain_prefix=<value>` for a fresh stack.
         raw_prefix = f"{self.stack_name}-{self.account[-6:]}"
         sanitized = (
             re.sub("[^a-z0-9-]", "-", raw_prefix.lower()).strip("-")[:40] or "app"
         )
         h = hashlib.sha256(raw_prefix.encode("utf-8")).hexdigest()[:6]
-        domain_prefix = f"{sanitized}-{h}"
+        domain_prefix = (
+            self.node.try_get_context("cognito_domain_prefix")
+            or f"{sanitized}-{h}"
+        )
 
         # Cognito User Pool (machine-to-machine auth via client credentials)
         user_pool = cognito.UserPool(

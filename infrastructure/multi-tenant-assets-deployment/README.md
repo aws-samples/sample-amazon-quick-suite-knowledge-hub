@@ -1,6 +1,6 @@
 # Quick Agent Assets Deployment
 
-Deploy and migrate **Amazon Quick Suite** resources — Chat Agents, Action Connectors, and
+Deploy and migrate **Amazon Quick** resources — Chat Agents, Action Connectors, and
 S3 Knowledge Bases — between AWS accounts through a
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server hosted on
 **Amazon Bedrock AgentCore Runtime**. The server can be driven directly from

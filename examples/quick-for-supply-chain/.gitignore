@@ -1,0 +1,38 @@
+# ── Secrets / local config (NEVER commit) ───────────────────────
+.env
+.env.*
+*.env
+*secret*
+*credentials*
+*.pem
+*.key
+
+# ── Python ──────────────────────────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── AWS SAM / build artifacts ───────────────────────────────────
+.aws-sam/
+samconfig.toml
+packaged.yaml
+
+# ── OS / editor cruft ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# ── Local cleanup staging (not for the repo) ────────────────────
+.trash-cleanup/
+
+# ── Generated demo data / artifacts (produced at runtime, not source) ──
+generated/
+synthetic_data/

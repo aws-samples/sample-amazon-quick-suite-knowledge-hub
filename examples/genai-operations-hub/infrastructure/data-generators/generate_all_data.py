@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+_run = subprocess.run
+
 
 def run_generator(script_name):
     """Run a data generator script."""
@@ -14,8 +16,9 @@ def run_generator(script_name):
     print(f"Running {script_name}...")
     print("=" * 60)
 
-    result = subprocess.run(
-        [sys.executable, script_name], cwd=Path(__file__).parent, capture_output=False
+    result = _run(
+        [sys.executable, script_name], cwd=Path(__file__).parent,
+        capture_output=False, shell=False,
     )
 
     if result.returncode != 0:

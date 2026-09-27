@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════════════════════
+# Data pipeline dependencies (SEPARATE from root requirements.txt).
+# Install with:  pip install -r generate_synthetic_data/pipeline/requirements.txt
+#
+# The structured-data loader is DATABASE-AGNOSTIC (select via DB_ENGINE:
+# snowflake | postgres | sqlalchemy). Only the CHOSEN engine's driver is
+# required — the others are optional. Driver imports are lazy, so --dry-run
+# works even when a driver is not installed.
+# ═══════════════════════════════════════════════════════════════
+
+# ── Common (always used) ────────────────────────────────────────
+# AWS SDK for S3 upload + Secrets Manager.
+boto3>=1.43.94
+
+# DataFrame handling for the write_pandas / to_sql load paths.
+pandas>=2.2,<3
+
+# ── Engine: snowflake (default DB_ENGINE) ───────────────────────
+# Snowflake bulk loading (write_pandas / PUT+COPY). [pandas] extra pulls in
+# pyarrow needed by write_pandas.
+snowflake-connector-python[pandas]>=3.12,<4
+
+# ── Engine: postgres (DB_ENGINE=postgres) — OPTIONAL ────────────
+# psycopg v3 for COPY FROM STDIN bulk loading into Postgres/RDS.
+# psycopg[binary]>=3.2,<4
+
+# ── Engine: sqlalchemy (DB_ENGINE=sqlalchemy) — OPTIONAL ────────
+# Universal path: works for Postgres, MySQL, SQLite, etc. via df.to_sql.
+# You ALSO need a DBAPI driver for your URL, e.g.:
+#   postgresql+psycopg://…  → psycopg[binary]
+#   mysql+pymysql://…       → PyMySQL
+#   sqlite:///…             → built-in, no extra driver
+# SQLAlchemy>=2.0,<3
+
+# OPTIONAL — only needed for the live Salesforce Bulk API load
+# (generate_synthetic_data.pipeline.salesforce_prep --load). Default behavior is offline
+# prep/validate and does not import this package.
+simple-salesforce>=1.12,<2

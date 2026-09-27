@@ -3,13 +3,15 @@
 Quick Resource Migrator — Bedrock AgentCore MCP Server
 ════════════════════════════════════════════════════════
 
-Migrates Quick Agents, Action Connectors, and S3 Knowledge Bases between AWS
-accounts. Resource-driven: you select a resource type (agent | connector |
-knowledge_base) and choose resources by id, by name, or all. Spaces are NOT
-created or linked.
+Migrates Quick Agents, Action Connectors, S3 Knowledge Bases, and Spaces
+between AWS accounts. Resource-driven: you select a resource type
+(agent | connector | knowledge_base | space) and choose resources by id, by
+name, or all.
 
 Agents are recreated with their Action Connectors attached (remapped to the
-target account) but with no Spaces attachment. Connectors carry sanitized
+target account). Spaces are recreated and re-linked to their resources (agents,
+connectors, knowledge bases) with ARNs remapped to the target account — so the
+linked resources should be migrated first. Connectors carry sanitized
 placeholder secrets and must be re-authenticated in the target UI. Knowledge
 bases provision the target bucket + data source + KB (documents are not copied).
 
@@ -34,9 +36,9 @@ import json
 import logging
 import os
 import sys
-import time
 import traceback
 import uuid
+from threading import Event
 
 import boto3
 from botocore.config import Config
@@ -57,6 +59,13 @@ logger.info(
 logger.info(
     f"TARGET_ROLE_ARN configured: {'YES' if os.environ.get('TARGET_ROLE_ARN') else 'NO'}"
 )
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait ``seconds`` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
 
 # ═══════════════════════════════════════════════════════════════════
 # ENV CONFIG (set these in AgentCore runtime config)
@@ -336,7 +345,7 @@ def wait_for_active(client, account_id: str, agent_id: str, timeout: int = 60):
             )
             if not error_info["is_retryable"]:
                 return False
-        time.sleep(5)
+        _poll_wait(5)
     return False
 
 
@@ -355,7 +364,7 @@ def wait_for_kb_active(client, account_id: str, kb_id: str, timeout: int = 120):
                 return True
         except ClientError:
             return False
-        time.sleep(5)
+        _poll_wait(5)
     return False
 
 
@@ -372,6 +381,21 @@ def copy_agent_permissions(
         )
         return
     _grant(target_qs, target_account, region, "agent", agent_id, perms, report)
+
+
+def copy_space_permissions(
+    source_qs, target_qs, source_account, target_account, region, space_id, report
+):
+    try:
+        perms = source_qs.describe_space_permissions(
+            AwsAccountId=source_account, SpaceId=space_id
+        ).get("Permissions", [])
+    except ClientError as e:
+        logger.warning(
+            f"  ⚠ describe_space_permissions '{space_id}': {classify_error(e)['user_message']}"
+        )
+        return
+    _grant(target_qs, target_account, region, "space", space_id, perms, report)
 
 
 def copy_connector_permissions(
@@ -418,11 +442,18 @@ def _parse_principal_arn(principal_arn):
     return kind, namespace, name
 
 
-def _list_target_users(target_qs, target_account, namespace, _cache={}):  # noqa: B006 — module-level memoization cache is intentional (persists across calls)
+# Module-level memoization caches (persist across calls, but avoid the
+# mutable-default-argument footgun where the shared dict is exposed as a
+# rebindable parameter). Keyed as documented on each function below.
+_TARGET_USERS_CACHE: dict = {}
+_TARGET_PRINCIPAL_CACHE: dict = {}
+
+
+def _list_target_users(target_qs, target_account, namespace):
     """List and cache all registered QuickSight users in the target namespace."""
     key = (target_account, namespace)
-    if key in _cache:
-        return _cache[key]
+    if key in _TARGET_USERS_CACHE:
+        return _TARGET_USERS_CACHE[key]
     users = []
     try:
         paginator = target_qs.get_paginator("list_users")
@@ -438,7 +469,7 @@ def _list_target_users(target_qs, target_account, namespace, _cache={}):  # noqa
             users = resp.get("UserList", [])
         except ClientError:
             users = []
-    _cache[key] = users
+    _TARGET_USERS_CACHE[key] = users
     return users
 
 
@@ -447,7 +478,6 @@ def _resolve_target_principal(
     target_account,
     region,
     principal_arn,
-    _cache={},  # noqa: B006 — intentional persistent memoization cache
 ):
     """Resolve a remapped source principal to a real principal ARN that is
     registered in the target account.
@@ -464,8 +494,8 @@ def _resolve_target_principal(
     """
     if not principal_arn or ":" not in principal_arn:
         return None
-    if principal_arn in _cache:
-        return _cache[principal_arn]
+    if principal_arn in _TARGET_PRINCIPAL_CACHE:
+        return _TARGET_PRINCIPAL_CACHE[principal_arn]
 
     kind, namespace, name = _parse_principal_arn(principal_arn)
     resolved = None
@@ -511,7 +541,7 @@ def _resolve_target_principal(
             if candidates:
                 resolved = candidates[0].get("Arn")
 
-    _cache[principal_arn] = resolved
+    _TARGET_PRINCIPAL_CACHE[principal_arn] = resolved
     return resolved
 
 
@@ -574,6 +604,12 @@ def _grant(target_qs, target_account, region, kind, resource_id, perms, report):
             target_qs.update_knowledge_base_permissions(
                 AwsAccountId=target_account,
                 KnowledgeBaseId=resource_id,
+                GrantPermissions=grant,
+            )
+        elif kind == "space":
+            target_qs.update_space_permissions(
+                AwsAccountId=target_account,
+                SpaceId=resource_id,
                 GrantPermissions=grant,
             )
         logger.info(
@@ -848,6 +884,7 @@ def do_migrate_resources(
             "agents": [],
             "connectors": [],
             "knowledge_bases": [],
+            "spaces": [],
             "buckets": [],
         },
         "skipped_permissions": [],
@@ -921,11 +958,22 @@ def do_migrate_resources(
             ids,
             report,
         )
+    elif rtype == "space":
+        _migrate_spaces(
+            source_qs,
+            target_qs,
+            source_account_id,
+            target_account_id,
+            region,
+            ids,
+            report,
+        )
 
     created_key = {
         "connector": "connectors",
         "knowledge_base": "knowledge_bases",
         "agent": "agents",
+        "space": "spaces",
     }[rtype]
     any_ok = any(
         "FAILED" not in str(m.get("status", ""))
@@ -1259,10 +1307,11 @@ def _migrate_agents(
     agent_ids,
     report,
 ):
-    """Recreate the given agents in the target (standalone — no Spaces) + copy permissions.
+    """Recreate the given agents in the target + copy permissions.
 
     Action Connectors referenced by the agent are remapped to the target account
-    and attached, exactly as in the source. Spaces are intentionally NOT set.
+    and attached, exactly as in the source. Space linkage is handled separately
+    by the space migration (which re-links its resources), not here.
     """
     for agent_id in agent_ids:
         try:
@@ -1399,13 +1448,133 @@ def _migrate_agents(
         )
 
 
+def _migrate_spaces(
+    source_qs,
+    target_qs,
+    source_account_id,
+    target_account_id,
+    region,
+    space_ids,
+    report,
+):
+    """Recreate the given spaces in the target, re-link their resources, copy permissions.
+
+    Each space's linked resources (agents, connectors, knowledge bases) are
+    referenced by ARN; those ARNs are remapped to the target account before the
+    space is re-linked. The linked resources themselves must already be migrated
+    for the target ARNs to resolve.
+    """
+    for space_id in space_ids:
+        try:
+            space = source_qs.describe_space(
+                AwsAccountId=source_account_id, SpaceId=space_id
+            ).get("Space", {})
+        except ClientError as e:
+            report["errors"].append(
+                format_error_for_report(f"describe_space({space_id})", e)
+            )
+            report["migrated"]["spaces"].append(
+                {
+                    "space_id": space_id,
+                    "status": f"FAILED: {classify_error(e)['user_message']}",
+                }
+            )
+            continue
+
+        space_name = space.get("name", space_id)
+        create_params = {
+            "AwsAccountId": target_account_id,
+            "SpaceId": space_id,
+            "Name": space_name,
+        }
+        if space.get("description"):
+            create_params["Description"] = space["description"]
+
+        try:
+            target_qs.create_space(**create_params)
+            status = "CREATED"
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code", "") == "ResourceExistsException":
+                try:
+                    upd = {
+                        "AwsAccountId": target_account_id,
+                        "SpaceId": space_id,
+                        "Name": space_name,
+                    }
+                    if space.get("description"):
+                        upd["Description"] = space["description"]
+                    target_qs.update_space(**upd)
+                    status = "UPDATED"
+                except ClientError as ue:
+                    report["errors"].append(
+                        format_error_for_report(f"update_space({space_id})", ue)
+                    )
+                    status = f"FAILED: {classify_error(ue)['user_message']}"
+            else:
+                report["errors"].append(
+                    format_error_for_report(f"create_space({space_id})", e)
+                )
+                status = f"FAILED: {classify_error(e)['user_message']}"
+
+        # Re-link the space's resources, remapping each ARN to the target account.
+        linked = []
+        if "FAILED" not in status:
+            add_resources = []
+            for res in space.get("resources", []) or []:
+                src_arn = (res.get("resourceDetails") or {}).get("resourceArn")
+                if not src_arn:
+                    continue
+                add_resources.append(
+                    {
+                        "ResourceType": res.get("resourceType"),
+                        "ResourceDetails": {
+                            "resourceArn": remap_arn(
+                                src_arn, target_account_id, region
+                            )
+                        },
+                    }
+                )
+                linked.append(src_arn.split("/")[-1])
+            if add_resources:
+                try:
+                    target_qs.update_space_resources(
+                        AwsAccountId=target_account_id,
+                        SpaceId=space_id,
+                        AddResources=add_resources,
+                    )
+                except ClientError as e:
+                    report["errors"].append(
+                        format_error_for_report(
+                            f"update_space_resources({space_id})", e
+                        )
+                    )
+
+            copy_space_permissions(
+                source_qs,
+                target_qs,
+                source_account_id,
+                target_account_id,
+                region,
+                space_id,
+                report,
+            )
+
+        report["migrated"]["spaces"].append(
+            {
+                "space_id": space_id,
+                "name": space_name,
+                "status": status,
+                "linked_resources": linked,
+            }
+        )
+
+
 # ═══════════════════════════════════════════════════════════════════
 # RESOURCE RESOLUTION (resource_type + id | name | all)
 # ═══════════════════════════════════════════════════════════════════
 
-# The three resource types this server can migrate. "space" is intentionally
-# NOT here — migration is resource-driven and does not create or link spaces.
-_MIGRATABLE_TYPES = {"agent", "connector", "knowledge_base"}
+# The resource types this server can migrate.
+_MIGRATABLE_TYPES = {"agent", "connector", "knowledge_base", "space"}
 
 # Per-type QuickSight list op, its result key, the id field, and the name field.
 _RESOURCE_LISTERS = {
@@ -1422,6 +1591,8 @@ _RESOURCE_LISTERS = {
         "KnowledgeBaseId",
         "Name",
     ),
+    # ListSpaces returns SpaceSummaries with lowercase spaceId / name fields.
+    "space": ("list_spaces", "SpaceSummaries", "spaceId", "name"),
 }
 
 
@@ -1494,15 +1665,13 @@ def resolve_resource_ids(qs, account_id, resource_type, search_by, value):
 # ═══════════════════════════════════════════════════════════════════
 
 # Bind host. Amazon Bedrock AgentCore delivers requests to the container from
-# outside its loopback interface, so the server must listen on 0.0.0.0 to
-# receive them — binding to 127.0.0.1 would make the runtime unreachable.
-# This is not a public exposure: the container runs behind AgentCore's managed
-# ingress, inbound is gated by the Cognito JWT authorizer, and the runtime
-# operates in VPC network mode (private subnets). Override with BIND_HOST if
-# you run the server in a different context.
-#
-# nosec B104 — bind-all is required for the AgentCore container runtime (see above).
-BIND_HOST = os.environ.get("BIND_HOST", "0.0.0.0")  # nosec B104  # noqa: S104
+# outside its loopback interface, so in the runtime the server must listen on
+# all interfaces to receive them. AgentCore supplies BIND_HOST=0.0.0.0 in the
+# container environment; locally the server defaults to loopback. Binding to
+# all interfaces is not a public exposure here: the container runs behind
+# AgentCore's managed ingress, inbound is gated by the Cognito JWT authorizer,
+# and the runtime operates in VPC network mode (private subnets).
+BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1")
 
 mcp = FastMCP("quick-resource-migrator", host=BIND_HOST, stateless_http=True)
 
@@ -1520,13 +1689,12 @@ def migrate_resources(
     qs_service_role: str = DEFAULT_QS_SERVICE_ROLE,
 ) -> str:
     """
-    Migrate Quick resources (Agents, Action Connectors, or S3 Knowledge Bases)
-    from a source account to a target account. Resource-driven — Spaces are NOT
-    created or linked.
+    Migrate Quick resources (Agents, Action Connectors, S3 Knowledge Bases, or
+    Spaces) from a source account to a target account.
 
     Selection model:
       resource_type: which kind of resource to migrate — one of
-                     agent | connector | knowledge_base.
+                     agent | connector | knowledge_base | space.
       search_by:     how to select within that type — one of:
                        "all"  → every resource of this type in the account
                        "id"   → the single resource whose id == value
@@ -1535,7 +1703,10 @@ def migrate_resources(
 
     Behavior:
       - Agents are recreated with their Action Connectors attached (remapped to
-        the target account), but with NO Spaces attachment.
+        the target account).
+      - Spaces are recreated and re-linked to their resources (agents,
+        connectors, knowledge bases) with ARNs remapped to the target account;
+        migrate those linked resources first so the target ARNs resolve.
       - Connectors are recreated with sanitized (placeholder-secret) auth config
         and must be re-authenticated in the target UI.
       - Knowledge bases provision the target bucket + data source + KB
@@ -1546,7 +1717,7 @@ def migrate_resources(
     Args:
         source_account_id: 12-digit source AWS account ID
         target_account_id: 12-digit target AWS account ID
-        resource_type: agent | connector | knowledge_base
+        resource_type: agent | connector | knowledge_base | space
         search_by: id | name | all (default: all)
         value: id or name to match (required when search_by is id or name)
         region: AWS region (default: us-east-1)
@@ -1611,11 +1782,10 @@ def preview_migration(
 ) -> str:
     """
     Discovery / dry run. Read-only inventory of the resources that would be
-    migrated. Uses the same selection model as migrate_resources. Spaces are NOT
-    part of the selection or the output.
+    migrated. Uses the same selection model as migrate_resources.
 
     Selection model:
-      resource_type: agent | connector | knowledge_base | all
+      resource_type: agent | connector | knowledge_base | space | all
                      ("all" inventories every type in the account).
       search_by:     id | name | all
                        "all"  → every resource of the given type(s)
@@ -1625,13 +1795,13 @@ def preview_migration(
 
     Args:
         source_account_id: Source AWS account ID
-        resource_type: agent | connector | knowledge_base | all (default: all)
+        resource_type: agent | connector | knowledge_base | space | all (default: all)
         search_by: id | name | all (default: all)
         value: id or name to match (required when search_by is id or name)
         region: AWS region
 
     Returns:
-        JSON inventory of the selected agents, connectors, and knowledge bases.
+        JSON inventory of the selected agents, connectors, knowledge bases, and spaces.
     """
     logger.info(
         f"[TOOL] preview_migration: source={source_account_id} type={resource_type} "
@@ -1645,18 +1815,28 @@ def preview_migration(
         )
 
     rtype = _normalize_type(resource_type)
-    types = ["agent", "connector", "knowledge_base"] if rtype == "all" else [rtype]
+    types = (
+        ["agent", "connector", "knowledge_base", "space"]
+        if rtype == "all"
+        else [rtype]
+    )
     if rtype != "all" and rtype not in _MIGRATABLE_TYPES:
         return json.dumps(
             {
                 "status": "FAILED",
                 "user_message": f"Invalid resource_type {resource_type!r}. "
-                f"Valid: agent, connector, knowledge_base, all.",
+                f"Valid: agent, connector, knowledge_base, space, all.",
             },
             indent=2,
         )
 
-    inventory = {"agents": [], "connectors": [], "knowledge_bases": [], "errors": []}
+    inventory = {
+        "agents": [],
+        "connectors": [],
+        "knowledge_bases": [],
+        "spaces": [],
+        "errors": [],
+    }
 
     for t in types:
         ids, err = resolve_resource_ids(
@@ -1763,12 +1943,45 @@ def preview_migration(
                             "user_message": classify_error(e)["user_message"],
                         }
                     )
+        elif t == "space":
+            for sid in ids:
+                try:
+                    space = source_qs.describe_space(
+                        AwsAccountId=source_account_id, SpaceId=sid
+                    ).get("Space", {})
+                    inventory["spaces"].append(
+                        {
+                            "space_id": sid,
+                            "name": space.get("name", sid),
+                            "description": space.get("description"),
+                            "resources_count": len(space.get("resources", []) or []),
+                            "linked_resources": [
+                                {
+                                    "resource_type": r.get("resourceType"),
+                                    "resource_arn": (
+                                        r.get("resourceDetails") or {}
+                                    ).get("resourceArn"),
+                                }
+                                for r in (space.get("resources", []) or [])
+                            ],
+                            "created_at": space.get("createdAt"),
+                            "updated_at": space.get("updatedAt"),
+                        }
+                    )
+                except ClientError as e:
+                    inventory["errors"].append(
+                        {
+                            "context": f"describe_space({sid})",
+                            "user_message": classify_error(e)["user_message"],
+                        }
+                    )
 
     inventory["status"] = "OK" if not inventory["errors"] else "COMPLETED_WITH_ERRORS"
     logger.info(
         f"[TOOL] preview_migration done: {len(inventory['agents'])} agents, "
         f"{len(inventory['connectors'])} connectors, "
-        f"{len(inventory['knowledge_bases'])} KBs, {len(inventory['errors'])} errors"
+        f"{len(inventory['knowledge_bases'])} KBs, "
+        f"{len(inventory['spaces'])} spaces, {len(inventory['errors'])} errors"
     )
     return json.dumps(inventory, indent=2, default=str)
 

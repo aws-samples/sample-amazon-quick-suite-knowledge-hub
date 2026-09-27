@@ -47,6 +47,9 @@ SUBNET_IDS=""
 SECURITY_GROUP_IDS=""
 NETWORK_STACK=""
 SHOW_SECRET="false"
+TEST_USERNAME="migrator-test"
+TEST_USER_EMAIL="migrator-test@example.com"
+TEST_PASSWORD=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TEMPLATE="${REPO_ROOT}/infrastructure/agentcore-runtime.yaml"
@@ -66,6 +69,9 @@ while [[ $# -gt 0 ]]; do
     --subnet-ids)             SUBNET_IDS="$2"; shift 2 ;;
     --security-group-ids)     SECURITY_GROUP_IDS="$2"; shift 2 ;;
     --network-stack)          NETWORK_STACK="$2"; shift 2 ;;
+    --test-username)          TEST_USERNAME="$2"; shift 2 ;;
+    --test-user-email)        TEST_USER_EMAIL="$2"; shift 2 ;;
+    --test-password)          TEST_PASSWORD="$2"; shift 2 ;;
     --region)                 REGION="$2"; shift 2 ;;
     --stack-name)             STACK_NAME="$2"; shift 2 ;;
     --show-secret)            SHOW_SECRET="true"; shift 1 ;;
@@ -104,6 +110,7 @@ fi
 
 : "${SUBNET_IDS:?--subnet-ids is required (VPC mode)}"
 : "${SECURITY_GROUP_IDS:?--security-group-ids is required (VPC mode)}"
+: "${TEST_PASSWORD:?--test-password is required (permanent password for the Cognito test user; >=12 chars, upper/lower/number/symbol)}"
 
 echo "════════════════════════════════════════════════════════"
 echo "  Quick Resource Migrator — deploy (Cognito JWT + VPC)"
@@ -188,7 +195,10 @@ aws cloudformation deploy \
     "ResourceServerIdentifier=${RESOURCE_SERVER_ID}" \
     "ResourceServerScope=${RESOURCE_SERVER_SCOPE}" \
     "VpcSubnetIds=${SUBNET_IDS}" \
-    "VpcSecurityGroupIds=${SECURITY_GROUP_IDS}"
+    "VpcSecurityGroupIds=${SECURITY_GROUP_IDS}" \
+    "TestUsername=${TEST_USERNAME}" \
+    "TestUserEmail=${TEST_USER_EMAIL}" \
+    "TestPassword=${TEST_PASSWORD}"
 
 # ── 4. Fetch outputs + client secret ────────────────────────────────
 echo "→ [5/5] Retrieving stack outputs + Cognito client secret..."

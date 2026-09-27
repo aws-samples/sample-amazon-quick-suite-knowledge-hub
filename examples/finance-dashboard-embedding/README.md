@@ -164,6 +164,8 @@ aws identitystore create-group-membership \
 | `ALLOWED_DOMAINS` | Comma-separated allowed embedding domains |
 | `DASHBOARD_ID` | QuickSight dashboard ID |
 | `AWS_ACCOUNT_ID` | AWS account ID |
+| `COGNITO_ISSUER` | Cognito user pool issuer URL used to verify the incoming ID token's signature, e.g. `https://cognito-idp.<region>.amazonaws.com/<userPoolId>`. **Required** — the ID token is rejected when unset. |
+| `COGNITO_APP_CLIENT_ID` | Cognito app client id the ID token's `aud`/`client_id` claim must match (audience check). |
 
 ## Troubleshooting
 

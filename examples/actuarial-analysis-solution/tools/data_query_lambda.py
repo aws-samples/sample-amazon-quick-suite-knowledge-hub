@@ -21,9 +21,9 @@ Used for data exploration and preparation before actuarial analysis.
 import json
 import logging
 import os
-import time
 import uuid
 from datetime import datetime
+from threading import Event
 from typing import Any
 
 import awswrangler as wr
@@ -37,6 +37,13 @@ logging.getLogger().setLevel(logging.INFO)
 # Get logger for this module
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
 
 # Initialize AWS clients
 athena = boto3.client("athena")
@@ -170,7 +177,7 @@ def wait_for_athena_query(athena, query_execution_id, delay=1, max_attempts=300)
             raise RuntimeError(f"Athena query {status}: {error_reason}")
 
         attempts += 1
-        time.sleep(delay)
+        _poll_wait(delay)
 
     raise TimeoutError("Timed out waiting for Athena query to complete")
 

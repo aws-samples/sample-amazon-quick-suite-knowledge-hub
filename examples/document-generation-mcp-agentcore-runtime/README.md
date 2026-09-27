@@ -309,7 +309,7 @@ On success, the stack outputs all the values you need for Quick:
 Outputs:
 QuickSuiteDocumentSkills.McpUrl        = https://...gateway.bedrock-agentcore.<region>.amazonaws.com/mcp
 QuickSuiteDocumentSkills.TokenUrl      = https://docskills-XXXXXXXX.auth.<region>.amazoncognito.com/oauth2/token
-QuickSuiteDocumentSkills.ClientId      = abc123def456...
+QuickSuiteDocumentSkills.ClientId      = <YOUR_CLIENT_ID>
 QuickSuiteDocumentSkills.Scope         = document-skills-gateway/invoke
 QuickSuiteDocumentSkills.UserPoolId    = <region>_XxxYyy
 QuickSuiteDocumentSkills.GatewayId     = ...

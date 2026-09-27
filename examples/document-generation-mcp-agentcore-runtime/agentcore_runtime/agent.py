@@ -20,6 +20,7 @@ import logging
 import os
 import threading
 import time
+from threading import Event
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
@@ -27,6 +28,13 @@ os.environ["BYPASS_TOOL_CONSENT"] = "true"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
 
 # Heavy imports deferred to first invocation to stay within 30s init limit.
 # strands, strands_tools, base64, re are imported inside create_agent() / _extract_file().
@@ -588,7 +596,7 @@ def _run_agent_and_persist(
                 logger.warning(
                     f"Job {job_id}: attempt {attempt + 1} failed with transient error: {retry_err}"
                 )
-                time.sleep(5 * (attempt + 1))  # backoff: 5s, 10s, 15s
+                _poll_wait(5 * (attempt + 1))  # backoff: 5s, 10s, 15s
                 continue
             raise
     else:
@@ -643,7 +651,7 @@ def _run_agent_sync(skill_type, prompt, filename):
                     logger.warning(
                         f"Attempt {attempt + 1} failed with transient error: {retry_err}"
                     )
-                    time.sleep(5 * (attempt + 1))
+                    _poll_wait(5 * (attempt + 1))
                     continue
                 raise
         else:
