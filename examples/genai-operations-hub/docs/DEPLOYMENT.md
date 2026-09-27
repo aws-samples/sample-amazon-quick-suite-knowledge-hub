@@ -203,4 +203,4 @@ Monthly costs (approximate):
 
 ## Next Steps
 
-Proceed to [Setup Guide](docs/0-setup.md) for detailed deployment instructions.
+Proceed to [Setup Guide](0-setup.md) for detailed deployment instructions.

@@ -241,8 +241,8 @@ Fill in the MCP configuration:
 
 ## Documentation
 
-- [CDK Deployment Guide](cdk/README.md) - Infrastructure details
-- [MCP Tool Definitions](tools/redshift_agentcore_tools.json) - API specifications
+- [CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/redshift-data-query-mcp/cdk/README.md) - Infrastructure details
+- [MCP Tool Definitions](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/redshift-data-query-mcp/tools/redshift_agentcore_tools.json) - API specifications
 - [AWS LAB Redshift MCP Server](https://awslabs.github.io/mcp/servers/redshift-mcp-server) - Official implementation
 
 ## License
@@ -324,7 +324,7 @@ Example queries:
 
 ## Documentation
 
-- [AWS CDK Deployment Guide](cdk/README.md) - Infrastructure deployment details
+- [AWS CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/redshift-data-query-mcp/cdk/README.md) - Infrastructure deployment details
 - [AWS LAB Redshift MCP Server](https://awslabs.github.io/mcp/servers/redshift-mcp-server) - Official MCP server documentation
 
 ## Security

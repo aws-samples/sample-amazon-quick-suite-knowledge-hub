@@ -31,10 +31,10 @@ These were generated entirely by the agent from natural language prompts — no 
 
 | File | Prompt Summary |
 |------|---------------|
-| [Employee_Performance_Tracking.xlsx](samples/Employee_Performance_Tracking.xlsx) | Employee performance spreadsheet with quarterly KPI scores, weighted averages, and distribution charts |
-| [Cloud_Migration_Business_Proposal.pdf](samples/Cloud_Migration_Business_Proposal.pdf) | Cloud migration business proposal with executive summary, cost analysis, and timeline |
-| [AI_BackOffice_Automation_Pitch_Deck.pptx](samples/AI_BackOffice_Automation_Pitch_Deck.pptx) | AI back-office automation pitch deck with ROI projections and implementation roadmap |
-| [dataflow-landing-page.html](samples/dataflow-landing-page.html) | Product landing page with responsive layout, feature cards, and pricing tiers |
+| [Employee_Performance_Tracking.xlsx](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/Employee_Performance_Tracking.xlsx) | Employee performance spreadsheet with quarterly KPI scores, weighted averages, and distribution charts |
+| [Cloud_Migration_Business_Proposal.pdf](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/Cloud_Migration_Business_Proposal.pdf) | Cloud migration business proposal with executive summary, cost analysis, and timeline |
+| [AI_BackOffice_Automation_Pitch_Deck.pptx](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/AI_BackOffice_Automation_Pitch_Deck.pptx) | AI back-office automation pitch deck with ROI projections and implementation roadmap |
+| [dataflow-landing-page.html](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/dataflow-landing-page.html) | Product landing page with responsive layout, feature cards, and pricing tiers |
 
 ### What You Can Ask
 

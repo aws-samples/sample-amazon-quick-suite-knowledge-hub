@@ -86,7 +86,7 @@ This deploys: DynamoDB table, metrics Lambda, API Gateway, S3 bucket, CloudFront
 
 ### 3. Deploy Embedding API
 
-The QuickChat embedding Lambda and API Gateway are deployed via a separate CDK stack. See the [Embedding Setup Guide](./EMBEDDING_SETUP.md) for full instructions on:
+The QuickChat embedding Lambda and API Gateway are deployed via a separate CDK stack. See the [Finance Agent Setup Guide](./quicksuite-setup/FINANCE_AGENT_SETUP_GUIDE.md) for full instructions on:
 
 - Cognito User Pool creation
 - IAM Identity Center configuration

@@ -193,8 +193,8 @@ Fill in the MCP configuration:
 
 ## Documentation
 
-- [CDK Deployment Guide](cdk/README.md) - Infrastructure details
-- [MCP Tool Definitions](tools/kb_agentcore_tools.json) - API specifications
+- [CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/bedrock-kb-retrieval-mcp/cdk/README.md) - Infrastructure details
+- [MCP Tool Definitions](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/bedrock-kb-retrieval-mcp/tools/kb_agentcore_tools.json) - API specifications
 
 ## License
 
