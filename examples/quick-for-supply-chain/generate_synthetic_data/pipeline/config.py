@@ -356,6 +356,24 @@ def _redact_url(url: str) -> str:
         return url
 
 
+def _redact_arn(arn: str) -> str:
+    """Mask the account ID and resource name of an ARN for safe logging.
+
+    CodeQL flags secret ARNs as sensitive because the resource segment can
+    reveal the secret's name. We keep the service/region for debuggability
+    and mask the account id and the resource identifier.
+    """
+    if not arn:
+        return arn
+    parts = arn.split(":")
+    # arn:partition:service:region:account-id:resource(...)
+    if len(parts) < 6 or parts[0] != "arn":
+        return "***"
+    parts[4] = "***"  # account id
+    parts[5] = "***"  # resource type / name (e.g. secret:my-secret-AbCdEf)
+    return ":".join(parts[:6]) + ("..." if len(parts) > 6 else "")
+
+
 # ── Secrets Manager helper ──────────────────────────────────────
 def get_secret(secret_arn: str, region: str | None = None) -> dict:
     """Fetch a JSON secret from AWS Secrets Manager.
@@ -455,7 +473,7 @@ class PipelineConfig:
             if snowflake.secret_arn:
                 logger.info(
                     "Resolving Snowflake credentials from Secrets Manager: %s",
-                    snowflake.secret_arn,
+                    _redact_arn(snowflake.secret_arn),
                 )
                 secret = get_secret(snowflake.secret_arn, region=aws.region)
                 snowflake.apply_secret_overrides(secret)
@@ -465,7 +483,7 @@ class PipelineConfig:
                 logger.info(
                     "Resolving %s credentials from Secrets Manager: %s",
                     engine,
-                    db_secret_arn,
+                    _redact_arn(db_secret_arn),
                 )
                 secret = get_secret(db_secret_arn, region=aws.region)
                 cfg.active_db_config().apply_secret_overrides(secret)
@@ -495,7 +513,10 @@ class PipelineConfig:
 
     def redacted(self) -> dict:
         """Return a dict of config suitable for logging (secrets masked)."""
-        out = {"db_engine": self.db_engine, "db_secret_arn": self.db_secret_arn}
+        out = {
+            "db_engine": self.db_engine,
+            "db_secret_arn": _redact_arn(self.db_secret_arn),
+        }
         for f in fields(self.aws):
             out[f"aws.{f.name}"] = getattr(self.aws, f.name)
 
@@ -504,6 +525,8 @@ class PipelineConfig:
                 val = getattr(self.snowflake, f.name)
                 if f.name == "password" and val:
                     val = "***REDACTED***"
+                if f.name == "secret_arn" and val:
+                    val = _redact_arn(val)
                 out[f"snowflake.{f.name}"] = val
         elif self.db_engine == "postgres":
             for f in fields(self.postgres):

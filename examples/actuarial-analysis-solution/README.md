@@ -311,8 +311,8 @@ The `sample_data/claims.csv` contains 10,000+ synthetic insurance claims with:
 
 ## Documentation
 
-- [CDK Deployment Guide](cdk/README.md) - Infrastructure deployment details
-- [Tool Definitions](tools/agentcore_tools.json) - API specifications
+- [CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/actuarial-analysis-solution/cdk/README.md) - Infrastructure deployment details
+- [Tool Definitions](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/actuarial-analysis-solution/tools/agentcore_tools.json) - API specifications
 - [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
 - [Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/)
 

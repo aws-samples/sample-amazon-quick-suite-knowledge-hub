@@ -197,13 +197,13 @@ entities so they run as-is.
 
 | Step | Script / Action | What it does |
 |------|-----------------|--------------|
-| **Phase 1** | [`deploy_agentcore.sh`](deploy_agentcore.sh) `[env] [--recreate]` | Build+push the agent container, `sam deploy` the stack (Cognito + 4 MCP Lambdas + gateways + targets + runtime), register 6 records to the Agent Registry. |
-| **Phase 2** | [`generate_and_upload.sh`](generate_and_upload.sh) `[--bucket <name>]` | Generate synthetic data, create the S3 bucket, upload dataset CSVs (`dataset/`) + documents (`knowledge-base/`). Prints the bucket name. |
+| **Phase 1** | [`deploy_agentcore.sh`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/deploy_agentcore.sh) `[env] [--recreate]` | Build+push the agent container, `sam deploy` the stack (Cognito + 4 MCP Lambdas + gateways + targets + runtime), register 6 records to the Agent Registry. |
+| **Phase 2** | [`generate_and_upload.sh`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/generate_and_upload.sh) `[--bucket <name>]` | Generate synthetic data, create the S3 bucket, upload dataset CSVs (`dataset/`) + documents (`knowledge-base/`). Prints the bucket name. |
 | **Manual** | AWS console | (1) Grant Quick/QuickSight access to Amazon S3 **and Amazon Athena**. (2) Link the AWS Agent Registry in Quick + create the MCP connectors. |
-| **Phase 3** | [`setup_quick.sh`](setup_quick.sh) `--s3-bucket <b> (--quicksight-user <u> \| --quicksight-group <g>) [--action-connectors <ids>]` | Create QuickSight datasets + S3 knowledge base + Space + the Quick agent (attached to the Space), and share as owner. |
+| **Phase 3** | [`setup_quick.sh`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/setup_quick.sh) `--s3-bucket <b> (--quicksight-user <u> \| --quicksight-group <g>) [--action-connectors <ids>]` | Create QuickSight datasets + S3 knowledge base + Space + the Quick agent (attached to the Space), and share as owner. |
 
-Supporting code: [`registry/deploy_registry.py`](registry/deploy_registry.py) (registry records),
-[`generate_synthetic_data/`](generate_synthetic_data/) (data generators + DB loaders),
+Supporting code: [`registry/deploy_registry.py`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/registry/deploy_registry.py) (registry records),
+[`generate_synthetic_data/`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/tree/main/examples/quick-for-supply-chain/generate_synthetic_data) (data generators + DB loaders),
 [`skill/AGENT_INSTRUCTIONS.md`](skill/AGENT_INSTRUCTIONS.md) (the Quick agent's instructions).
 
 ---
@@ -235,7 +235,7 @@ Cognito or gateway steps, no manual CLI resource creation:
 5. Registers all **6 records** to the standalone **AWS Agent Registry** and approves them
    (`registry/deploy_registry.py`).
 
-![AWS Agent Registry — 6 approved records](docs/registry-record.png)
+![AWS Agent Registry — 6 approved records](docs/images/registry-record.png)
 
 *AWS Agent Registry console → Registry records: all **6 records Approved** — the 4
 business MCPs (Record type **MCP Server**), `sc-order-fulfillment-agent` (Record type
@@ -326,13 +326,13 @@ QuickSight service role … has not been created yet"), and then every dataset
 create fails**, leaving the Space with no structured data.
 See the [S3 integration guide](https://docs.aws.amazon.com/quick/latest/userguide/s3-integration.html).
 
-![Enable QuickSight access to the S3 data bucket](docs/S3-Enable-AWS-Resources.png)
+![Enable QuickSight access to the S3 data bucket](docs/images/S3-Enable-AWS-Resources.png)
 
 *QuickSight → Security & permissions → Amazon S3: the Phase 2 bucket
 (`sc-supply-chain-data-<account>-<region>`) checked for access (and write, for
 Athena query results).*
 
-![Enable QuickSight access to Amazon Athena](docs/Athena-select.png)
+![Enable QuickSight access to Amazon Athena](docs/images/Athena-select.png)
 
 *Same panel: **Amazon Athena** must also be checked (alongside Amazon S3). This
 lets QuickSight create the Athena data source Phase 3 uses to catalog the CSV
@@ -344,12 +344,12 @@ tables. Missing it is the #1 cause of Phase 3 creating 0 datasets.*
   confirm. (Prereqs, all satisfied by Phase 1: same account + region, **AWS_IAM**
   authorizer, status **READY**.)
 
-  ![AWS Agent Registry listed in Quick, toggle off](docs/Agent-Registry1.png)
+  ![AWS Agent Registry listed in Quick, toggle off](docs/images/Agent-Registry1.png)
 
   *Manage account → Permissions → AWS Agent Registry: `sc-supply-chain-registry`
   appears because it meets the prerequisites (READY, AWS_IAM). Toggle is off before linking.*
 
-  ![AWS Agent Registry enabled in Quick, toggle on](docs/Agent-Registry2.png)
+  ![AWS Agent Registry enabled in Quick, toggle on](docs/images/Agent-Registry2.png)
 
   *After turning the toggle on and confirming, the registry is linked. Quick
   provisions its managed service role (`aws-quicksight-agent-registry-role-v0`)
@@ -367,7 +367,7 @@ tables. Missing it is the #1 cause of Phase 3 creating 0 datasets.*
      cards appear here, *not* on the **Available** tab). Each comes pre-populated with
      its MCP server URL, name, and description from the registry.
 
-     ![Registry-sourced MCP connectors on the Create for your team tab](docs/MCP.png)
+     ![Registry-sourced MCP connectors on the Create for your team tab](docs/images/MCP.png)
 
      *Connectors → **Create for your team**: the registry surfaces the **4 business MCP
      cards** (`sc-quoting-mcp`, `sc-governance-mcp`, `sc-invoice-processing-mcp`,
@@ -380,7 +380,7 @@ tables. Missing it is the #1 cause of Phase 3 creating 0 datasets.*
      **Auth configuration: `OAUTH2_AUTHORIZATION_CODE`** ("Custom user based OAuth"),
      then fill in the fields.
 
-     ![Connector Authenticate step — OAuth2 authorization code fields](docs/connector-setup.png)
+     ![Connector Authenticate step — OAuth2 authorization code fields](docs/images/connector-setup.png)
 
      **Easiest source of the values: the console output.** At the end of Phase 1,
      `deploy_agentcore.sh` prints a ready-to-copy table with every value below —
@@ -422,7 +422,7 @@ tables. Missing it is the #1 cause of Phase 3 creating 0 datasets.*
      card — so you create it yourself from the same tab:
      - **Connectors → Create for your team → Model Context Protocol → Create new.**
 
-       ![Create-new MCP connector dialog for the agent](docs/sc-agent-configure-step.png)
+       ![Create-new MCP connector dialog for the agent](docs/images/sc-agent-configure-step.png)
 
        *When you choose **Create new**, Quick may warn that MCP connectors already exist
        (listing the 4 business MCPs) — click **No, create new** to proceed with the
