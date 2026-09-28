@@ -2,9 +2,11 @@
 
 This document is the build specification you hand to **Amazon Quick** so it can
 generate a web app on top of the migrator MCP connector. Register the
-`preview_migration` and `migrate_resources` actions of the migrator MCP
-connector, then paste the prompt below into Amazon Quick's app builder and
-replace the placeholder connector/action IDs with your own.
+migrator MCP connector's five actions — `preview_migration`,
+`migrate_resources`, `list_backups`, `get_backup`, and `restore_backup` — then
+paste the prompt below into Amazon Quick's app builder. The app discovers the
+connector and action IDs at build time (via `search_action_connectors` /
+`get_action_connector_details`), so there are no IDs to hardcode.
 
 ## Testing with Apps in Quick
 
@@ -25,204 +27,91 @@ For this migrator that means you don't hand-write the front end. Once the MCP
 action connector is registered, you:
 
 1. Open Apps in Quick and start a new app.
-2. Paste the prompt below (it references the `preview_migration` and
-   `migrate_resources` actions).
-3. When prompted, register/select the migrator MCP action connector and wire in
-   the preview and migrate action IDs.
-4. Watch the agent build the app, then test it live — run **Preview** against a
-   source account to scan its agents, connectors, knowledge bases, and spaces,
-   then select assets and run **Migrate** to promote them to the target account.
+2. Paste the prompt below (it uses the five migrator actions:
+   `preview_migration`, `migrate_resources`, `list_backups`, `get_backup`,
+   and `restore_backup`).
+3. When prompted, register/select the migrator MCP action connector so the app
+   can discover its connector and action IDs.
+4. Watch the agent build the app, then test it live — run **Preview** to scan
+   the source and target accounts (agents, connectors, knowledge bases, spaces,
+   and flows) with the CREATE/UPDATE mapping, select assets and run **Migrate**
+   to promote them, review past runs under **History**, and browse/restore
+   pre-update snapshots under **Backups**.
 5. Iterate conversationally to refine, then publish and share the app.
 
 ## Prompt
 
 ```text
--- Build a Quick Resource Migration Tool ("Quick Migrator") — a single-page app that lets admins migrate Chat Agents, Action Connectors, S3 Knowledge Bases, and Spaces from one AWS account to another using an MCP action connector.
+Build "Quick Migrator" — a single-page app to migrate Agents, Connectors, Knowledge Bases, Spaces, and Flows between AWS accounts, with migration history and S3 backup browsing/restore.
 
-═══════════════════════════════════════════
-  CONNECTOR DETAILS (MUST CONFIGURE FIRST)
-═══════════════════════════════════════════
+═══════════════════════════════════════════ CONNECTOR SETUP ═══════════════════════════════════════════
 
-This app requires an MCP action connector registered in the target account's Quick. The connector exposes two actions:
+The app uses one MCP action connector with 5 actions. Before writing code:
 
-1. Preview Action (read-only scan / discovery):
-   - Action name: preview_migration
-   - Input: { source_account_id: string, resource_type: string ("agent"|"connector"|"knowledge_base"|"space"|"all"), search_by: string ("all"|"id"|"name"), value: string, region: string }
-   - Output: { result: string } — the result field is a STRINGIFIED JSON inventory of agents, connectors, knowledge_bases, and spaces found in the source account.
+Use search_action_connectors to find the MCP connector that has actions named preview_migration, migrate_resources, list_backups, get_backup, and restore_backup
+Use get_action_connector_details and get_action_schemas to discover IDs and schemas
+Register via register_runtime_integration with integration_type ACTION and all 5 action IDs
+Store discovered connector ID and action IDs as constants — never hardcode from this prompt
+If author denies registration, do NOT generate connector-calling code
+Actions use MCP format (mcpInvokeActionInput with name + JSON.stringify'd arguments). Responses via mcpInvokeActionOutput.content[].textContent.text — check mcpInvokeActionError first. API often returns double/triple stringified JSON — implement recursive deep-unwrap up to 5 levels. 10-minute timeout on all calls.
 
-2. Migrate Action (write):
-   - Action name: migrate_resources
-   - Input: { source_account_id, target_account_id, resource_type ("agent"|"connector"|"knowledge_base"|"space"), search_by ("all"|"id"|"name"), value, region, source_env, target_env, qs_service_role }
-   - Migrates ONE resource type at a time. Use search_by="id" and value=<resource_id> to migrate a specific resource.
-   - Agents are recreated with their Action Connectors attached (remapped to the target account).
-   - Connectors are recreated with sanitized (placeholder-secret) auth config and must be re-authenticated in the target UI.
-   - Knowledge bases provision the target bucket + data source + KB (documents are NOT copied).
-   - Spaces are recreated in the target account with their configuration.
-   - Output: { result: string } — stringified JSON migration report.
+App Storage: "migration-history" (Shared), "user-prefs" (Private).
 
-IMPORTANT: You must register the action connector integration before writing any code that calls it. Register both actions (preview and migrate action IDs).
+═══════════════════════════════════════════ 5 ACTIONS ═══════════════════════════════════════════
 
-Constants to define (replace with actual values from your connector):
-  MIGRATOR_CONNECTOR = '<your-connector-id>'
-  PREVIEW_ACTION = '<your-preview-action-id>'
-  MIGRATE_ACTION = '<your-migrate-action-id>'
-  HISTORY_TABLE = 'migration-history'
-  ACTION_TIMEOUT_MS = 600000  (10 minutes — migrations can be slow)
+preview_migration (read) — Scans source and target accounts Input: source_account_id, target_account_id (required), resource_type (default "all", accepts "agent"/"connector"/"knowledge_base"/"space"/"flow"/"all"), search_by (default "all", accepts "all"/"id"/"name"), value (default ""), region (default "us-east-1") Returns: { source: {agents:[], connectors:[], knowledge_bases:[], spaces:[], flows:[]}, target: {same}, mapping: [{id, in_target, action: "CREATE"/"UPDATE"}] }
 
-═══════════════════════════════════════════
-  APP STRUCTURE & NAVIGATION
-═══════════════════════════════════════════
+migrate_resources (write) — Migrates ONE resource per call Input: source_account_id, target_account_id, resource_type, search_by (always "id"), value (MUST be bare UUID), region, source_env (default "dev"), target_env (default "prod"), qs_service_role (default "aws-quicksight-service-role-v0") Returns: { overall_status: "SUCCESS"/"FAILED", migrated: {agents:[], connectors:[], knowledge_bases:[], spaces:[], flows:[]}, skipped_permissions: [{resource_type, resource_id, unresolved_principals:[], reason}], resource_linkages:[], user_message, error_message }
 
-The app has 3 top-level tabs shown as pill-style buttons centered at the top:
-  🚀 Migrate — the main 3-step migration flow
-  📜 History — past migration records from Shared App Storage
-  
+list_backups (read) — Searches backup catalog, metadata only Input: query (optional substring filter), region Returns: { bucket, count, assets: [{name, asset_id, folder, latest_version, versions: [{version, key, last_modified, size}]}] }
 
-═══════════════════════════════════════════
-  MIGRATE TAB — 3-STEP FLOW
-═══════════════════════════════════════════
+get_backup (read) — Fetches full backup envelope for one version Input: asset_id (required), version (default 0 = latest), region Returns: { status, s3_key, version, backup: {schema_version, backed_up_at, resource_type, resource_id, name, resource: {full describe}, dependencies: {action_connectors:[], ...}} }
 
-Step 1: Scan Source Account
-  - Header card with purple gradient, rocket icon, app title "Quick Migrator", and subtitle "Migrate Agents, Connectors, Knowledge Bases & Spaces between accounts"
-  - Two input fields: Source Account ID (12-digit) and Target Account ID (12-digit) — validated as exactly 12 digits, cannot be the same
-  - Region field (default: "us-east-1")
-  - "🔍 Scan Source Account" button
-  - Only scans the SOURCE account (not the target — IAM restrictions prevent target scanning)
-  - Calls the preview action with { source_account_id, resource_type: "all", region }
-  - Shows a frosted-glass loading overlay with spinner and animated step indicators during scan (LoadingOverlay component)
-    - Scan steps: "Connecting to MCP server…", "Scanning source account…", "Building asset inventory…"
-    - Migration steps: "Connecting to MCP server…", "Creating resources in target…", "Linking agents ↔ spaces ↔ connectors…", "Generating migration report…"
-    - Steps auto-advance every 3 seconds for visual feedback
-  - Caches scan results in a useRef map keyed by "source|target|region" — re-scanning same pair loads instantly
-  - Shows "⚡ Loaded from cache" indicator and "🔄 Force Rescan" button when cache is hit
-  - Persists Source Account ID, Target Account ID, and Region to Private App Storage (table: "user-prefs", key: "account-ids") using putPrivateItem with a 1-second debounce so fields auto-populate on next visit
+restore_backup (write) — Reverts target resource (takes pre-restore backup first) Input: asset_id (required), version, region Returns: { status, asset_id, restored_from_version, pre_restore_backup, result, dependencies, errors }
 
-Step 2: Select Assets (shown after successful scan)
-  - Tabbed browser with 4 tabs: 🤖 Agents, 🔗 Connectors, 🧠 Knowledge Bases, 📁 Spaces
-  - Each tab shows a count badge with the number of discovered assets
-  - ALL items are DESELECTED by default — user must explicitly pick what to migrate
-  - Each item row shows: checkbox, type icon, name, monospace ID
-  - "Select All" / "Deselect All" buttons per tab
-  - Agents and Spaces are expandable — clicking the row expands to show nested linked resources (connectors, knowledge bases, spaces) with individual checkboxes
-    - Linked resources extracted from parent's raw data by scanning for embedded arrays (connectors, knowledge_bases, spaces keys)
-    - Linked resources that appear as children are "claimed" and filtered out of standalone tab lists to avoid duplication
-  - Linked resources show a "X/Y linked" count badge and type labels
-  - Children are included by default but can be individually excluded via an "excludedIds" set
+═══════════════════════════════════════════ 3 TABS ═══════════════════════════════════════════
 
-Step 3: Migrate (shown when at least 1 asset is selected)
-  - Shows selected count badge and source → target account badge
-  - Collapsible "▸ Advanced Options" section with:
-    - Source Env (default "dev")
-    - Target Env (default "prod")
-    - Quick Service Role (default "aws-Quick-service-role-v0")
-  - "🚀 Start Migration" button opens a confirmation modal (ConfirmModal component)
-    - Shows source → target, group count, asset count, and a note about resource linkages
-  - On confirm, builds individual migrate calls (one per selected asset, using search_by="id") and executes them SEQUENTIALLY
-  - Each call sends: { source_account_id, target_account_id, resource_type, search_by: "id", value: <asset_id>, region, source_env, target_env, qs_service_role }
-  - Agent children (linked connectors, KBs, spaces not excluded) are also migrated individually
-  - Calls are deduplicated by resource ID
-  - Shows LoadingOverlay during migration
-  - Results aggregated into: { results: [...], errors: [...], summary: { total, succeeded, failed } }
-  - On success, navigates to Results View and saves to migration history via Shared App Storage (table: "migration-history", key: timestamp-source)
+Pill-style tabs centered at top: 🚀 Migrate | 📜 History | 💾 Backups
 
-═══════════════════════════════════════════
-  RESULTS VIEW
-═══════════════════════════════════════════
+── 🚀 MIGRATE TAB (3-step flow) ──
 
-Shown after migration completes:
-  - Purple gradient header: "✅ Migration Complete" with succeeded/total count
-  - 4 stat cards in a row: 🤖 Agents, 🔗 Connectors, 🧠 KBs, 📁 Spaces — each with count
-  - Per-type tables (only shown if items exist): Name | ID | Status columns
-    - Status shows green "Created" badge or red "Error/Failed" badge
-  - Resource Linkages section (if any): shows type → name → target space cards
-  - Errors section (if any): red cards with resource name, type, and error message
-  - Collapsible "▸ Show Raw JSON" for full response data
-  - "← Start New Migration" button to reset
+Step 1 — Scan: Purple gradient header with title "Quick Migrator". Inputs: Source/Target Account ID (12-digit validated, cannot match), Region (default "us-east-1"). Scan Filters ALWAYS VISIBLE (not collapsible): Resource Type dropdown (All/Agent/Connector/Knowledge Base/Space/Flow), Search By dropdown (All/By ID/By Name — "all" disables value field), Value input (required when by id/name — scan button disabled if empty).
 
-The extract() function handles two response formats:
-  - New format: { results: [...], errors: [...], summary } — merges per-call results
-  - Legacy format: single response with migrated/inventory root
+PARALLEL SCANNING: When type=All and search=All, fire 5 parallel preview_migration calls (one per resource type) via Promise.allSettled to avoid socket timeout. Merge results. Partial failures show succeeded types. Single type or filtered search uses one call.
 
-═══════════════════════════════════════════
-  HISTORY TAB
-═══════════════════════════════════════════
+Frosted-glass loading overlay with spinner and auto-advancing step labels. Cache results keyed by all inputs. Show cache indicator + Force Rescan button. Persist account IDs/region to Private App Storage with debounced saves.
 
-  - Loads records from Shared App Storage (table: "migration-history", sortOrder: DESC)
-  - Each record is an expandable card showing: source → target, timestamp, region
-  - Expanded view shows: Source, Target, Region, resource counts (Spaces, Agents, Connectors, KBs), and collapsible Raw JSON
-  - Loading state, empty state ("No migrations yet"), and error state with retry button
+Step 2 — Select Assets: Tabbed browser (Agents/Connectors/KBs/Spaces/Flows) with count badges. All deselected by default. Select All/Deselect All per tab. Each asset shows: checkbox, icon, name, ID, CREATE badge (green) or UPDATE badge (blue) from mapping, target info line. Agents/Spaces expandable to show nested children (connectors, KBs, spaces) — children included by default, individually excludable. Claimed child IDs filtered from standalone lists.
 
+Step 3 — Migrate: Selected count + source→target display. Collapsible Advanced Options (Source Env, Target Env, Service Role). Confirmation modal. Build one call per asset, deduplicated. SANITIZE every ID to bare UUID via regex extraction — never send JSON-wrapped or truncated values. Execute sequentially.
 
+ERROR DETECTION: Do NOT trust API summary. Track which call produced each result. Check each for overall_status "FAILED". Recursive scan for error indicators. Recompute summary from actual results. Save full results + errors to Shared App Storage.
 
-═══════════════════════════════════════════
-  MCP RESPONSE PARSING (CRITICAL)
-═══════════════════════════════════════════
+── RESULTS VIEW ──
 
-The MCP connector returns responses in a specific format that requires careful unwrapping:
+Shared MigrationDetail component (used by both results page and history): Status header (green/amber/red gradient, compact mode for history uses inline badge). 5 stat cards by type. Per-type resource tables (Name/ID/Status badge). Linkages section. Permissions Need Manual Mapping section (resource name, type, reason, unresolved principal ARNs). Failed section with error messages. Raw JSON toggle. Results page wraps this + "Start New Migration" button.
 
-1. unwrapMcpResponse(res):
-   - Check for mcpInvokeActionError → extract text content error messages and throw
-   - Extract text from mcpInvokeActionOutput.content[].textContent.text
-   - Join all text blocks, parse as JSON
+── 📜 HISTORY TAB ──
 
-2. parseMigrationData(parsed):
-   - The API often returns DOUBLE or TRIPLE stringified JSON
-   - Implement a recursive deepUnwrap function that tries JSON.parse on every string value at every depth (up to 5 levels)
+Loads from Shared App Storage sorted newest first. Expandable cards: collapsed shows source→target, timestamp, region, success badge. Expanded renders MigrationDetail in compact mode — same full breakdown as results page. Recomputes summary from actual overall_status fields, never trusts stored counts. Handles old records without results.
 
-3. buildScanData(data) — parsing the scan response into per-type asset lists:
-   - Use a deepFindArray function that recursively searches the ENTIRE response tree for arrays under known key names (up to 6 levels deep), deduplicating by JSON.stringify
-   - For agents: agents, chat_agents, Agents, ChatAgents, agent_list, agentList, applications, Applications
-   - For connectors: connectors, Connectors, action_connectors, ActionConnectors, connector_list, connectorList
-   - For KBs: knowledge_bases, KnowledgeBases, knowledgeBases, kb_list, kbList
-   - For spaces: spaces, Spaces, space_list, spaceList, linked_spaces
+── 💾 BACKUPS TAB ──
 
-4. Name extraction priority: name, Name, agent_name, AgentName, connector_name, ConnectorName, title, Title, displayName, display_name, label, kb_name, space_name, SpaceName — then any short non-ARN non-ID string field
-5. ID extraction priority: id, Id, ID, agent_id, agentId, connector_id, connectorId, kb_id, kbId, space_id, spaceId
+Split-panel layout. Search bar calls list_backups (empty=all, Enter triggers). Left panel: asset cards with expandable version rows (newest first, showing version badge, date, size). Clicking version calls get_backup. Right panel: detail view with gradient header (type icon, name, version, date), metadata grid, dependencies section, raw JSON toggle, amber Restore button → confirm modal (warns about overwrite, notes pre-restore backup) → shows success/error result.
 
-═══════════════════════════════════════════
-  COMPONENT STRUCTURE
-═══════════════════════════════════════════
+═══════════════════════════════════════════ PARSING RULES ═══════════════════════════════════════════
 
-Keep modular — extract into separate component files:
-  - App.tsx — thin layout shell with tab navigation and 3-step flow orchestration
-  - migrationTypes.ts — shared types (Asset, ScanData, TabKey, MigrateCall), constants (connector/action IDs, timeouts), helpers (buildScanData, buildMigrateCalls, unwrapMcpResponse, parseMigrationData, withTimeout), and style tokens (FONT, GRAD, BG)
-  - AssetSelector.tsx — tabbed asset browser with select/deselect, expand/collapse for agents & spaces
-  - LoadingOverlay.tsx — frosted-glass full-screen overlay with spinner and animated steps
-  - ConfirmModal.tsx — confirmation dialog before migration
-  - ResultsView.tsx — migration results display with stat cards, tables, linkages, errors
-  - HistoryView.tsx — migration history list from Shared App Storage
-  - BlueprintTab.tsx — this prompt, copyable
+Scan response: Build mapping lookup (id→inTarget/action) and target lookup. Extract assets via recursive array search under multiple key variants (agents/chat_agents/Agents, connectors/action_connectors/Connectors, etc.) up to 6 levels deep, deduplicating. Agents/Spaces extract nested children.
 
-═══════════════════════════════════════════
-  DESIGN & STYLING
-═══════════════════════════════════════════
+ID extraction keys MUST include: knowledge_base_id, knowledgeBaseId, resource_id, resourceId (missing these caused a critical malformed-value bug). Fallback: scan values for UUID regex. NEVER fall back to truncated JSON.stringify — return dash instead.
 
-- Purple gradient theme: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
-- Background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)
-- Font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif
-- ALL inline styles — no external CSS files
-- Rounded cards (12–20px border-radius), soft shadows (rgba(102,126,234,0.08))
-- Max width: 760px for the migrate flow, 880px for results/history
-- Tab buttons: pill-style (borderRadius: 30), active = gradient bg + white text, inactive = transparent + purple text
-- Step circles: 28px round gradient badges with white number
-- Input fields: 1.5px solid #e2e8f0 border, borderRadius 10
-- Status badges: green (#dcfce7/#166534) for success, red (#fef2f2/#991b1b) for errors
-- Selected asset cards: purple inset border shadow (inset 0 0 0 2px #667eea)
+Name extraction: try standard name keys then any short non-ARN non-UUID string.
 
-═══════════════════════════════════════════
-  KEY CONSTRAINTS & NOTES
-═══════════════════════════════════════════
+Migration result parser: extract succeeded from migrated arrays, skipped_permissions with unresolved principals, failed from overall_status, linkages.
 
-- Do NOT scan the target account — only scan the source.
-- Resource types: agent, connector, knowledge_base, space.
-- The migrate action uses resource_type/search_by/value parameters, NOT a resources JSON blob.
-- Multiple assets are migrated via sequential calls (one call per asset with search_by="id").
-- All assets are deselected by default after scan.
-- Timeout is set to 600000ms (10 minutes) — wrap all MCP calls with a withTimeout helper.
-- Do not use <form> elements — use div and button onClick handlers.
-- Wrap quickSuiteClient calls in try-catch; if QuickIntegrationError, render error message as-is.
-- Wrap App Storage calls in try-catch; if PageStorageError, render error message as-is.
-- Account IDs persisted to Private App Storage (table: "user-prefs", key: "account-ids") with debounced saves.
-- Migration history saved to Shared App Storage (table: "migration-history") so all team members can see past migrations.
-💡 Tip: After pasting the prompt, the builder will ask you to register the MCP action connector in
+═══════════════════════════════════════════ DESIGN & CONSTRAINTS ═══════════════════════════════════════════
+
+All inline styles. Purple gradient theme. Rounded cards, soft shadows. System font. Green=created/success, blue=updated, amber=warnings, red=failed. Selected items: purple inset border. Max widths: 760px migrate, 880px results/history, 960px backups.
+
+Constraints: 5 resource types (agent/connector/knowledge_base/space/flow). Value sent to migrate MUST be bare UUID. Scan filters always visible. Never trust API summary — recompute. Cache scans by all params. Parallel scan with Promise.allSettled. 10-min timeout. No form elements. QuickIntegrationError and PageStorageError messages rendered as-is. Connector/action IDs discovered at build time, never hardcoded.
 ```

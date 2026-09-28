@@ -94,6 +94,14 @@ Parameters:
     Type: List<AWS::EC2::SecurityGroup::Id>
     Description: Security group IDs for the runtime ENIs.
 
+  BackupBucket:
+    Type: String
+    Default: ""
+    Description: >
+      S3 bucket (in this runner account) for pre-update resource backups —
+      output BackupBucketName from runner-role.yaml. When set, the migrator
+      snapshots each target resource before updating it. Leave blank to disable.
+
 # ═══════════════════════════════════════════════════════════════════
 # CONDITIONS
 # ═══════════════════════════════════════════════════════════════════
@@ -352,6 +360,8 @@ Resources:
         # the server must listen on all interfaces in the runtime. The code
         # defaults to 127.0.0.1 for local use; the runtime opts in explicitly.
         BIND_HOST: "0.0.0.0"
+        # Bucket (this account) for pre-update resource backups; blank disables.
+        BACKUP_BUCKET: !Ref BackupBucket
       NetworkConfiguration:
         NetworkMode: VPC
         NetworkModeConfig:

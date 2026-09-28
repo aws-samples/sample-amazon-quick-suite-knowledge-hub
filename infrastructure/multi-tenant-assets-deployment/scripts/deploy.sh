@@ -27,7 +27,14 @@
 #     [--artifact-key quick-space-migrator/deployment.zip] \
 #     [--resource-server-id quick-migrator] \
 #     [--resource-server-scope invoke] \
+#     [--backup-bucket quick-migrator-backups-<acct>]  # else resolved from --runner-role-stack \
 #     [--show-secret]     # print the client secret to stdout (default: masked)
+#
+# CI/CD (runner account): instead of relying on ambient creds you may pass
+#     [--assume-role-arn arn:aws:iam::<runner>:role/deployer] [--profile BASE]
+# Precedence: --assume-role-arn > --profile > ambient/default creds.
+# (--profile, when combined with --assume-role-arn, is the BASE identity used to
+#  perform the assume-role.)
 #
 set -euo pipefail
 
@@ -46,10 +53,13 @@ COGNITO_DOMAIN_PREFIX=""
 SUBNET_IDS=""
 SECURITY_GROUP_IDS=""
 NETWORK_STACK=""
+BACKUP_BUCKET=""
 SHOW_SECRET="false"
 TEST_USERNAME="migrator-test"
 TEST_USER_EMAIL="migrator-test@example.com"
 TEST_PASSWORD=""
+ASSUME_ROLE_ARN=""
+PROFILE=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TEMPLATE="${REPO_ROOT}/infrastructure/agentcore-runtime.yaml"
@@ -69,15 +79,42 @@ while [[ $# -gt 0 ]]; do
     --subnet-ids)             SUBNET_IDS="$2"; shift 2 ;;
     --security-group-ids)     SECURITY_GROUP_IDS="$2"; shift 2 ;;
     --network-stack)          NETWORK_STACK="$2"; shift 2 ;;
+    --backup-bucket)          BACKUP_BUCKET="$2"; shift 2 ;;
     --test-username)          TEST_USERNAME="$2"; shift 2 ;;
     --test-user-email)        TEST_USER_EMAIL="$2"; shift 2 ;;
     --test-password)          TEST_PASSWORD="$2"; shift 2 ;;
     --region)                 REGION="$2"; shift 2 ;;
     --stack-name)             STACK_NAME="$2"; shift 2 ;;
+    --assume-role-arn)        ASSUME_ROLE_ARN="$2"; shift 2 ;;
+    --profile)                PROFILE="$2"; shift 2 ;;
     --show-secret)            SHOW_SECRET="true"; shift 1 ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
   esac
 done
+
+# ── Credentials (runner account) ────────────────────────────────────
+# Precedence: --assume-role-arn > --profile > ambient/default creds.
+# deploy.sh makes many aws calls, so we resolve ONCE here for the whole script:
+#   - assume-role-arn → export temp keys (base identity = --profile if given,
+#     else ambient) so every subsequent aws call runs as the assumed role.
+#   - profile only    → export AWS_PROFILE.
+if [[ -n "${ASSUME_ROLE_ARN}" ]]; then
+  echo "→ Assuming role ${ASSUME_ROLE_ARN} for deploy..."
+  _base_prof=""; [[ -n "${PROFILE}" ]] && _base_prof="--profile ${PROFILE}"
+  _creds="$(aws sts assume-role ${_base_prof} --region "${REGION}" \
+    --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "deploy-runtime" \
+    --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" --output text)"
+  if [[ -z "${_creds}" || "${_creds}" == *None* ]]; then
+    echo "✗ Failed to assume ${ASSUME_ROLE_ARN}"; exit 1
+  fi
+  unset AWS_PROFILE
+  export AWS_ACCESS_KEY_ID="$(echo "${_creds}" | awk '{print $1}')"
+  export AWS_SECRET_ACCESS_KEY="$(echo "${_creds}" | awk '{print $2}')"
+  export AWS_SESSION_TOKEN="$(echo "${_creds}" | awk '{print $3}')"
+  echo "   ✓ Assumed role credentials active"
+elif [[ -n "${PROFILE}" ]]; then
+  export AWS_PROFILE="${PROFILE}"
+fi
 
 # ── Validate required ───────────────────────────────────────────────
 : "${ARTIFACT_BUCKET:?--artifact-bucket is required}"
@@ -91,6 +128,15 @@ if [[ -n "${RUNNER_ROLE_STACK}" ]]; then
     --stack-name "${RUNNER_ROLE_STACK}" \
     --query "Stacks[0].Outputs[?OutputKey=='ExecutionRoleArn'].OutputValue" --output text)"
   echo "   Execution role: ${EXECUTION_ROLE_ARN}"
+  # Also resolve the pre-update backup bucket (created by runner-role.yaml),
+  # unless the caller passed one explicitly.
+  if [[ -z "${BACKUP_BUCKET}" ]]; then
+    BACKUP_BUCKET="$(aws cloudformation describe-stacks --region "${REGION}" \
+      --stack-name "${RUNNER_ROLE_STACK}" \
+      --query "Stacks[0].Outputs[?OutputKey=='BackupBucketName'].OutputValue" --output text 2>/dev/null || true)"
+    [[ "${BACKUP_BUCKET}" == "None" ]] && BACKUP_BUCKET=""
+    echo "   Backup bucket: ${BACKUP_BUCKET:-<none>}"
+  fi
 fi
 : "${EXECUTION_ROLE_ARN:?--execution-role-arn (or --runner-role-stack) is required}"
 : "${COGNITO_DOMAIN_PREFIX:?--cognito-domain-prefix is required}"
@@ -196,6 +242,7 @@ aws cloudformation deploy \
     "ResourceServerScope=${RESOURCE_SERVER_SCOPE}" \
     "VpcSubnetIds=${SUBNET_IDS}" \
     "VpcSecurityGroupIds=${SECURITY_GROUP_IDS}" \
+    "BackupBucket=${BACKUP_BUCKET}" \
     "TestUsername=${TEST_USERNAME}" \
     "TestUserEmail=${TEST_USER_EMAIL}" \
     "TestPassword=${TEST_PASSWORD}"

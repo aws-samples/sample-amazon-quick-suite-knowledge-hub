@@ -35,9 +35,11 @@ Tool inputs:
 import json
 import logging
 import os
+import re
 import sys
 import traceback
 import uuid
+from datetime import datetime, timezone
 from threading import Event
 
 import boto3
@@ -74,6 +76,12 @@ def _poll_wait(seconds: float) -> None:
 
 SOURCE_ROLE_ARN = os.environ.get("SOURCE_ROLE_ARN", "")
 TARGET_ROLE_ARN = os.environ.get("TARGET_ROLE_ARN", "")
+
+# Bucket (in the runner/central account where this runtime executes) for
+# pre-update backups of target resources. Created by runner-role.yaml. Blank
+# disables backups. The runtime writes here directly via its execution role
+# (no assume-role) since the bucket lives in the runtime's own account.
+BACKUP_BUCKET = os.environ.get("BACKUP_BUCKET", "")
 
 DEFAULT_QS_SERVICE_ROLE = "aws-quicksight-service-role-v0"
 
@@ -429,6 +437,25 @@ def copy_kb_permissions(
     _grant(target_qs, target_account, region, "kb", kb_id, perms, report)
 
 
+def copy_flow_permissions(
+    source_qs, target_qs, source_account, target_account, region,
+    source_flow_id, target_flow_id, report
+):
+    """Copy flow permissions. Flows use get/update_flow_permissions (not
+    describe_*), and — because CreateFlow mints a NEW id — the grant is applied
+    to the TARGET flow id, which differs from the source flow id."""
+    try:
+        perms = source_qs.get_flow_permissions(
+            AwsAccountId=source_account, FlowId=source_flow_id
+        ).get("Permissions", [])
+    except ClientError as e:
+        logger.warning(
+            f"  ⚠ get_flow_permissions '{source_flow_id}': {classify_error(e)['user_message']}"
+        )
+        return
+    _grant(target_qs, target_account, region, "flow", target_flow_id, perms, report)
+
+
 def _parse_principal_arn(principal_arn):
     """Split a QuickSight principal ARN into (kind, namespace, name).
 
@@ -611,6 +638,12 @@ def _grant(target_qs, target_account, region, kind, resource_id, perms, report):
             target_qs.update_space_permissions(
                 AwsAccountId=target_account,
                 SpaceId=resource_id,
+                GrantPermissions=grant,
+            )
+        elif kind == "flow":
+            target_qs.update_flow_permissions(
+                AwsAccountId=target_account,
+                FlowId=resource_id,
                 GrantPermissions=grant,
             )
         logger.info(
@@ -886,6 +919,7 @@ def do_migrate_resources(
             "connectors": [],
             "knowledge_bases": [],
             "spaces": [],
+            "flows": [],
             "buckets": [],
         },
         "skipped_permissions": [],
@@ -913,6 +947,10 @@ def do_migrate_resources(
         report["overall_status"] = "FAILED"
         return report
 
+    # S3 client for pre-update backups. The backup bucket lives in THIS (runner)
+    # account, so use the runtime's own credentials — no assume-role.
+    backup_s3 = boto3.client("s3", region_name=region)
+
     ids = [i for i in ids if i and i.strip()]
     if not ids:
         report["errors"].append(
@@ -925,10 +963,22 @@ def do_migrate_resources(
         return report
     report["steps"].append({"step": "selection", "resource_type": rtype, "ids": ids})
 
+    # Upsert semantics: each per-type migrator creates the resource if its id is
+    # absent in the target, or updates the SAME resource if the id already
+    # exists (a pre-update backup is taken first). No separate skip/create mode.
+    created_key = {
+        "connector": "connectors",
+        "knowledge_base": "knowledge_bases",
+        "agent": "agents",
+        "space": "spaces",
+        "flow": "flows",
+    }[rtype]
+
     if rtype == "connector":
         _migrate_connectors(
             source_qs,
             target_qs,
+            backup_s3,
             source_account_id,
             target_account_id,
             region,
@@ -941,6 +991,7 @@ def do_migrate_resources(
             target_qs,
             target_s3,
             target_iam,
+            backup_s3,
             source_account_id,
             target_account_id,
             region,
@@ -953,6 +1004,7 @@ def do_migrate_resources(
         _migrate_agents(
             source_qs,
             target_qs,
+            backup_s3,
             source_account_id,
             target_account_id,
             region,
@@ -963,6 +1015,18 @@ def do_migrate_resources(
         _migrate_spaces(
             source_qs,
             target_qs,
+            backup_s3,
+            source_account_id,
+            target_account_id,
+            region,
+            ids,
+            report,
+        )
+    elif rtype == "flow":
+        _migrate_flows(
+            source_qs,
+            target_qs,
+            backup_s3,
             source_account_id,
             target_account_id,
             region,
@@ -970,12 +1034,30 @@ def do_migrate_resources(
             report,
         )
 
-    created_key = {
-        "connector": "connectors",
-        "knowledge_base": "knowledge_bases",
-        "agent": "agents",
-        "space": "spaces",
+    # Post-migration snapshot: record EVERY successfully created/updated target
+    # resource to the backup bucket so it shows up in list_backups (creates land
+    # as v1). Non-fatal — never affects migration success.
+    _snap_id_key = {
+        "connector": "connector_id",
+        "knowledge_base": "knowledge_base_id",
+        "agent": "agent_id",
+        "space": "space_id",
+        "flow": "flow_id",
     }[rtype]
+    for m in report["migrated"][created_key]:
+        st = str(m.get("status", ""))
+        if "FAILED" in st or "SKIPPED" in st:
+            continue
+        action = "UPDATED" if "UPDATED" in st else "CREATED"
+        # Flows reuse a NEW target id; snapshot that one, not the source id.
+        snap_id = m.get("target_flow_id") if rtype == "flow" else m.get(_snap_id_key)
+        if not snap_id:
+            continue
+        snapshot_after_migrate(
+            target_qs, backup_s3, target_account_id, rtype, snap_id,
+            m.get("name"), action, report,
+        )
+
     any_ok = any(
         "FAILED" not in str(m.get("status", ""))
         and "SKIPPED" not in str(m.get("status", ""))
@@ -1001,6 +1083,7 @@ def do_migrate_resources(
 def _migrate_connectors(
     source_qs,
     target_qs,
+    backup_s3,
     source_account_id,
     target_account_id,
     region,
@@ -1075,6 +1158,20 @@ def _migrate_connectors(
             status = "CREATED"
         except ClientError as e:
             if e.response.get("Error", {}).get("Code", "") == "ResourceExistsException":
+                if not maybe_backup_before_update(
+                    target_qs, backup_s3, target_account_id, "connector",
+                    connector_id, connector_data.get("Name", connector_id), report,
+                ):
+                    status = "FAILED: backup before update failed (not modified)"
+                    report["migrated"]["connectors"].append(
+                        {
+                            "connector_id": connector_id,
+                            "name": connector_data.get("Name", connector_id),
+                            "type": connector_data.get("Type", "UNKNOWN"),
+                            "status": status,
+                        }
+                    )
+                    continue
                 try:
                     upd = {
                         "AwsAccountId": target_account_id,
@@ -1125,6 +1222,7 @@ def _migrate_knowledge_bases(
     target_qs,
     target_s3,
     target_iam,
+    backup_s3,
     source_account_id,
     target_account_id,
     region,
@@ -1206,6 +1304,18 @@ def _migrate_knowledge_bases(
                 )
 
         if existing_kb:
+            if not maybe_backup_before_update(
+                target_qs, backup_s3, target_account_id, "knowledge_base",
+                kb_id, kb_name, report,
+            ):
+                report["migrated"]["knowledge_bases"].append(
+                    {
+                        "knowledge_base_id": kb_id,
+                        "name": kb_name,
+                        "status": "FAILED: backup before update failed (not modified)",
+                    }
+                )
+                continue
             status = "UPDATED"
             existing_ds_arn = existing_kb.get("DataSourceArn", "")
             existing_ds_id = existing_ds_arn.split("/")[-1] if existing_ds_arn else None
@@ -1302,6 +1412,7 @@ def _migrate_knowledge_bases(
 def _migrate_agents(
     source_qs,
     target_qs,
+    backup_s3,
     source_account_id,
     target_account_id,
     region,
@@ -1375,6 +1486,21 @@ def _migrate_agents(
             status = "CREATED"
         except ClientError as e:
             if e.response.get("Error", {}).get("Code", "") == "ResourceExistsException":
+                if not maybe_backup_before_update(
+                    target_qs, backup_s3, target_account_id, "agent",
+                    agent_id, agent.get("Name", agent_id), report,
+                ):
+                    report["migrated"]["agents"].append(
+                        {
+                            "agent_id": agent_id,
+                            "name": agent.get("Name", agent_id),
+                            "status": "FAILED: backup before update failed (not modified)",
+                            "connectors": [
+                                a.split("/")[-1] for a in agent.get("ActionConnectors", [])
+                            ],
+                        }
+                    )
+                    continue
                 try:
                     wait_for_active(target_qs, target_account_id, agent_id)
                     existing_connectors = set()
@@ -1452,6 +1578,7 @@ def _migrate_agents(
 def _migrate_spaces(
     source_qs,
     target_qs,
+    backup_s3,
     source_account_id,
     target_account_id,
     region,
@@ -1496,21 +1623,27 @@ def _migrate_spaces(
             status = "CREATED"
         except ClientError as e:
             if e.response.get("Error", {}).get("Code", "") == "ResourceExistsException":
-                try:
-                    upd = {
-                        "AwsAccountId": target_account_id,
-                        "SpaceId": space_id,
-                        "Name": space_name,
-                    }
-                    if space.get("description"):
-                        upd["Description"] = space["description"]
-                    target_qs.update_space(**upd)
-                    status = "UPDATED"
-                except ClientError as ue:
-                    report["errors"].append(
-                        format_error_for_report(f"update_space({space_id})", ue)
-                    )
-                    status = f"FAILED: {classify_error(ue)['user_message']}"
+                if not maybe_backup_before_update(
+                    target_qs, backup_s3, target_account_id, "space",
+                    space_id, space_name, report,
+                ):
+                    status = "FAILED: backup before update failed (not modified)"
+                else:
+                    try:
+                        upd = {
+                            "AwsAccountId": target_account_id,
+                            "SpaceId": space_id,
+                            "Name": space_name,
+                        }
+                        if space.get("description"):
+                            upd["Description"] = space["description"]
+                        target_qs.update_space(**upd)
+                        status = "UPDATED"
+                    except ClientError as ue:
+                        report["errors"].append(
+                            format_error_for_report(f"update_space({space_id})", ue)
+                        )
+                        status = f"FAILED: {classify_error(ue)['user_message']}"
             else:
                 report["errors"].append(
                     format_error_for_report(f"create_space({space_id})", e)
@@ -1568,12 +1701,185 @@ def _migrate_spaces(
         )
 
 
+def _describe_flow(qs, account_id, flow_id):
+    """Describe a flow. DescribeFlow REQUIRES PublishState; we always use the
+    PUBLISHED version (that's what gets migrated/backed up). Returns the Flow
+    dict."""
+    resp = qs.describe_flow(
+        AwsAccountId=account_id, FlowId=flow_id, PublishState="PUBLISHED"
+    )
+    return resp.get("Flow", {})
+
+
+def _find_target_flows_by_name(target_qs, target_account_id, name):
+    """Return the list of target FlowIds whose name matches (case-insensitive).
+
+    Flows are matched by NAME (not id) because CreateFlow mints a new FlowId in
+    the target — the source id can never be reused there.
+    """
+    want = (name or "").strip().lower()
+    matches = []
+    token = None
+    while True:
+        kwargs = {"AwsAccountId": target_account_id}
+        if token:
+            kwargs["NextToken"] = token
+        resp = target_qs.list_flows(**kwargs)
+        for s in resp.get("FlowSummaryList", []) or []:
+            if (s.get("Name", "") or "").strip().lower() == want:
+                fid = s.get("FlowId")
+                if fid:
+                    matches.append(fid)
+        token = resp.get("NextToken")
+        if not token:
+            break
+    return matches
+
+
+def _migrate_flows(
+    source_qs,
+    target_qs,
+    backup_s3,
+    source_account_id,
+    target_account_id,
+    region,
+    flow_ids,
+    report,
+):
+    """Migrate flows. Unlike the other types, flows are matched by NAME because
+    CreateFlow does not accept a client-supplied FlowId (the target assigns a
+    new one). If a target flow with the same name exists it is updated (after a
+    pre-update backup); otherwise a new flow is created. Duplicate names in the
+    target are treated as ambiguous and skipped (no mutation)."""
+    for flow_id in flow_ids:
+        try:
+            flow = _describe_flow(source_qs, source_account_id, flow_id)
+        except ClientError as e:
+            report["errors"].append(
+                format_error_for_report(f"describe_flow({flow_id})", e)
+            )
+            report["migrated"]["flows"].append(
+                {
+                    "flow_id": flow_id,
+                    "status": f"FAILED: {classify_error(e)['user_message']}",
+                }
+            )
+            continue
+
+        name = flow.get("Name", flow_id)
+        definition = flow.get("FlowDefinition")
+        description = flow.get("Description")
+        if not definition:
+            report["migrated"]["flows"].append(
+                {
+                    "flow_id": flow_id,
+                    "name": name,
+                    "status": "FAILED: source flow has no FlowDefinition to copy",
+                }
+            )
+            continue
+
+        # Match by name in the target.
+        try:
+            existing = _find_target_flows_by_name(target_qs, target_account_id, name)
+        except ClientError as e:
+            report["errors"].append(
+                format_error_for_report(f"list_flows(match {name!r})", e)
+            )
+            report["migrated"]["flows"].append(
+                {"flow_id": flow_id, "name": name,
+                 "status": f"FAILED: {classify_error(e)['user_message']}"}
+            )
+            continue
+
+        if len(existing) > 1:
+            report["migrated"]["flows"].append(
+                {
+                    "flow_id": flow_id,
+                    "name": name,
+                    "status": (
+                        f"SKIPPED: {len(existing)} target flows already named "
+                        f"{name!r} — ambiguous, not modified"
+                    ),
+                }
+            )
+            continue
+
+        target_flow_id = None
+        if len(existing) == 1:
+            # UPDATE the existing target flow (back it up first).
+            target_flow_id = existing[0]
+            if not maybe_backup_before_update(
+                target_qs, backup_s3, target_account_id, "flow",
+                target_flow_id, name, report,
+            ):
+                report["migrated"]["flows"].append(
+                    {
+                        "flow_id": flow_id,
+                        "target_flow_id": target_flow_id,
+                        "name": name,
+                        "status": "FAILED: backup before update failed (not modified)",
+                    }
+                )
+                continue
+            try:
+                upd = {
+                    "AwsAccountId": target_account_id,
+                    "FlowId": target_flow_id,
+                    "Name": name,
+                    "FlowDefinition": definition,
+                }
+                if description:
+                    upd["Description"] = description
+                target_qs.update_flow(**upd)
+                status = "UPDATED"
+            except ClientError as e:
+                report["errors"].append(
+                    format_error_for_report(f"update_flow({target_flow_id})", e)
+                )
+                status = f"FAILED: {classify_error(e)['user_message']}"
+        else:
+            # CREATE a new target flow (target assigns the id).
+            try:
+                params = {
+                    "AwsAccountId": target_account_id,
+                    "Name": name,
+                    "FlowDefinition": definition,
+                }
+                if description:
+                    params["Description"] = description
+                resp = target_qs.create_flow(**params)
+                target_flow_id = resp.get("FlowId")
+                status = "CREATED"
+            except ClientError as e:
+                report["errors"].append(
+                    format_error_for_report(f"create_flow({name})", e)
+                )
+                status = f"FAILED: {classify_error(e)['user_message']}"
+
+        if "FAILED" not in status and target_flow_id:
+            copy_flow_permissions(
+                source_qs, target_qs, source_account_id, target_account_id,
+                region, flow_id, target_flow_id, report,
+            )
+
+        report["migrated"]["flows"].append(
+            {
+                "flow_id": flow_id,
+                "target_flow_id": target_flow_id,
+                "name": name,
+                "status": status,
+                "matched_by": "name",
+            }
+        )
+
+
 # ═══════════════════════════════════════════════════════════════════
 # RESOURCE RESOLUTION (resource_type + id | name | all)
 # ═══════════════════════════════════════════════════════════════════
 
 # The resource types this server can migrate.
-_MIGRATABLE_TYPES = {"agent", "connector", "knowledge_base", "space"}
+_MIGRATABLE_TYPES = {"agent", "connector", "knowledge_base", "space", "flow"}
 
 # Per-type QuickSight list op, its result key, the id field, and the name field.
 _RESOURCE_LISTERS = {
@@ -1592,12 +1898,568 @@ _RESOURCE_LISTERS = {
     ),
     # ListSpaces returns SpaceSummaries with lowercase spaceId / name fields.
     "space": ("list_spaces", "SpaceSummaries", "spaceId", "name"),
+    # ListFlows returns FlowSummaryList; ids are FlowId, names are Name.
+    "flow": ("list_flows", "FlowSummaryList", "FlowId", "Name"),
 }
 
 
 def _summary_id(summary, id_field):
     """Return a resource id from a list_* summary, falling back to the ARN tail."""
     return summary.get(id_field) or (summary.get("Arn", "").split("/")[-1] or None)
+
+
+# Per-type describe op + response key, used to check if a resource already
+# exists in the target account (matched by the same id the migrator reuses).
+_RESOURCE_DESCRIBERS = {
+    "agent": ("describe_agent", "AgentId"),
+    "connector": ("describe_action_connector", "ActionConnectorId"),
+    "knowledge_base": ("describe_knowledge_base", "KnowledgeBaseId"),
+    "space": ("describe_space", "SpaceId"),
+    "flow": ("describe_flow", "FlowId"),
+}
+
+
+def target_resource_exists(target_qs, target_account_id, rtype, resource_id):
+    """Return (exists, error) for a resource id in the target account.
+
+    The migrator reuses the source id in the target, so existence is a direct
+    describe_* by that id. A ResourceNotFoundException means "does not exist"
+    (exists=False, no error). Any other ClientError is surfaced as an error so
+    the caller can decide (we do NOT silently treat it as absent, which could
+    cause an unwanted create).
+    """
+    op_name, id_kwarg = _RESOURCE_DESCRIBERS[rtype]
+    op = getattr(target_qs, op_name)
+    try:
+        op(**{"AwsAccountId": target_account_id, id_kwarg: resource_id})
+        return True, None
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code", "")
+        if code in ("ResourceNotFoundException", "NotFoundException"):
+            return False, None
+        return None, classify_error(e)["user_message"]
+
+
+# Response envelope + object key per type, for describing a matched target asset.
+_RESOURCE_DESCRIBE_KEYS = {
+    "agent": ("describe_agent", "AgentId", "Agent"),
+    "connector": ("describe_action_connector", "ActionConnectorId", "ActionConnector"),
+    "knowledge_base": ("describe_knowledge_base", "KnowledgeBaseId", "KnowledgeBase"),
+    "space": ("describe_space", "SpaceId", "Space"),
+    "flow": ("describe_flow", "FlowId", "Flow"),
+}
+
+# Per-type describe-*-permissions op + id kwarg (permissions are read from both
+# source and target so the FE can display/compare access per resource).
+_RESOURCE_PERMISSION_DESCRIBERS = {
+    "agent": ("describe_agent_permissions", "AgentId"),
+    "connector": ("describe_action_connector_permissions", "ActionConnectorId"),
+    "knowledge_base": ("describe_knowledge_base_permissions", "KnowledgeBaseId"),
+    "space": ("describe_space_permissions", "SpaceId"),
+    # Flows read permissions via get_flow_permissions (not describe_*).
+    "flow": ("get_flow_permissions", "FlowId"),
+}
+
+
+def describe_resource_permissions(qs, account_id, rtype, resource_id):
+    """Return (permissions, error) for a resource's QuickSight permissions.
+
+    permissions is a normalized list of {"principal": <arn>, "actions": [...]}
+    (empty list if none). error is a user-facing string if the read failed
+    (permissions is [] in that case). Read-only.
+    """
+    op_name, id_kwarg = _RESOURCE_PERMISSION_DESCRIBERS[rtype]
+    op = getattr(qs, op_name)
+    try:
+        raw = op(**{"AwsAccountId": account_id, id_kwarg: resource_id}).get(
+            "Permissions", []
+        )
+    except ClientError as e:
+        return [], classify_error(e)["user_message"]
+    normalized = [
+        {
+            "principal": p.get("Principal"),
+            "actions": p.get("Actions", []),
+        }
+        for p in (raw or [])
+    ]
+    return normalized, None
+
+
+def describe_target_resource(target_qs, target_account_id, rtype, resource_id):
+    """Return (obj, exists, error) for a matched target resource.
+
+    Only ever called for ids that already exist in the SOURCE — the target is
+    never enumerated, and target-only assets are never fetched (migration scope
+    is source→target). obj is a compact dict describing the target resource, or
+    None when it does not exist (exists=False) or the lookup failed (error set).
+    """
+    op_name, id_kwarg, obj_key = _RESOURCE_DESCRIBE_KEYS[rtype]
+    op = getattr(target_qs, op_name)
+    # DescribeFlow requires PublishState; describe others take just the id.
+    call_kwargs = {"AwsAccountId": target_account_id, id_kwarg: resource_id}
+    if rtype == "flow":
+        call_kwargs["PublishState"] = "PUBLISHED"
+    try:
+        raw = op(**call_kwargs)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code", "")
+        if code in ("ResourceNotFoundException", "NotFoundException"):
+            return None, False, None
+        return None, None, classify_error(e)["user_message"]
+
+    data = raw.get(obj_key, {}) or {}
+    # Compact, FE-friendly shape (mirrors the source inventory fields).
+    if rtype == "agent":
+        obj = {
+            "agent_id": data.get("AgentId", resource_id),
+            "arn": data.get("Arn"),
+            "name": data.get("Name"),
+            "agent_status": data.get("AgentStatus"),
+        }
+    elif rtype == "connector":
+        obj = {
+            "connector_id": data.get("ActionConnectorId", resource_id),
+            "arn": data.get("Arn"),
+            "name": data.get("Name"),
+            "type": data.get("Type", "UNKNOWN"),
+            "status": data.get("Status"),
+        }
+    elif rtype == "knowledge_base":
+        obj = {
+            "knowledge_base_id": resource_id,
+            "name": data.get("Name", resource_id),
+            "type": data.get("Type", "UNKNOWN"),
+            "status": data.get("Status", "UNKNOWN"),
+        }
+    else:  # space
+        obj = {
+            "space_id": resource_id,
+            "name": data.get("name", resource_id),
+            "description": data.get("description"),
+        }
+    return obj, True, None
+
+
+# QuickSight resource-id pattern (shared by agents, connectors, knowledge bases).
+_ID_PATTERN = re.compile(r"^[0-9a-zA-Z\-_=.+]+$")
+
+# JSON keys a caller might wrap an id in, e.g. {"knowledge_base_id": "..."}.
+_ID_KEYS = (
+    "knowledge_base_id",
+    "KnowledgeBaseId",
+    "connector_id",
+    "ActionConnectorId",
+    "agent_id",
+    "AgentId",
+    "space_id",
+    "spaceId",
+    "resource_id",
+    "id",
+    "Id",
+    "value",
+)
+
+
+def _extract_id_from_obj(obj):
+    """Pull a bare id string out of a dict that wraps one under a known key."""
+    for key in _ID_KEYS:
+        if key in obj and isinstance(obj[key], str) and obj[key].strip():
+            return obj[key].strip()
+    return None
+
+
+def _coerce_selection_value(value):
+    """Normalize a search_by=id 'value' into a list of bare resource ids.
+
+    A well-behaved caller passes a plain id (or comma-separated ids). Some
+    callers instead pass a JSON object like {"knowledge_base_id": "<uuid>"},
+    a JSON array, or a JSON-encoded string. Accept all of these, extract the
+    bare id(s), and validate them against the QuickSight id pattern so a
+    malformed selection fails with a clear message instead of being sent to
+    the API verbatim (which surfaces as a confusing ValidationException).
+
+    Returns (ids, error): ids is a list of validated id strings; error is a
+    user-facing string or None.
+    """
+    raw = (value or "").strip()
+    if not raw:
+        return [], "search_by='id' requires a non-empty 'value'."
+
+    candidates = []
+
+    # Try to interpret the value as JSON (object, array, or quoted string).
+    parsed = None
+    if raw[0] in "[{\"":
+        try:
+            parsed = json.loads(raw)
+        except (ValueError, TypeError):
+            parsed = None
+
+    if isinstance(parsed, dict):
+        extracted = _extract_id_from_obj(parsed)
+        if not extracted:
+            return [], (
+                f"Could not find a resource id in the provided object {raw!r}. "
+                f"Pass a bare id, or an object with one of: "
+                f"knowledge_base_id, connector_id, agent_id, space_id, id."
+            )
+        candidates = [extracted]
+    elif isinstance(parsed, list):
+        for item in parsed:
+            if isinstance(item, str):
+                candidates.append(item.strip())
+            elif isinstance(item, dict):
+                extracted = _extract_id_from_obj(item)
+                if extracted:
+                    candidates.append(extracted)
+    elif isinstance(parsed, str):
+        # JSON-encoded string, e.g. "\"abc-123\"" -> abc-123.
+        candidates = [parsed.strip()]
+    else:
+        # Plain (non-JSON) input: allow a comma-separated list of ids.
+        candidates = [part.strip() for part in raw.split(",")]
+
+    candidates = [c for c in candidates if c]
+    if not candidates:
+        return [], f"No usable resource id found in 'value' {raw!r}."
+
+    invalid = [c for c in candidates if not _ID_PATTERN.match(c)]
+    if invalid:
+        return [], (
+            f"Invalid resource id(s) {invalid!r}: an id must match "
+            f"[0-9a-zA-Z-_=.+]+ (no braces, quotes, or spaces). "
+            f"Pass the bare resource id, not a wrapped/JSON value."
+        )
+
+    # De-duplicate while preserving order.
+    seen = set()
+    ids = []
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            ids.append(c)
+    return ids, None
+
+
+class BackupError(Exception):
+    """Raised when a pre-update backup cannot be written (blocks the update)."""
+
+
+def _safe_folder_component(name: str) -> str:
+    """Make an asset name safe for use as a single S3 key path segment.
+
+    Removes characters awkward in S3 keys — notably '/' (which would create
+    phantom subfolders) and control chars — and collapses whitespace. Keeps it
+    human-readable (spaces and parentheses are fine in S3 keys).
+    """
+    name = (name or "").strip()
+    # Drop control characters and forward slashes / backslashes.
+    cleaned = "".join(
+        c for c in name if c not in "/\\" and (ord(c) >= 32)
+    ).strip()
+    return cleaned or "unnamed"
+
+
+def _next_backup_version(s3, bucket, prefix, ext):
+    """Return the next version integer N for versioned backup objects under the
+    asset folder. Matches both the current filename form '<asset_id>_v<N>.<ext>'
+    and the legacy 'json_v<N>.<ext>' so version numbers keep incrementing across
+    the rename. Returns max(N)+1 (1 if none).
+    """
+    highest = 0
+    token = None
+    # Any '<something>_v<N>.<ext>' at the end of the key (covers <id>_v.. + json_v..).
+    pat = re.compile(rf"_v(\d+)\.{re.escape(ext)}$")
+    while True:
+        kwargs = {"Bucket": bucket, "Prefix": prefix}
+        if token:
+            kwargs["ContinuationToken"] = token
+        resp = s3.list_objects_v2(**kwargs)
+        for obj in resp.get("Contents", []) or []:
+            m = pat.search(obj["Key"])
+            if m:
+                highest = max(highest, int(m.group(1)))
+        if resp.get("IsTruncated"):
+            token = resp.get("NextContinuationToken")
+        else:
+            break
+    return highest + 1
+
+
+def backup_target_resource(s3, bucket, rtype, resource_id, name, described_obj):
+    """Write a pre-update snapshot of a target resource to the backup bucket.
+
+    Layout:  "<Asset Name> (asset_id)/json_v<N>.json"  (N auto-increments).
+    Returns the s3 key written. Raises BackupError if the backup cannot be
+    written — callers MUST treat that as "do not proceed with the update".
+    """
+    if not bucket:
+        raise BackupError(
+            "no backup bucket is configured (BACKUP_BUCKET is empty); refusing to "
+            "update without a backup"
+        )
+    folder = f"{_safe_folder_component(name or resource_id)} ({resource_id})"
+    prefix = f"{folder}/"
+    try:
+        version = _next_backup_version(s3, bucket, prefix, "json")
+        # Filename carries the asset id: "<asset_id>_v<N>.json".
+        key = f"{prefix}{resource_id}_v{version}.json"
+        body = json.dumps(described_obj, indent=2, default=str).encode("utf-8")
+        s3.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=body,
+            ContentType="application/json",
+            ServerSideEncryption="AES256",
+        )
+        logger.info(f"  ✓ Backup written: s3://{bucket}/{key}")
+        return key
+    except ClientError as e:
+        raise BackupError(classify_error(e)["user_message"]) from e
+
+
+BACKUP_SCHEMA_VERSION = 2  # v2 = dependency-capturing envelope
+
+
+# ── Backup catalog + restore helpers ────────────────────────────────
+_BACKUP_FOLDER_RE = re.compile(r"^(?P<name>.*) \((?P<id>[^()/]+)\)$")
+
+
+def _parse_backup_folder(folder: str):
+    """Split '<Name> (asset_id)' → (name, asset_id), or (None, None)."""
+    m = _BACKUP_FOLDER_RE.match(folder)
+    if not m:
+        return None, None
+    return m.group("name"), m.group("id")
+
+
+def list_backup_catalog(s3, bucket, query=""):
+    """List backup assets (optionally filtered by name/id substring) and their
+    versions. Returns [{name, asset_id, folder, versions:[{version,key,
+    last_modified,size}]}]. Read-only."""
+    if not bucket:
+        return [], "no backup bucket configured (BACKUP_BUCKET is empty)"
+    q = (query or "").strip().lower()
+    assets = {}  # folder -> {name, asset_id, versions:[]}
+    # Matches both '<asset_id>_v<N>.json' (current) and 'json_v<N>.json' (legacy).
+    ver_re = re.compile(r"_v(\d+)\.json$")
+    token = None
+    try:
+        while True:
+            kwargs = {"Bucket": bucket}
+            if token:
+                kwargs["ContinuationToken"] = token
+            resp = s3.list_objects_v2(**kwargs)
+            for obj in resp.get("Contents", []) or []:
+                key = obj["Key"]
+                if "/" not in key:
+                    continue
+                folder, fname = key.rsplit("/", 1)
+                m = ver_re.search(fname)
+                if not m:
+                    continue
+                name, asset_id = _parse_backup_folder(folder)
+                if asset_id is None:
+                    continue
+                # Filter by name or id substring.
+                if q and q not in (name or "").lower() and q not in asset_id.lower():
+                    continue
+                a = assets.setdefault(
+                    folder, {"name": name, "asset_id": asset_id, "folder": folder, "versions": []}
+                )
+                a["versions"].append(
+                    {
+                        "version": int(m.group(1)),
+                        "key": key,
+                        "last_modified": obj.get("LastModified"),
+                        "size": obj.get("Size"),
+                    }
+                )
+            if resp.get("IsTruncated"):
+                token = resp.get("NextContinuationToken")
+            else:
+                break
+    except ClientError as e:
+        return [], classify_error(e)["user_message"]
+
+    out = list(assets.values())
+    for a in out:
+        a["versions"].sort(key=lambda v: v["version"])
+        a["latest_version"] = a["versions"][-1]["version"] if a["versions"] else None
+    out.sort(key=lambda a: (a["name"] or "").lower())
+    return out, None
+
+
+def read_backup_envelope(s3, bucket, key):
+    """Read + parse a backup object into its envelope dict. Read-only."""
+    obj = s3.get_object(Bucket=bucket, Key=key)
+    body = obj["Body"].read()
+    return json.loads(body)
+
+
+def _collect_dependencies(target_qs, target_account_id, rtype, resource_obj):
+    """Best-effort snapshot of a resource's dependencies (for restore context).
+
+    Returns a dict describing what the resource links to. We capture the
+    reference (arn/id) and, where cheap and safe, a describe of the dependency.
+    Failures are non-fatal — a dependency we cannot read is recorded with an
+    "error" note rather than aborting the backup.
+    """
+    deps = {}
+    try:
+        if rtype == "agent":
+            # Agents reference action connectors by ARN.
+            conn_arns = resource_obj.get("ActionConnectors", []) or []
+            connectors = []
+            for arn in conn_arns:
+                cid = arn.split("/")[-1]
+                entry = {"action_connector_id": cid, "arn": arn}
+                try:
+                    c = target_qs.describe_action_connector(
+                        AwsAccountId=target_account_id, ActionConnectorId=cid
+                    ).get("ActionConnector", {})
+                    entry["name"] = c.get("Name")
+                    entry["type"] = c.get("Type")
+                except ClientError as e:
+                    entry["error"] = classify_error(e)["user_message"]
+                connectors.append(entry)
+            deps["action_connectors"] = connectors
+
+        elif rtype == "space":
+            # Spaces link agents / connectors / KBs / flows by ARN.
+            linked = []
+            for r in resource_obj.get("resources", []) or []:
+                arn = (r.get("resourceDetails") or {}).get("resourceArn")
+                linked.append(
+                    {
+                        "resource_type": r.get("resourceType"),
+                        "resource_arn": arn,
+                        "resource_id": arn.split("/")[-1] if arn else None,
+                    }
+                )
+            deps["linked_resources"] = linked
+
+        elif rtype == "knowledge_base":
+            # KBs reference a data source by ARN.
+            ds_arn = resource_obj.get("DataSourceArn", "")
+            entry = {"data_source_arn": ds_arn or None}
+            if ds_arn:
+                ds_id = ds_arn.split("/")[-1]
+                entry["data_source_id"] = ds_id
+            deps["data_source"] = entry
+
+        elif rtype == "flow":
+            # A flow's FlowDefinition is self-contained but may embed resource
+            # ARNs; store the definition itself so restore can replay it.
+            deps["flow_definition_present"] = bool(resource_obj.get("FlowDefinition"))
+
+        # connectors have no outbound dependencies to capture.
+    except Exception as exc:  # never let dependency capture break the backup
+        deps["_capture_error"] = str(exc)
+    return deps
+
+
+def _build_backup_envelope(target_qs, target_account_id, rtype, resource_id, name):
+    """Describe the target resource + capture its dependencies into an envelope.
+
+    Envelope (schema v2):
+      { schema_version, backed_up_at, account_id, resource_type, resource_id,
+        name, resource: <full describe>, dependencies: {...} }
+    """
+    op_name, id_kwarg, obj_key = _RESOURCE_DESCRIBE_KEYS[rtype]
+    op = getattr(target_qs, op_name)
+    call_kwargs = {"AwsAccountId": target_account_id, id_kwarg: resource_id}
+    if rtype == "flow":
+        call_kwargs["PublishState"] = "PUBLISHED"  # DescribeFlow requires it
+    raw = op(**call_kwargs)
+    resource_obj = raw.get(obj_key, raw)
+    return {
+        "schema_version": BACKUP_SCHEMA_VERSION,
+        "backed_up_at": datetime.now(timezone.utc).isoformat(),
+        "account_id": target_account_id,
+        "resource_type": rtype,
+        "resource_id": resource_id,
+        "name": name,
+        "resource": resource_obj,
+        "dependencies": _collect_dependencies(
+            target_qs, target_account_id, rtype, resource_obj
+        ),
+    }
+
+
+def snapshot_after_migrate(
+    target_qs, s3_backup, target_account_id, rtype, resource_id, name,
+    action, report
+):
+    """Write a post-migration snapshot of the target resource to the backup
+    bucket, so EVERY successfully migrated asset (create OR update) is listed by
+    list_backups. Non-fatal: a snapshot failure never fails the migration — it
+    is only recorded in the report.
+
+    action: "CREATED" | "UPDATED" — stamped into the envelope for the timeline.
+    """
+    if not BACKUP_BUCKET or not resource_id:
+        return
+    try:
+        envelope = _build_backup_envelope(
+            target_qs, target_account_id, rtype, resource_id, name
+        )
+        envelope["migration_action"] = action
+        key = backup_target_resource(
+            s3_backup, BACKUP_BUCKET, rtype, resource_id, name, envelope
+        )
+        report.setdefault("snapshots", []).append(
+            {"resource_id": resource_id, "s3_key": key, "action": action}
+        )
+    except (ClientError, BackupError) as e:
+        # Snapshot is best-effort — the migration already succeeded.
+        logger.warning(
+            f"  ⚠ post-migration snapshot failed for {rtype} '{name or resource_id}' "
+            f"({resource_id}): {e}"
+        )
+        report.setdefault("snapshot_errors", []).append(
+            {"resource_id": resource_id, "error": str(e)}
+        )
+
+
+def maybe_backup_before_update(
+    target_qs, s3_backup, target_account_id, rtype, resource_id, name, report
+):
+    """Snapshot the current target resource (+ dependencies) before an update.
+
+    Returns True if it is safe to proceed with the update (backup written), or
+    False if the backup failed — in which case a meaningful error is recorded
+    in the report and the caller MUST skip the update (fail-safe).
+    """
+    try:
+        envelope = _build_backup_envelope(
+            target_qs, target_account_id, rtype, resource_id, name
+        )
+    except ClientError as e:
+        msg = (
+            f"Unable to take a backup before updating {rtype} '{name or resource_id}' "
+            f"({resource_id}): could not read the current target resource "
+            f"({classify_error(e)['user_message']}). The resource was NOT modified."
+        )
+        report["errors"].append({"context": f"backup({resource_id})", "user_message": msg})
+        return False
+    try:
+        key = backup_target_resource(
+            s3_backup, BACKUP_BUCKET, rtype, resource_id, name, envelope
+        )
+        report.setdefault("backups", []).append(
+            {"resource_id": resource_id, "s3_key": key, "bucket": BACKUP_BUCKET}
+        )
+        return True
+    except BackupError as e:
+        msg = (
+            f"Unable to take a backup before updating {rtype} '{name or resource_id}' "
+            f"({resource_id}): {e}. The resource was NOT modified. "
+            f"Fix the backup bucket/permissions and retry."
+        )
+        report["errors"].append({"context": f"backup({resource_id})", "user_message": msg})
+        return False
 
 
 def resolve_resource_ids(qs, account_id, resource_type, search_by, value):
@@ -1632,10 +2494,12 @@ def resolve_resource_ids(qs, account_id, resource_type, search_by, value):
 
     op_name, result_key, id_field, name_field = _RESOURCE_LISTERS[rtype]
 
-    # search_by=id does not need a full listing — return the id directly and
-    # let the downstream describe/create surface a not-found error if it is bogus.
+    # search_by=id does not need a full listing — normalize the value into
+    # bare id(s) (tolerating JSON/wrapped/comma-separated input) and validate
+    # them, then let the downstream describe/create surface a not-found error
+    # if an id is well-formed but bogus.
     if mode == "id":
-        return [value.strip()], None
+        return _coerce_selection_value(value)
 
     try:
         summaries = _paginate(qs, op_name, result_key, AwsAccountId=account_id)
@@ -1724,6 +2588,12 @@ def migrate_resources(
         target_env: env name used in the target KB bucket (knowledge-base-<env>-<account>)
         qs_service_role: QuickSight service role name for the S3 bucket policy
 
+    Behavior on conflict:
+        Upsert — if a resource's id is not present in the target it is created;
+        if it already exists it is updated in place (a pre-update backup of the
+        target resource is written to the backup bucket first; if that backup
+        cannot be written, the update is aborted for that resource).
+
     Returns:
         JSON migration report with migrated agents/connectors/knowledge_bases,
         buckets, skipped_permissions, and errors.
@@ -1778,6 +2648,8 @@ def preview_migration(
     search_by: str = "all",
     value: str = "",
     region: str = "us-east-1",
+    target_account_id: str = "",
+    include_permissions: bool = False,
 ) -> str:
     """
     Discovery / dry run. Read-only inventory of the resources that would be
@@ -1792,18 +2664,42 @@ def preview_migration(
                        "name" → resources whose name matches value (case-insensitive)
       value:         id or name when search_by is id/name; ignored for "all".
 
+    Target mapping (optional):
+      target_account_id: when provided, the response additionally includes a
+                         "target" inventory and a "mapping" array. For each
+                         resource found in the SOURCE, the tool looks it up in
+                         the target account BY THE SAME ID the migrator reuses:
+                           - if it exists in target → the target object is added
+                             to "target" and the mapping entry is
+                             {in_source:true, in_target:true, action:"UPDATE"}
+                           - if it does not exist   → nothing is fetched from the
+                             target, and the mapping entry is
+                             {in_source:true, in_target:false, action:"CREATE"}
+                         The target inventory is intentionally SCOPED to ids that
+                         exist in the source: target-only assets are never
+                         enumerated or returned (migration is source→target, so
+                         out-of-scope target assets are out of scope here too).
+                         Read-only — no changes are made to either account.
+
     Args:
         source_account_id: Source AWS account ID
         resource_type: agent | connector | knowledge_base | space | all (default: all)
         search_by: id | name | all (default: all)
         value: id or name to match (required when search_by is id or name)
         region: AWS region
+        target_account_id: optional target AWS account ID for the source→target mapping
 
     Returns:
-        JSON inventory of the selected agents, connectors, knowledge bases, and spaces.
+        JSON with:
+          source_account_id, target_account_id,
+          source:  {agents, connectors, knowledge_bases, spaces}  (full source inventory)
+          target:  {agents, connectors, knowledge_bases, spaces}  (only source-matched ids; present when target_account_id given)
+          mapping: [{type, id, name, in_source, in_target, action}]  (present when target_account_id given)
+          status, errors
     """
     logger.info(
-        f"[TOOL] preview_migration: source={source_account_id} type={resource_type} "
+        f"[TOOL] preview_migration: source={source_account_id} "
+        f"target={target_account_id or '-'} type={resource_type} "
         f"search_by={search_by} value={value!r}"
     )
     try:
@@ -1813,25 +2709,43 @@ def preview_migration(
             {"status": "FAILED", "user_message": f"Preview failed: {str(e)}"}, indent=2
         )
 
+    # Optionally assume the target role to map CREATE vs UPDATE.
+    target_qs = None
+    if target_account_id:
+        try:
+            target_qs = assume_role_client("quicksight", TARGET_ROLE_ARN, region)
+        except RuntimeError as e:
+            # Non-fatal: still return the source inventory, just without mapping.
+            logger.warning(f"  ⚠ target role assume failed, skipping mapping: {e}")
+
     rtype = _normalize_type(resource_type)
-    types = (
-        ["agent", "connector", "knowledge_base", "space"] if rtype == "all" else [rtype]
-    )
     if rtype != "all" and rtype not in _MIGRATABLE_TYPES:
         return json.dumps(
             {
                 "status": "FAILED",
                 "user_message": f"Invalid resource_type {resource_type!r}. "
-                f"Valid: agent, connector, knowledge_base, space, all.",
+                f"Valid: agent, connector, knowledge_base, space, flow, all.",
             },
             indent=2,
         )
+
+    all_types = ["agent", "connector", "knowledge_base", "space", "flow"]
+    if rtype == "all":
+        types = all_types
+    else:
+        # Always include spaces in the preview even when the user filtered to a
+        # single type: the SPACE is the only resource that knows what it links
+        # to (agents/connectors/KBs/flows), so surfacing spaces lets the FE show
+        # the relationship mapping. (This applies to preview only — migrate
+        # stays scoped to exactly the type the user selected.)
+        types = [rtype] if rtype == "space" else [rtype, "space"]
 
     inventory = {
         "agents": [],
         "connectors": [],
         "knowledge_bases": [],
         "spaces": [],
+        "flows": [],
         "errors": [],
     }
 
@@ -1972,15 +2886,589 @@ def preview_migration(
                             "user_message": classify_error(e)["user_message"],
                         }
                     )
+        elif t == "flow":
+            for fid in ids:
+                try:
+                    flow = _describe_flow(source_qs, source_account_id, fid)
+                    inventory["flows"].append(
+                        {
+                            "flow_id": flow.get("FlowId", fid),
+                            "arn": flow.get("Arn"),
+                            "name": flow.get("Name", fid),
+                            "description": flow.get("Description"),
+                            "publish_state": flow.get("PublishState"),
+                            "created_time": flow.get("CreatedTime"),
+                            "last_updated_time": flow.get("LastUpdatedTime"),
+                            # Flows are matched by NAME (CreateFlow mints a new id).
+                            "match_by": "name",
+                        }
+                    )
+                except ClientError as e:
+                    inventory["errors"].append(
+                        {
+                            "context": f"describe_flow({fid})",
+                            "user_message": classify_error(e)["user_message"],
+                        }
+                    )
 
-    inventory["status"] = "OK" if not inventory["errors"] else "COMPLETED_WITH_ERRORS"
+    # Attach source permissions to every source inventory item (read-only).
+    _src_type_key = {
+        "agents": ("agent", "agent_id"),
+        "connectors": ("connector", "connector_id"),
+        "knowledge_bases": ("knowledge_base", "knowledge_base_id"),
+        "spaces": ("space", "space_id"),
+        "flows": ("flow", "flow_id"),
+    }
+    for coll_key, (rtype_name, id_key) in _src_type_key.items():
+        for item in inventory[coll_key]:
+            rid = item.get(id_key)
+            if not rid:
+                item["permissions"] = []
+                continue
+            if not include_permissions:
+                # Permissions are expensive (a describe-permissions call per
+                # resource). Skip by default; callers opt in via
+                # include_permissions=true for the detailed view.
+                continue
+            perms, perr = describe_resource_permissions(
+                source_qs, source_account_id, rtype_name, rid
+            )
+            item["permissions"] = perms
+            if perr:
+                item["permissions_error"] = perr
+
+    # Build the source→target mapping against the target account (read-only),
+    # if requested. Only ids present in the SOURCE are ever looked up in the
+    # target; target-only assets are never enumerated or returned.
+    result = {
+        "source_account_id": source_account_id,
+        "source": {
+            "agents": inventory["agents"],
+            "connectors": inventory["connectors"],
+            "knowledge_bases": inventory["knowledge_bases"],
+            "spaces": inventory["spaces"],
+            "flows": inventory["flows"],
+        },
+        "errors": inventory["errors"],
+    }
+
+    if target_qs is not None:
+        target_inv = {
+            "agents": [],
+            "connectors": [],
+            "knowledge_bases": [],
+            "spaces": [],
+            "flows": [],
+        }
+        mapping = []
+        # Cache target name-sets per type: list each target type at most ONCE
+        # (not once per resource) so name_match doesn't trigger N full listings.
+        _target_names_cache = {}
+
+        def _target_name_set(rt):
+            if rt in _target_names_cache:
+                return _target_names_cache[rt]
+            try:
+                op_name, result_key, id_field, name_field = _RESOURCE_LISTERS[rt]
+                summaries = _paginate(
+                    target_qs, op_name, result_key, AwsAccountId=target_account_id
+                )
+                names = {
+                    (s.get(name_field, "") or "").strip().lower()
+                    for s in summaries
+                }
+                _target_names_cache[rt] = names
+            except ClientError:
+                _target_names_cache[rt] = None  # unknown (list failed)
+            return _target_names_cache[rt]
+
+        for coll_key, (rtype_name, id_key) in _src_type_key.items():
+            for item in inventory[coll_key]:
+                rid = item.get(id_key)
+                name = item.get("name")
+                src_perms = item.get("permissions", [])
+                if not rid:
+                    continue
+
+                if rtype_name == "flow":
+                    # Flows match by NAME (CreateFlow mints a new target id).
+                    try:
+                        matches = _find_target_flows_by_name(
+                            target_qs, target_account_id, name
+                        )
+                    except ClientError as e:
+                        mapping.append({
+                            "type": "flow", "id": rid, "name": name,
+                            "in_source": True, "in_target": None,
+                            "id_match": False, "name_match": None,
+                            "matched_by": "none", "match_by": "name",
+                            "action": "UNKNOWN",
+                            "error": classify_error(e)["user_message"],
+                            "source_permissions": src_perms,
+                        })
+                        continue
+                    if matches:
+                        # Fetch the (first) target flow to include in target inv.
+                        tgt_obj, _, _ = describe_target_resource(
+                            target_qs, target_account_id, "flow", matches[0]
+                        )
+                        tgt_perms = []
+                        if include_permissions:
+                            tgt_perms, _ = describe_resource_permissions(
+                                target_qs, target_account_id, "flow", matches[0]
+                            )
+                        if tgt_obj is not None:
+                            if include_permissions:
+                                tgt_obj["permissions"] = tgt_perms
+                            target_inv["flows"].append(tgt_obj)
+                        mapping.append({
+                            "type": "flow", "id": rid, "name": name,
+                            "in_source": True, "in_target": True,
+                            "id_match": False, "name_match": True,
+                            "matched_by": "name", "match_by": "name",
+                            "target_id": matches[0],
+                            "ambiguous": len(matches) > 1,
+                            "action": "UPDATE",
+                            "source_permissions": src_perms,
+                            "target_permissions": tgt_perms,
+                        })
+                    else:
+                        mapping.append({
+                            "type": "flow", "id": rid, "name": name,
+                            "in_source": True, "in_target": False,
+                            "id_match": False, "name_match": False,
+                            "matched_by": "none", "match_by": "name",
+                            "action": "CREATE",
+                            "source_permissions": src_perms,
+                            "target_permissions": [],
+                        })
+                    continue
+
+                # ── id-matched types (agent/connector/kb/space) ──
+                # Primary match is by ID (what migrate can honor). We ALSO report
+                # whether a same-name target resource exists (name_match) so the
+                # FE can flag "a differently-identified same-name resource is in
+                # target". action stays driven by id_match, since migrate reuses
+                # the source id.
+                obj, id_exists, err = describe_target_resource(
+                    target_qs, target_account_id, rtype_name, rid
+                )
+                if err is not None:
+                    mapping.append({
+                        "type": rtype_name, "id": rid, "name": name,
+                        "in_source": True, "in_target": None,
+                        "id_match": None, "name_match": None,
+                        "matched_by": "unknown",
+                        "action": "UNKNOWN", "error": err,
+                        "source_permissions": src_perms,
+                    })
+                    continue
+
+                # Name match: does any target resource of this type share the
+                # name? Uses the per-type cached name-set (listed once).
+                names = _target_name_set(rtype_name)
+                if names is None:
+                    name_match = None  # could not determine
+                else:
+                    name_match = (name or "").strip().lower() in names
+
+                matched_by = (
+                    "id+name" if (id_exists and name_match)
+                    else "id" if id_exists
+                    else "name" if name_match
+                    else "none"
+                )
+
+                if id_exists:
+                    tgt_perms = []
+                    if include_permissions:
+                        tgt_perms, tperr = describe_resource_permissions(
+                            target_qs, target_account_id, rtype_name, rid
+                        )
+                        obj["permissions"] = tgt_perms
+                        if tperr:
+                            obj["permissions_error"] = tperr
+                    target_inv[coll_key].append(obj)
+                    mapping.append({
+                        "type": rtype_name, "id": rid, "name": name,
+                        "in_source": True, "in_target": True,
+                        "id_match": True, "name_match": name_match,
+                        "matched_by": matched_by,
+                        "action": "UPDATE",
+                        "source_permissions": src_perms,
+                        "target_permissions": tgt_perms,
+                    })
+                else:
+                    # No id match → migrate will CREATE (reusing the source id),
+                    # even if a same-name resource exists (that would duplicate
+                    # by name; the FE can warn via name_match).
+                    mapping.append({
+                        "type": rtype_name, "id": rid, "name": name,
+                        "in_source": True, "in_target": False,
+                        "id_match": False, "name_match": name_match,
+                        "matched_by": matched_by,
+                        "action": "CREATE",
+                        "source_permissions": src_perms,
+                        "target_permissions": [],
+                    })
+        result["target_account_id"] = target_account_id
+        result["target"] = target_inv
+        result["mapping"] = mapping
+
+    result["status"] = "OK" if not inventory["errors"] else "COMPLETED_WITH_ERRORS"
     logger.info(
         f"[TOOL] preview_migration done: {len(inventory['agents'])} agents, "
         f"{len(inventory['connectors'])} connectors, "
         f"{len(inventory['knowledge_bases'])} KBs, "
-        f"{len(inventory['spaces'])} spaces, {len(inventory['errors'])} errors"
+        f"{len(inventory['spaces'])} spaces, {len(inventory['flows'])} flows, "
+        f"{len(inventory['errors'])} errors"
+        + (f", mapping={len(result.get('mapping', []))}" if target_qs else "")
     )
-    return json.dumps(inventory, indent=2, default=str)
+    return json.dumps(result, indent=2, default=str)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# BACKUP CATALOG + RESTORE (target account)
+# ═══════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def list_backups(query: str = "", region: str = "us-east-1") -> str:
+    """
+    Search the backup catalog and list versions per asset.
+
+    Backups are pre-update snapshots of TARGET resources written to the backup
+    bucket (see BACKUP_BUCKET) as "<Asset Name> (asset_id)/json_v<N>.json".
+
+    Args:
+        query: optional case-insensitive substring to filter by asset name OR
+               asset id. Empty → list all backed-up assets.
+        region: AWS region (for the S3 client).
+
+    Returns:
+        JSON: { bucket, count, assets: [ { name, asset_id, folder,
+                latest_version, versions: [ {version, key, last_modified, size} ] } ] }
+    """
+    logger.info(f"[TOOL] list_backups: query={query!r}")
+    if not BACKUP_BUCKET:
+        return json.dumps(
+            {"status": "FAILED", "user_message": "No backup bucket is configured."},
+            indent=2,
+        )
+    s3 = boto3.client("s3", region_name=region)
+    assets, err = list_backup_catalog(s3, BACKUP_BUCKET, query)
+    if err:
+        return json.dumps({"status": "FAILED", "user_message": err}, indent=2)
+    return json.dumps(
+        {"bucket": BACKUP_BUCKET, "count": len(assets), "assets": assets},
+        indent=2,
+        default=str,
+    )
+
+
+@mcp.tool()
+def get_backup(asset_id: str, version: int = 0, region: str = "us-east-1") -> str:
+    """
+    Return the full stored backup envelope for an asset version.
+
+    Args:
+        asset_id: the resource id whose backup to fetch.
+        version: the version number (json_v<N>). 0 (default) → the latest.
+        region: AWS region.
+
+    Returns:
+        JSON: the backup envelope { schema_version, backed_up_at, resource_type,
+        resource_id, name, resource: <describe>, dependencies: {...} }, plus the
+        s3 key it came from.
+    """
+    logger.info(f"[TOOL] get_backup: asset_id={asset_id!r} version={version}")
+    if not BACKUP_BUCKET:
+        return json.dumps(
+            {"status": "FAILED", "user_message": "No backup bucket is configured."},
+            indent=2,
+        )
+    s3 = boto3.client("s3", region_name=region)
+    assets, err = list_backup_catalog(s3, BACKUP_BUCKET, asset_id)
+    if err:
+        return json.dumps({"status": "FAILED", "user_message": err}, indent=2)
+    match = next((a for a in assets if a["asset_id"] == asset_id), None)
+    if not match or not match["versions"]:
+        return json.dumps(
+            {"status": "FAILED", "user_message": f"No backups found for asset {asset_id!r}."},
+            indent=2,
+        )
+    want = version or match["latest_version"]
+    ver = next((v for v in match["versions"] if v["version"] == want), None)
+    if not ver:
+        return json.dumps(
+            {
+                "status": "FAILED",
+                "user_message": f"Version {want} not found for {asset_id!r}. "
+                f"Available: {[v['version'] for v in match['versions']]}.",
+            },
+            indent=2,
+        )
+    try:
+        envelope = read_backup_envelope(s3, BACKUP_BUCKET, ver["key"])
+    except (ClientError, ValueError) as e:
+        return json.dumps(
+            {"status": "FAILED", "user_message": f"Could not read backup: {e}"}, indent=2
+        )
+    return json.dumps(
+        {"status": "OK", "s3_key": ver["key"], "version": want, "backup": envelope},
+        indent=2,
+        default=str,
+    )
+
+
+def _restore_resource(target_qs, target_account_id, region, envelope, report):
+    """Apply a backup envelope back onto the TARGET resource (update, or create
+    if it no longer exists). Config-level restore; returns a status string."""
+    rtype = envelope.get("resource_type")
+    rid = envelope.get("resource_id")
+    name = envelope.get("name") or rid
+    obj = envelope.get("resource", {}) or {}
+
+    try:
+        if rtype == "connector":
+            auth = sanitize_auth_config(obj.get("AuthenticationConfig", {}))
+            params = {
+                "AwsAccountId": target_account_id,
+                "ActionConnectorId": rid,
+                "Name": obj.get("Name", name),
+                "AuthenticationConfig": auth,
+            }
+            if obj.get("Description"):
+                params["Description"] = obj["Description"]
+            try:
+                target_qs.update_action_connector(**params)
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
+                    params["Type"] = obj.get("Type", "GENERIC_HTTP")
+                    target_qs.create_action_connector(**params)
+                else:
+                    raise
+        elif rtype == "agent":
+            # Re-apply the agent's OWN config, and RE-ATTACH its connector links
+            # (remapped to target) so it shows connected again. We never update
+            # the connector RESOURCES themselves — only the agent + its linkage.
+            params = {
+                "AwsAccountId": target_account_id,
+                "AgentId": rid,
+                "Name": obj.get("Name", name),
+            }
+            if obj.get("Description"):
+                params["Description"] = obj["Description"]
+            # Custom prompt / instructions.
+            prompt = obj.get("CustomPromptInterface") or {}
+            new_prompt = {
+                k: v for k, v in {
+                    "CustomInstructions": prompt.get("CustomInstructions"),
+                    "Identity": prompt.get("Identity"),
+                    "Tone": prompt.get("Tone"),
+                    "OutputStyle": prompt.get("OutputStyle"),
+                    "ResponseLength": prompt.get("ResponseLength"),
+                }.items() if v
+            }
+            if new_prompt:
+                params["CustomPromptInput"] = {"NewPrompt": new_prompt}
+            if obj.get("StarterPrompts"):
+                params["StarterPrompts"] = obj["StarterPrompts"]
+            if obj.get("WelcomeMessage"):
+                params["WelcomeMessage"] = obj["WelcomeMessage"]
+            if obj.get("IconId"):
+                params["IconId"] = obj["IconId"]
+            # Re-attach connectors that are NOT already linked (link only —
+            # the connectors' own configs are untouched).
+            backed_up_conns = [
+                remap_arn(a, target_account_id, region)
+                for a in obj.get("ActionConnectors", []) or []
+            ]
+            if backed_up_conns:
+                existing = set()
+                try:
+                    cur = target_qs.describe_agent(
+                        AwsAccountId=target_account_id, AgentId=rid
+                    ).get("Agent", {})
+                    existing = set(cur.get("ActionConnectors", []) or [])
+                except ClientError:
+                    pass
+                to_add = [a for a in backed_up_conns if a not in existing]
+                if to_add:
+                    params["ActionConnectorsToAdd"] = to_add
+            target_qs.update_agent(**params)
+        elif rtype == "space":
+            # Re-apply the space's OWN fields and RE-LINK its resources (remapped
+            # to target). The linked resources themselves are not modified.
+            params = {
+                "AwsAccountId": target_account_id,
+                "SpaceId": rid,
+                "Name": obj.get("name", name),
+            }
+            if obj.get("description"):
+                params["Description"] = obj["description"]
+            target_qs.update_space(**params)
+            add_resources = []
+            for r in obj.get("resources", []) or []:
+                src_arn = (r.get("resourceDetails") or {}).get("resourceArn")
+                if not src_arn:
+                    continue
+                add_resources.append({
+                    "ResourceType": r.get("resourceType"),
+                    "ResourceDetails": {
+                        "resourceArn": remap_arn(src_arn, target_account_id, region)
+                    },
+                })
+            if add_resources:
+                try:
+                    target_qs.update_space_resources(
+                        AwsAccountId=target_account_id,
+                        SpaceId=rid,
+                        AddResources=add_resources,
+                    )
+                except ClientError as e:
+                    report["errors"].append(
+                        format_error_for_report(f"restore_space_resources({rid})", e)
+                    )
+        elif rtype == "knowledge_base":
+            target_qs.update_knowledge_base(
+                AwsAccountId=target_account_id,
+                KnowledgeBaseId=rid,
+                Name=obj.get("Name", name),
+                KnowledgeBaseConfiguration=obj.get("KnowledgeBaseConfiguration"),
+            )
+        elif rtype == "flow":
+            definition = obj.get("FlowDefinition")
+            if not definition:
+                return "FAILED: backup has no FlowDefinition to restore"
+            target_qs.update_flow(
+                AwsAccountId=target_account_id,
+                FlowId=rid,
+                Name=obj.get("Name", name),
+                FlowDefinition=definition,
+            )
+        else:
+            return f"FAILED: unsupported resource_type {rtype!r}"
+        return "RESTORED"
+    except ClientError as e:
+        report["errors"].append(
+            format_error_for_report(f"restore_{rtype}({rid})", e)
+        )
+        return f"FAILED: {classify_error(e)['user_message']}"
+
+
+@mcp.tool()
+def restore_backup(
+    asset_id: str, version: int = 0, region: str = "us-east-1"
+) -> str:
+    """
+    Revert a TARGET resource to a previously backed-up version.
+
+    Reverting OVERWRITES the current target resource, so this first takes a
+    FRESH pre-restore backup (a new json_v<N> for the asset) — you can always
+    undo the undo. Then it re-applies the chosen backup's stored configuration
+    to the target (update in place, or create if the resource no longer exists).
+
+    This is a config-level restore of the resource itself. Where the backup
+    envelope captured dependencies (agent→connectors, space→links, KB→data
+    source), they are reported for visibility, but dependent RESOURCES are
+    restored individually (call restore_backup for each) — this call restores
+    the single named asset.
+
+    All writes target the TARGET account (the account the resource lives in).
+
+    Args:
+        asset_id: the resource id to restore.
+        version: the backup version to restore (json_v<N>). 0 → latest.
+        region: AWS region.
+
+    Returns:
+        JSON report: { status, asset_id, restored_from_version, pre_restore_backup,
+        result, dependencies, errors }.
+    """
+    logger.info(f"[TOOL] restore_backup: asset_id={asset_id!r} version={version}")
+    report = {"asset_id": asset_id, "errors": []}
+    if not BACKUP_BUCKET:
+        return json.dumps(
+            {"status": "FAILED", "user_message": "No backup bucket is configured."},
+            indent=2,
+        )
+    s3 = boto3.client("s3", region_name=region)
+
+    # 1. Locate the requested backup version.
+    assets, err = list_backup_catalog(s3, BACKUP_BUCKET, asset_id)
+    if err:
+        return json.dumps({"status": "FAILED", "user_message": err}, indent=2)
+    match = next((a for a in assets if a["asset_id"] == asset_id), None)
+    if not match or not match["versions"]:
+        return json.dumps(
+            {"status": "FAILED", "user_message": f"No backups for {asset_id!r}."}, indent=2
+        )
+    want = version or match["latest_version"]
+    ver = next((v for v in match["versions"] if v["version"] == want), None)
+    if not ver:
+        return json.dumps(
+            {
+                "status": "FAILED",
+                "user_message": f"Version {want} not found for {asset_id!r}. "
+                f"Available: {[v['version'] for v in match['versions']]}.",
+            },
+            indent=2,
+        )
+    try:
+        envelope = read_backup_envelope(s3, BACKUP_BUCKET, ver["key"])
+    except (ClientError, ValueError) as e:
+        return json.dumps(
+            {"status": "FAILED", "user_message": f"Could not read backup: {e}"}, indent=2
+        )
+
+    rtype = envelope.get("resource_type")
+    name = envelope.get("name") or asset_id
+    target_account_id = envelope.get("account_id")
+
+    # 2. Assume the target role (restore always writes to the target account).
+    try:
+        target_qs = assume_role_client("quicksight", TARGET_ROLE_ARN, region)
+    except RuntimeError as e:
+        return json.dumps(
+            {"status": "FAILED", "user_message": f"Restore failed: {e}"}, indent=2
+        )
+
+    # 3. Take a FRESH pre-restore backup so the revert is itself reversible.
+    if not maybe_backup_before_update(
+        target_qs, s3, target_account_id, rtype, asset_id, name, report
+    ):
+        return json.dumps(
+            {
+                "status": "FAILED",
+                "asset_id": asset_id,
+                "user_message": "Could not take a pre-restore backup; the resource "
+                "was NOT modified.",
+                "errors": report["errors"],
+            },
+            indent=2,
+        )
+    pre_restore = report.get("backups", [{}])[-1].get("s3_key")
+
+    # 4. Re-apply the chosen backup.
+    result_status = _restore_resource(target_qs, target_account_id, region, envelope, report)
+
+    status = "OK" if result_status == "RESTORED" else "FAILED"
+    return json.dumps(
+        {
+            "status": status,
+            "asset_id": asset_id,
+            "resource_type": rtype,
+            "restored_from_version": want,
+            "restored_from_key": ver["key"],
+            "pre_restore_backup": pre_restore,
+            "result": result_status,
+            "dependencies": envelope.get("dependencies", {}),
+            "errors": report["errors"],
+        },
+        indent=2,
+        default=str,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════

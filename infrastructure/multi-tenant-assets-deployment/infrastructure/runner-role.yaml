@@ -35,6 +35,116 @@ Parameters:
 # RESOURCES
 # ═══════════════════════════════════════════════════════════════════
 Resources:
+  # ── Access-logs bucket for the backup bucket ──
+  # S3 server access logging delivers to a SEPARATE bucket (a source bucket
+  # logging into itself is discouraged). Encrypted, versioned, public access
+  # blocked. This bucket logs ITSELF (S3 has no other bucket to point at without
+  # infinite regress); a short-retention lifecycle rule bounds the self-log
+  # growth so it never runs away.
+  BackupAccessLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "quick-migrator-backups-logs-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+      VersioningConfiguration:
+        Status: Enabled
+      # Self-logging under a distinct prefix satisfies the access-logging rule;
+      # the lifecycle rule below caps retention to prevent runaway growth.
+      LoggingConfiguration:
+        DestinationBucketName: !Sub "quick-migrator-backups-logs-${AWS::AccountId}"
+        LogFilePrefix: self-access-logs/
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-access-logs
+            Status: Enabled
+            ExpirationInDays: 90
+            NoncurrentVersionExpirationInDays: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+  # Allow the S3 logging service to deliver access logs into the logs bucket,
+  # and enforce TLS-only access (scan: S3_BUCKET_SSL_REQUESTS_ONLY).
+  BackupAccessLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupAccessLogsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: S3ServerAccessLogsDelivery
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${BackupAccessLogsBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt BackupAccessLogsBucket.Arn
+              - !Sub "${BackupAccessLogsBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ── Backup bucket (pre-update + post-migration snapshots of target resources) ──
+  # Created in the runner/central account (where the MCP runtime executes) so the
+  # runtime writes backups directly — no cross-account hop. Encrypted (SSE-S3),
+  # versioned, public access blocked, access logs → the logs bucket above.
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    # Ensure the logs bucket's delivery policy exists before this bucket turns on
+    # access logging into it (avoids a create-order race on log delivery).
+    DependsOn: BackupAccessLogsBucketPolicy
+    Properties:
+      BucketName: !Sub "quick-migrator-backups-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+      VersioningConfiguration:
+        Status: Enabled
+      # Server access logging → dedicated logs bucket (scan: S3 bucket logging).
+      LoggingConfiguration:
+        DestinationBucketName: !Ref BackupAccessLogsBucket
+        LogFilePrefix: backup-access-logs/
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+  # Enforce TLS-only access on the backup bucket (scan: S3_BUCKET_SSL_REQUESTS_ONLY).
+  BackupBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt BackupBucket.Arn
+              - !Sub "${BackupBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
   # ── Execution managed policy (per IaC standard: ManagedPolicy + ManagedPolicyArns) ──
   RuntimeExecutionPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -139,6 +249,17 @@ Resources:
             Resource:
               - !Sub "arn:aws:s3:::${ArtifactBucket}"
               - !Sub "arn:aws:s3:::${ArtifactBucket}/*"
+          - Sid: S3BackupPermissions
+            # Write pre-update backups + list the asset folder to compute the
+            # next version suffix (json_v1, json_v2, ...).
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - !GetAtt BackupBucket.Arn
+              - !Sub "${BackupBucket.Arn}/*"
           - Sid: ECRPermissions
             Effect: Allow
             Action:
@@ -180,3 +301,7 @@ Outputs:
 
   ExecutionRoleName:
     Value: !Ref RuntimeExecutionRole
+
+  BackupBucketName:
+    Description: Bucket for pre-update resource backups (pass to the runtime stack as BackupBucket).
+    Value: !Ref BackupBucket
