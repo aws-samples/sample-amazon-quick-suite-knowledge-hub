@@ -10,7 +10,6 @@ import json
 import re
 from datetime import UTC, datetime
 
-import common
 from botocore.exceptions import ClientError
 from common import (
     _RESOURCE_DESCRIBE_KEYS,
