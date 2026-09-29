@@ -118,8 +118,12 @@ def _migrate_agents(
                             AwsAccountId=target_account_id, AgentId=agent_id
                         ).get("Agent", {})
                         existing_connectors = set(cur.get("ActionConnectors", []) or [])
-                    except ClientError:
-                        pass
+                    except ClientError as de:
+                        logger.warning(
+                            f"  ⚠ describe_agent '{agent_id}' failed before update; "
+                            "continuing with empty existing connectors set",
+                            exc_info=de,
+                        )
                     upd_params = {
                         "AwsAccountId": target_account_id,
                         "AgentId": agent_id,
