@@ -7,7 +7,8 @@
 # (pydantic_core, etc.) MUST be aarch64 manylinux wheels, not macOS/x86 ones.
 #
 # Layout (relative to the repository root):
-#   src/server.py         — the MCP server source (the only first-party file)
+#   src/*.py              — the MCP server source (server.py + flat sibling
+#                           modules: common, resources, backups, migrate_*)
 #   requirements.txt      — runtime dependencies
 #   build/                — scratch dir for vendored deps (git-ignored)
 #   build/deployment.zip  — the artifact uploaded to AgentCore
@@ -36,8 +37,12 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
 # ── 2. Copy first-party source ──────────────────────────────────────
-echo "→ Copying server source..."
-cp "${REPO_ROOT}/src/server.py" "${BUILD_DIR}/server.py"
+# server.py imports its helpers from flat sibling modules (common, resources,
+# backups, migrate_*) by bare name. AgentCore flattens the bundle root onto
+# sys.path, so ALL src/*.py must sit next to server.py at the build root.
+echo "→ Copying server source (all src/*.py)..."
+cp "${REPO_ROOT}"/src/*.py "${BUILD_DIR}/"
+echo "    copied: $(cd "${REPO_ROOT}/src" && ls *.py | tr '\n' ' ')"
 
 # ── 3. Install dependencies targeting Linux ARM64 / Python 3.14 ─────
 # --platform + --only-binary=:all: forces pip to fetch aarch64 manylinux
@@ -64,16 +69,24 @@ zip -r "${ZIP_PATH}" . \
 
 # ── 5. Verify the bundle contains the critical modules ──────────────
 # Guards against the mcp 2.0.0 breakage (mcp.server.fastmcp removed) and any
-# stale/incomplete vendoring. Uses an inline Python heredoc reading namelist()
-# directly — `unzip -l` and `python3 -m zipfile -l` are unreliable on macOS.
+# stale/incomplete vendoring. Also confirms EVERY first-party src module made
+# it into the bundle root (server.py imports them by bare name at runtime).
+# Uses an inline Python heredoc reading namelist() directly — `unzip -l` and
+# `python3 -m zipfile -l` are unreliable on macOS.
 echo "→ Verifying bundle contents..."
-python3 - "${ZIP_PATH}" <<'PY'
+FIRST_PARTY="$(cd "${REPO_ROOT}/src" && ls *.py | tr '\n' ' ')"
+python3 - "${ZIP_PATH}" "${FIRST_PARTY}" <<'PY'
 import zipfile, sys
 names = zipfile.ZipFile(sys.argv[1]).namelist()
-required = ["server.py", "mcp/server/fastmcp/", "boto3/", "botocore/"]
+first_party = sys.argv[2].split()
+required = ["mcp/server/fastmcp/", "boto3/", "botocore/"] + first_party
 fail = False
 for pat in required:
-    ok = any(pat in n for n in names)
+    # First-party modules must be at the bundle ROOT (exact name match).
+    if pat.endswith(".py"):
+        ok = pat in names
+    else:
+        ok = any(pat in n for n in names)
     print(("    [ok]   " if ok else "    [FAIL] ") + pat)
     fail = fail or not ok
 # Explicitly reject the broken mcp 2.x layout (no fastmcp compat layer)

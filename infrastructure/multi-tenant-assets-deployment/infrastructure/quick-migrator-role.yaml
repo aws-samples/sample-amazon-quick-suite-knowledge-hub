@@ -74,6 +74,8 @@ Resources:
               - quicksight:DescribeKnowledgeBase
               - quicksight:DescribeKnowledgeBasePermissions
               - quicksight:UpdateKnowledgeBasePermissions
+              # Data sources (read source DS to replay non-S3 KB data sources)
+              - quicksight:DescribeDataSource
               # Flows (matched by name in target; CreateFlow mints a new id)
               - quicksight:DescribeFlow
               - quicksight:CreateFlow
@@ -112,6 +114,11 @@ Resources:
               - quicksight:CreateKnowledgeBase
               - quicksight:UpdateKnowledgeBase
               - quicksight:UpdateDataSource
+              # PassDataSource is required by CreateKnowledgeBase when it attaches
+              # a data source ARN to the KB (analogous to iam:PassRole): the caller
+              # must be authorized to "pass" that datasource into the new KB.
+              # Scoped to this account's datasource/* by the Resource block above.
+              - quicksight:PassDataSource
           - Sid: QuickSightMigrationAccountLevel
             # These actions do not support resource-level permissions in IAM:
             # CreateDataSource operates before the resource ARN exists, and the

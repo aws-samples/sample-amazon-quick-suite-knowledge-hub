@@ -15,11 +15,18 @@ import os
 import sys
 import unittest
 
-_SERVER = os.path.join(os.path.dirname(__file__), os.pardir, "src", "server.py")
+_SRC = os.path.join(os.path.dirname(__file__), os.pardir, "src")
+_SERVER = os.path.join(_SRC, "server.py")
 
 
 def _load_server():
     sys.argv = ["server.py"]  # avoid triggering --cli branch
+    # server.py imports its flat sibling modules (common, backups, resources,
+    # migrate_*) by bare name; the AgentCore bundle flattens them next to
+    # server.py, so mirror that here by putting src/ on sys.path.
+    src = os.path.abspath(_SRC)
+    if src not in sys.path:
+        sys.path.insert(0, src)
     spec = importlib.util.spec_from_file_location("server_under_test", _SERVER)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -29,9 +36,17 @@ def _load_server():
 try:
     server = _load_server()
     _IMPORT_ERROR = None
+    # After the refactor the migration helpers live in flat sibling modules.
+    # Tests that monkeypatch a global read INSIDE a helper must patch it on the
+    # module that actually defines/binds it (patching server.X would not affect
+    # the helper's own module-level binding).
+    import backups as backups_mod
+    import common as common_mod
+    import migrate_knowledge_bases as kb_mod
 except Exception as e:  # pragma: no cover - environment without runtime deps
     server = None
     _IMPORT_ERROR = e
+    backups_mod = common_mod = kb_mod = None
 
 
 class FakeQS:
@@ -119,7 +134,9 @@ class ResolveResourceIdsTest(unittest.TestCase):
 
     # ── search_by=id value coercion (JSON / wrapped / list / malformed) ──
     def test_id_accepts_bare_id(self):
-        ids, err = server.resolve_resource_ids(self.qs, "111", "knowledge_base", "id", "k1")
+        ids, err = server.resolve_resource_ids(
+            self.qs, "111", "knowledge_base", "id", "k1"
+        )
         self.assertIsNone(err)
         self.assertEqual(ids, ["k1"])
 
@@ -154,7 +171,11 @@ class ResolveResourceIdsTest(unittest.TestCase):
     def test_id_rejects_truncated_json_value(self):
         # The exact malformed value observed in a real migration failure.
         ids, err = server.resolve_resource_ids(
-            self.qs, "111", "knowledge_base", "id", '{"knowledge_base_id":"3d874e85-fe37-41ac'
+            self.qs,
+            "111",
+            "knowledge_base",
+            "id",
+            '{"knowledge_base_id":"3d874e85-fe37-41ac',
         )
         self.assertEqual(ids, [])
         self.assertIn("Invalid resource id", err)
@@ -250,7 +271,9 @@ class DescribeTargetResourceTest(unittest.TestCase):
             def describe_knowledge_base(self, **_):
                 if raises:
                     raise outer._client_error(raises)
-                return {"KnowledgeBase": {"Name": "Docs", "Type": "S3", "Status": "ACTIVE"}}
+                return {
+                    "KnowledgeBase": {"Name": "Docs", "Type": "S3", "Status": "ACTIVE"}
+                }
 
         return FakeTarget()
 
@@ -265,7 +288,10 @@ class DescribeTargetResourceTest(unittest.TestCase):
 
     def test_absent_returns_none_false(self):
         obj, exists, err = server.describe_target_resource(
-            self._target(raises="ResourceNotFoundException"), "222", "knowledge_base", "k1"
+            self._target(raises="ResourceNotFoundException"),
+            "222",
+            "knowledge_base",
+            "k1",
         )
         self.assertIsNone(obj)
         self.assertFalse(exists)
@@ -301,14 +327,25 @@ class DescribeResourcePermissionsTest(unittest.TestCase):
         return FakeQS()
 
     def test_normalizes_permissions(self):
-        raw = [{"Principal": "arn:...:user/default/alice", "Actions": ["quicksight:DescribeKnowledgeBase"]}]
+        raw = [
+            {
+                "Principal": "arn:...:user/default/alice",
+                "Actions": ["quicksight:DescribeKnowledgeBase"],
+            }
+        ]
         perms, err = server.describe_resource_permissions(
             self._qs(perms=raw), "111", "knowledge_base", "k1"
         )
         self.assertIsNone(err)
-        self.assertEqual(perms, [
-            {"principal": "arn:...:user/default/alice", "actions": ["quicksight:DescribeKnowledgeBase"]}
-        ])
+        self.assertEqual(
+            perms,
+            [
+                {
+                    "principal": "arn:...:user/default/alice",
+                    "actions": ["quicksight:DescribeKnowledgeBase"],
+                }
+            ],
+        )
 
     def test_empty_permissions(self):
         perms, err = server.describe_resource_permissions(
@@ -401,9 +438,13 @@ class UpsertBackupTest(unittest.TestCase):
         self._orig_tgt = server.TARGET_ROLE_ARN
         self._orig_boto = server.boto3.client
         self._orig_bucket = server.BACKUP_BUCKET
+        self._orig_common_bucket = common_mod.BACKUP_BUCKET
         server.SOURCE_ROLE_ARN = "arn:aws:iam::111:role/src"
         server.TARGET_ROLE_ARN = "arn:aws:iam::222:role/tgt"
         server.BACKUP_BUCKET = "quick-migrator-backups-999"
+        # The backup/snapshot helpers live in backups.py and read
+        # common.BACKUP_BUCKET, so set it there too.
+        common_mod.BACKUP_BUCKET = "quick-migrator-backups-999"
 
     def tearDown(self):
         server.assume_role_client = self._orig_assume
@@ -411,6 +452,7 @@ class UpsertBackupTest(unittest.TestCase):
         server.TARGET_ROLE_ARN = self._orig_tgt
         server.boto3.client = self._orig_boto
         server.BACKUP_BUCKET = self._orig_bucket
+        common_mod.BACKUP_BUCKET = self._orig_common_bucket
 
     def _patch(self, target, backup_s3):
         src = self.FakeSource()
@@ -429,7 +471,13 @@ class UpsertBackupTest(unittest.TestCase):
         backup = self.FakeBackupS3(fail=False)
         self._patch(target, backup)
         report = server.do_migrate_resources(
-            "111", "222", "connector", ["c1"], "us-east-1", "dev", "prod",
+            "111",
+            "222",
+            "connector",
+            ["c1"],
+            "us-east-1",
+            "dev",
+            "prod",
             server.DEFAULT_QS_SERVICE_ROLE,
         )
         # A pre-update backup is taken BEFORE the update, and a post-migration
@@ -444,13 +492,21 @@ class UpsertBackupTest(unittest.TestCase):
         backup = self.FakeBackupS3(fail=True)
         self._patch(target, backup)
         report = server.do_migrate_resources(
-            "111", "222", "connector", ["c1"], "us-east-1", "dev", "prod",
+            "111",
+            "222",
+            "connector",
+            ["c1"],
+            "us-east-1",
+            "dev",
+            "prod",
             server.DEFAULT_QS_SERVICE_ROLE,
         )
         # Update must NOT run when the backup could not be written.
         self.assertFalse(target.update_called)
         statuses = [c["status"] for c in report["migrated"]["connectors"]]
-        self.assertTrue(any("backup before update failed" in s for s in statuses), statuses)
+        self.assertTrue(
+            any("backup before update failed" in s for s in statuses), statuses
+        )
 
     def test_create_writes_snapshot(self):
         # A successful CREATE (resource absent in target) must still land a
@@ -459,7 +515,13 @@ class UpsertBackupTest(unittest.TestCase):
         backup = self.FakeBackupS3(fail=False)
         self._patch(target, backup)
         report = server.do_migrate_resources(
-            "111", "222", "connector", ["c1"], "us-east-1", "dev", "prod",
+            "111",
+            "222",
+            "connector",
+            ["c1"],
+            "us-east-1",
+            "dev",
+            "prod",
             server.DEFAULT_QS_SERVICE_ROLE,
         )
         # No pre-update backup (nothing to overwrite) but a post-migration snapshot.
@@ -478,14 +540,16 @@ class FlowMigrationTest(unittest.TestCase):
         return ClientError({"Error": {"Code": code, "Message": code}}, "Op")
 
     def setUp(self):
-        outer = self
-
         class FakeSource:
             def describe_flow(self, **_):
-                return {"Flow": {
-                    "FlowId": "srcflow1", "Name": "MyFlow",
-                    "FlowDefinition": {"steps": []}, "Description": "d",
-                }}
+                return {
+                    "Flow": {
+                        "FlowId": "srcflow1",
+                        "Name": "MyFlow",
+                        "FlowDefinition": {"steps": []},
+                        "Description": "d",
+                    }
+                }
 
             def get_flow_permissions(self, **_):
                 return {"Permissions": []}
@@ -498,9 +562,11 @@ class FlowMigrationTest(unittest.TestCase):
                 self.updated_id = None
 
             def list_flows(self, **_):
-                return {"FlowSummaryList": [
-                    {"FlowId": fid, "Name": nm} for fid, nm in self._existing
-                ]}
+                return {
+                    "FlowSummaryList": [
+                        {"FlowId": fid, "Name": nm} for fid, nm in self._existing
+                    ]
+                }
 
             def describe_flow(self, **kw):
                 fid = kw["FlowId"]
@@ -533,9 +599,11 @@ class FlowMigrationTest(unittest.TestCase):
         self._orig_src = server.SOURCE_ROLE_ARN
         self._orig_tgt = server.TARGET_ROLE_ARN
         self._orig_bucket = server.BACKUP_BUCKET
+        self._orig_common_bucket = common_mod.BACKUP_BUCKET
         server.SOURCE_ROLE_ARN = "arn:aws:iam::111:role/src"
         server.TARGET_ROLE_ARN = "arn:aws:iam::222:role/tgt"
         server.BACKUP_BUCKET = "backups-999"
+        common_mod.BACKUP_BUCKET = "backups-999"
 
     def tearDown(self):
         server.assume_role_client = self._orig_assume
@@ -543,6 +611,7 @@ class FlowMigrationTest(unittest.TestCase):
         server.SOURCE_ROLE_ARN = self._orig_src
         server.TARGET_ROLE_ARN = self._orig_tgt
         server.BACKUP_BUCKET = self._orig_bucket
+        common_mod.BACKUP_BUCKET = self._orig_common_bucket
 
     def _run(self, target):
         src = self.FakeSource()
@@ -552,7 +621,13 @@ class FlowMigrationTest(unittest.TestCase):
         )
         server.boto3.client = lambda *a, **k: backup
         return server.do_migrate_resources(
-            "111", "222", "flow", ["srcflow1"], "us-east-1", "dev", "prod",
+            "111",
+            "222",
+            "flow",
+            ["srcflow1"],
+            "us-east-1",
+            "dev",
+            "prod",
             server.DEFAULT_QS_SERVICE_ROLE,
         )
 
@@ -610,8 +685,6 @@ class BackupCatalogTest(unittest.TestCase):
 
     def _s3_with(self, keys):
         # keys: list of (Key, Size)
-        outer = self
-
         class FakeS3:
             def list_objects_v2(self, **_):
                 return {
@@ -624,12 +697,14 @@ class BackupCatalogTest(unittest.TestCase):
         return FakeS3()
 
     def test_catalog_groups_versions_and_filters(self):
-        s3 = self._s3_with([
-            ("Alembic (a1)/a1_v1.json", 10),
-            ("Alembic (a1)/a1_v2.json", 12),
-            ("Teams (c9)/json_v1.json", 8),   # legacy filename form still parsed
-            ("Alembic (a1)/notes.txt", 3),    # ignored (not *_v<N>.json)
-        ])
+        s3 = self._s3_with(
+            [
+                ("Alembic (a1)/a1_v1.json", 10),
+                ("Alembic (a1)/a1_v2.json", 12),
+                ("Teams (c9)/json_v1.json", 8),  # legacy filename form still parsed
+                ("Alembic (a1)/notes.txt", 3),  # ignored (not *_v<N>.json)
+            ]
+        )
         assets, err = server.list_backup_catalog(s3, "bkt", "")
         self.assertIsNone(err)
         by_id = {a["asset_id"]: a for a in assets}
@@ -654,17 +729,25 @@ class BackupCatalogTest(unittest.TestCase):
             def describe_action_connector(self, **_):
                 return {"ActionConnector": {"Name": "Teams", "Type": "MICROSOFT_TEAMS"}}
 
-        obj = {"ActionConnectors": ["arn:aws:quicksight:us-east-1:2:action-connector/c9"]}
+        obj = {
+            "ActionConnectors": ["arn:aws:quicksight:us-east-1:2:action-connector/c9"]
+        }
         deps = server._collect_dependencies(T(), "2", "agent", obj)
         self.assertEqual(len(deps["action_connectors"]), 1)
         self.assertEqual(deps["action_connectors"][0]["action_connector_id"], "c9")
         self.assertEqual(deps["action_connectors"][0]["name"], "Teams")
 
     def test_collect_dependencies_space(self):
-        obj = {"resources": [
-            {"resourceType": "AGENT",
-             "resourceDetails": {"resourceArn": "arn:aws:quicksight:us-east-1:2:agent/a1"}}
-        ]}
+        obj = {
+            "resources": [
+                {
+                    "resourceType": "AGENT",
+                    "resourceDetails": {
+                        "resourceArn": "arn:aws:quicksight:us-east-1:2:agent/a1"
+                    },
+                }
+            ]
+        }
         deps = server._collect_dependencies(None, "2", "space", obj)
         self.assertEqual(deps["linked_resources"][0]["resource_id"], "a1")
 
@@ -675,16 +758,26 @@ class BackupCatalogTest(unittest.TestCase):
             def update_agent(self, **kw):
                 calls["update_agent"] = kw
 
-        env = {"resource_type": "agent", "resource_id": "a1", "name": "Alembic",
-               "resource": {"Name": "Alembic", "Description": "d"}}
+        env = {
+            "resource_type": "agent",
+            "resource_id": "a1",
+            "name": "Alembic",
+            "resource": {"Name": "Alembic", "Description": "d"},
+        }
         status = server._restore_resource(T(), "2", "us-east-1", env, {"errors": []})
         self.assertEqual(status, "RESTORED")
         self.assertEqual(calls["update_agent"]["AgentId"], "a1")
 
     def test_restore_resource_flow_needs_definition(self):
-        env = {"resource_type": "flow", "resource_id": "f1", "name": "F",
-               "resource": {"Name": "F"}}  # no FlowDefinition
-        status = server._restore_resource(object(), "2", "us-east-1", env, {"errors": []})
+        env = {
+            "resource_type": "flow",
+            "resource_id": "f1",
+            "name": "F",
+            "resource": {"Name": "F"},
+        }  # no FlowDefinition
+        status = server._restore_resource(
+            object(), "2", "us-east-1", env, {"errors": []}
+        )
         self.assertIn("FAILED", status)
 
     def test_restore_agent_reattaches_connectors_only(self):
@@ -703,10 +796,14 @@ class BackupCatalogTest(unittest.TestCase):
                 calls["update_action_connector"] = kw
 
         env = {
-            "resource_type": "agent", "resource_id": "a1", "name": "Alembic",
+            "resource_type": "agent",
+            "resource_id": "a1",
+            "name": "Alembic",
             "resource": {
                 "Name": "Alembic",
-                "ActionConnectors": ["arn:aws:quicksight:us-east-1:111:action-connector/c9"],
+                "ActionConnectors": [
+                    "arn:aws:quicksight:us-east-1:111:action-connector/c9"
+                ],
                 "CustomPromptInterface": {"CustomInstructions": "be helpful"},
             },
         }
@@ -719,6 +816,279 @@ class BackupCatalogTest(unittest.TestCase):
         self.assertIn("CustomPromptInput", calls["update_agent"])
         # ...but the connector RESOURCE itself was never updated.
         self.assertNotIn("update_action_connector", calls)
+
+
+@unittest.skipIf(server is None, f"runtime deps unavailable: {_IMPORT_ERROR}")
+class KbBucketNameTest(unittest.TestCase):
+    def test_prefixes_and_appends_account(self):
+        n = server._derive_kb_bucket_name("my-docs", "014498642076")
+        self.assertTrue(n.startswith("knowledge-base-"))
+        self.assertTrue(n.endswith("-014498642076"))
+        self.assertLessEqual(len(n), 63)
+
+    def test_reuses_existing_prefix(self):
+        n = server._derive_kb_bucket_name("knowledge-base-foo", "014498642076")
+        self.assertEqual(n, "knowledge-base-foo-014498642076")
+
+    def test_sanitizes_and_truncates(self):
+        n = server._derive_kb_bucket_name("Weird_Name!" + "x" * 80, "014498642076")
+        self.assertLessEqual(len(n), 63)
+        self.assertNotIn("_", n)
+        self.assertTrue(n.startswith("knowledge-base-"))
+
+
+@unittest.skipIf(server is None, f"runtime deps unavailable: {_IMPORT_ERROR}")
+class KnowledgeBaseRoutingTest(unittest.TestCase):
+    """_migrate_knowledge_bases routes by source KB type."""
+
+    def _client_error(self, code):
+        from botocore.exceptions import ClientError
+
+        return ClientError({"Error": {"Code": code, "Message": code}}, "Op")
+
+    def _src(self, kb_type, *, bucket=None, ds_type=None, ds_params=None):
+        cfg = {}
+        if kb_type == "S3_KNOWLEDGE_BASE":
+            cfg = {
+                "templateConfiguration": {
+                    "template": {
+                        "type": "S3V2",
+                        # A non-empty filterConfiguration the migration must
+                        # PRESERVE from the source (not clobber with an empty one).
+                        "filterConfiguration": {
+                            "inclusionPatterns": ["*.pdf"],
+                            "inclusionPrefixes": ["docs/"],
+                            "exclusionPatterns": ["*.tmp"],
+                            "exclusionPrefixes": ["drafts/"],
+                            "maxFileSizeInMegaBytes": "500",
+                        },
+                        "connectionConfiguration": {
+                            "bucketName": bucket or "src-bucket"
+                        },
+                    }
+                }
+            }
+        else:
+            cfg = {"templateConfiguration": {"template": {"type": kb_type + "V3"}}}
+
+        class Src:
+            def describe_knowledge_base(self, **_):
+                return {
+                    "KnowledgeBase": {
+                        "Name": "KB",
+                        "Type": kb_type,
+                        "KnowledgeBaseConfiguration": cfg,
+                        "DataSourceArn": "arn:aws:quicksight:us-east-1:111:datasource/srcds",
+                    }
+                }
+
+            def describe_data_source(self, **_):
+                return {
+                    "DataSource": {
+                        "Type": ds_type or kb_type,
+                        "DataSourceParameters": ds_params or {},
+                    }
+                }
+
+            def describe_knowledge_base_permissions(self, **_):
+                return {"Permissions": []}
+
+        return Src()
+
+    def _tgt(self):
+        from botocore.exceptions import ClientError
+
+        rec = {"created_ds": [], "created_kb": [], "kb_config": None}
+
+        class Tgt:
+            def describe_knowledge_base(self, **_):
+                raise ClientError(
+                    {"Error": {"Code": "ResourceNotFoundException", "Message": "nf"}},
+                    "DescribeKnowledgeBase",
+                )
+
+            def create_data_source(self, **kw):
+                rec["created_ds"].append(kw)
+                return {
+                    "Arn": f"arn:aws:quicksight:us-east-1:222:datasource/{kw['DataSourceId']}"
+                }
+
+            def create_knowledge_base(self, **kw):
+                rec["created_kb"].append(kw)
+                rec["kb_config"] = kw.get("KnowledgeBaseConfiguration")
+
+            def describe_knowledge_base_permissions(self, **_):
+                return {"Permissions": []}
+
+        t = Tgt()
+        t.rec = rec
+        return t
+
+    def _s3(self):
+        class S3:
+            def create_bucket(self, **_):
+                pass
+
+            def put_bucket_policy(self, **_):
+                pass
+
+            def head_bucket(self, **_):
+                pass
+
+        return S3()
+
+    def _run(self, src, tgt, *, kb_bucket="", ds_arn=""):
+        report = {
+            "errors": [],
+            "steps": [],
+            "migrated": {"knowledge_bases": [], "buckets": []},
+        }
+        # Patch the module helpers that touch AWS/wait. These are bound in the
+        # migrate_knowledge_bases module (where _migrate_knowledge_bases calls
+        # them), so patch them there — not on server.
+        orig_verify = kb_mod.verify_qs_service_role
+        orig_bucket = kb_mod.create_kb_bucket
+        orig_wait = kb_mod.wait_for_kb_active
+        kb_mod.verify_qs_service_role = lambda *a, **k: True
+        kb_mod.create_kb_bucket = lambda *a, **k: None
+        kb_mod.wait_for_kb_active = lambda *a, **k: None
+        try:
+            server._migrate_knowledge_bases(
+                src,
+                tgt,
+                self._s3(),
+                object(),
+                object(),
+                "111",
+                "222",
+                "us-east-1",
+                ["kb1"],
+                "prod",
+                server.DEFAULT_QS_SERVICE_ROLE,
+                kb_bucket,
+                ds_arn,
+                report,
+            )
+        finally:
+            kb_mod.verify_qs_service_role = orig_verify
+            kb_mod.create_kb_bucket = orig_bucket
+            kb_mod.wait_for_kb_active = orig_wait
+        return report, tgt.rec
+
+    def test_s3_creates_with_derived_bucket(self):
+        report, rec = self._run(
+            self._src("S3_KNOWLEDGE_BASE", bucket="docs"), self._tgt()
+        )
+        st = report["migrated"]["knowledge_bases"][0]["status"]
+        self.assertEqual(st, "CREATED")
+        # S3V2 config sent, bucket derived + prefixed
+        bkt = rec["kb_config"]["templateConfiguration"]["template"][
+            "connectionConfiguration"
+        ]["bucketName"]
+        self.assertTrue(bkt.startswith("knowledge-base-") and bkt.endswith("-222"))
+
+    def test_s3_preserves_source_filter_configuration(self):
+        # The source KB's filterConfiguration (inclusion/exclusion patterns,
+        # prefixes, max file size) must survive migration, not be clobbered with
+        # an empty one. Only the connectionConfiguration is retargeted.
+        report, rec = self._run(
+            self._src("S3_KNOWLEDGE_BASE", bucket="docs"), self._tgt()
+        )
+        self.assertEqual(report["migrated"]["knowledge_bases"][0]["status"], "CREATED")
+        tmpl = rec["kb_config"]["templateConfiguration"]["template"]
+        fc = tmpl["filterConfiguration"]
+        self.assertEqual(fc["inclusionPatterns"], ["*.pdf"])
+        self.assertEqual(fc["inclusionPrefixes"], ["docs/"])
+        self.assertEqual(fc["exclusionPatterns"], ["*.tmp"])
+        self.assertEqual(fc["exclusionPrefixes"], ["drafts/"])
+        self.assertEqual(fc["maxFileSizeInMegaBytes"], "500")
+        # Connection is retargeted to the derived target bucket/account.
+        self.assertTrue(tmpl["connectionConfiguration"]["bucketName"].endswith("-222"))
+        self.assertEqual(tmpl["connectionConfiguration"]["bucketOwnerAccountId"], "222")
+        src = self._src(
+            "WEB_CRAWLER",
+            ds_type="WEB_CRAWLER",
+            ds_params={"WebCrawlerParameters": {"WebCrawlerAuthType": "NO_AUTH"}},
+        )
+        report, rec = self._run(src, self._tgt())
+        self.assertEqual(report["migrated"]["knowledge_bases"][0]["status"], "CREATED")
+        self.assertTrue(rec["created_ds"])  # replayed data source created
+
+    def test_credentialed_skips_without_arn(self):
+        report, rec = self._run(self._src("SHAREPOINT"), self._tgt())
+        st = report["migrated"]["knowledge_bases"][0]["status"]
+        self.assertIn("SKIPPED", st)
+        self.assertFalse(rec["created_kb"])
+
+    def test_credentialed_uses_provided_arn(self):
+        report, rec = self._run(
+            self._src("CONFLUENCE"),
+            self._tgt(),
+            ds_arn="arn:aws:quicksight:us-east-1:222:datasource/preexisting",
+        )
+        self.assertEqual(report["migrated"]["knowledge_bases"][0]["status"], "CREATED")
+        self.assertEqual(
+            rec["created_kb"][0]["DataSourceArn"],
+            "arn:aws:quicksight:us-east-1:222:datasource/preexisting",
+        )
+
+    def test_s3_rejects_bad_user_bucket(self):
+        report, rec = self._run(
+            self._src("S3_KNOWLEDGE_BASE"), self._tgt(), kb_bucket="my-own-bucket"
+        )
+        st = report["migrated"]["knowledge_bases"][0]["status"]
+        self.assertIn("SKIPPED", st)
+        self.assertIn("knowledge-base-", st)
+
+
+@unittest.skipIf(server is None, f"runtime deps unavailable: {_IMPORT_ERROR}")
+class RemapFlowDefinitionTest(unittest.TestCase):
+    def test_rewrites_source_account_arns(self):
+        d = {
+            "steps": [{"target": "arn:aws:quicksight:us-east-1:111111111111:space/abc"}]
+        }
+        out = server._remap_flow_definition(d, "111111111111", "222222222222")
+        self.assertEqual(
+            out["steps"][0]["target"],
+            "arn:aws:quicksight:us-east-1:222222222222:space/abc",
+        )
+
+    def test_noop_when_no_source_arns(self):
+        d = {"steps": [{"target": "arn:aws:quicksight:us-east-1:999999999999:space/x"}]}
+        out = server._remap_flow_definition(d, "111111111111", "222222222222")
+        self.assertEqual(out, d)
+
+    def test_noop_when_accounts_equal(self):
+        d = {"x": ":111111111111:"}
+        self.assertIs(
+            server._remap_flow_definition(d, "111111111111", "111111111111"), d
+        )
+
+    def test_handles_none(self):
+        self.assertIsNone(server._remap_flow_definition(None, "111", "222"))
+
+
+@unittest.skipIf(server is None, f"runtime deps unavailable: {_IMPORT_ERROR}")
+class ExtractFlowLinkedResourcesTest(unittest.TestCase):
+    def test_extracts_and_maps_types(self):
+        d = {
+            "steps": [
+                {"t": "arn:aws:quicksight:us-east-1:111:space/sp1"},
+                {"t": "arn:aws:quicksight:us-east-1:111:action-connector/c1"},
+                {"t": "arn:aws:quicksight:us-east-1:111:space/sp1"},  # dup
+            ]
+        }
+        out = server._extract_flow_linked_resources(d)
+        types = {(r["resource_type"], r["resource_id"]) for r in out}
+        self.assertIn(("space", "sp1"), types)
+        self.assertIn(("connector", "c1"), types)  # action-connector -> connector
+        self.assertEqual(len(out), 2)  # deduped
+
+    def test_empty_when_no_arns(self):
+        self.assertEqual(server._extract_flow_linked_resources({"steps": []}), [])
+
+    def test_none(self):
+        self.assertEqual(server._extract_flow_linked_resources(None), [])
 
 
 if __name__ == "__main__":

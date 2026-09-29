@@ -1,19 +1,25 @@
 # Quick Agent Assets Deployment
 
-Deploy and migrate **Amazon Quick** resources — Chat Agents, Action Connectors, and
-S3 Knowledge Bases — between AWS accounts through a
+Deploy and migrate **Amazon Quick** resources — Chat Agents, Action Connectors,
+Knowledge Bases, Spaces, and Flows — between AWS accounts through a
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server hosted on
 **Amazon Bedrock AgentCore Runtime**. The server can be driven directly from
 Amazon Quick (as an action connector) or from any MCP-compatible client.
 
 > The deployment is **resource-driven**: choose a resource type
-> (`agent` | `connector` | `knowledge_base`) and select resources by **id**, by
-> **name**, or **all**. Spaces are not created or linked. Agents are recreated
-> with their Action Connectors attached (remapped to the target account) but
-> with no Space attachment. Permissions are not hard-coded: the server
-> *describes* each source resource's permissions and replays the identical
-> actions in the target, remapping principals to a real registered user in the
-> target account.
+> (`agent` | `connector` | `knowledge_base` | `space` | `flow`) and select
+> resources by **id**, by **name**, or **all**. Agents are recreated with their
+> Action Connectors attached (remapped to the target account); Spaces are
+> recreated and re-linked to their resources (agents, connectors, KBs) with ARNs
+> remapped; Flows are matched by name and their embedded resource ARNs remapped.
+> Permissions are not hard-coded: the server *describes* each source resource's
+> permissions and replays the identical actions in the target, remapping
+> principals to a real registered user in the target account.
+>
+> Every migration takes a **backup** of any target resource it is about to
+> overwrite and a **snapshot** of every resource it creates/updates, into a
+> backup bucket in the runner account — and those backups can be listed and
+> restored with the `list_backups` / `get_backup` / `restore_backup` tools.
 
 ---
 
@@ -22,14 +28,18 @@ Amazon Quick (as an action connector) or from any MCP-compatible client.
 Promoting Quick resources from one account to another (for example,
 `dev` → `prod`) by hand is slow and error-prone:
 
-1. Each Agent, Action Connector, and Knowledge Base must be recreated
-   individually with the correct configuration.
+1. Each Agent, Action Connector, Knowledge Base, Space, and Flow must be
+   recreated individually with the correct configuration.
 2. Resource **permissions** must be re-granted, with principals remapped to the
    target account's registered users.
-3. Agents must be recreated with their Action Connectors re-attached so the
-   migrated app behaves like the original.
+3. Agents must be recreated with their Action Connectors re-attached, Spaces
+   re-linked to their resources, and Flow definitions rewritten so embedded
+   source-account ARNs point at the target — so the migrated app behaves like
+   the original.
 4. S3-backed knowledge bases need their bucket, bucket policy, and data source
-   provisioned before the KB can be registered.
+   provisioned before the KB can be registered; credential-backed KBs
+   (SharePoint, Confluence, Google Drive, QBusiness) need a data source created
+   in the target first.
 
 Doing this repeatedly across environments is exactly the kind of deterministic,
 idempotent work that should be automated.
@@ -37,16 +47,23 @@ idempotent work that should be automated.
 ## What this solution provides
 
 - A single **`migrate_resources`** MCP tool that migrates a selected set of
-  resources (Agents, Action Connectors, or S3 Knowledge Bases) cross-account in
-  one call, and a read-only **`preview_migration`** tool for a dry run.
+  resources (Agents, Action Connectors, Knowledge Bases, Spaces, or Flows)
+  cross-account in one call, and a read-only **`preview_migration`** tool that
+  inventories both source and target and returns a source→target mapping.
+- **Backup & restore** — `list_backups`, `get_backup`, and `restore_backup`
+  tools built on the automatic pre-update backups and post-migration snapshots.
 - **Simple selection** — pick a `resource_type` (`agent` | `connector` |
-  `knowledge_base`) and choose resources by **id**, by **name**, or **all**. No
-  Spaces are involved in selection or migration.
-- **Idempotency** — every resource is created-or-updated, so re-running a
-  migration converges instead of producing duplicates.
-- **Agents keep their connectors** — migrated agents are recreated with their
-  Action Connectors attached (remapped to the target account) but with **no
-  Space attachment**.
+  `knowledge_base` | `space` | `flow`) and choose resources by **id**, by
+  **name**, or **all**.
+- **Idempotency (upsert)** — every resource is created-or-updated, so re-running
+  a migration converges instead of producing duplicates. Before any update, a
+  backup of the existing target resource is written; if the backup cannot be
+  written, the update is aborted for that resource.
+- **Agents keep their connectors; spaces keep their links; flows keep their
+  references** — migrated agents are recreated with their Action Connectors
+  attached (remapped to the target account); spaces are re-linked to their
+  resources; flow definitions have their embedded source-account ARNs remapped
+  to the target.
 - **Permission fidelity** — permissions are copied by describing the source and
   replicating the exact actions, with principals resolved to a real user in the
   target account.
@@ -71,18 +88,42 @@ idempotent work that should be automated.
 
 1. **Resolve resources** — from `resource_type` + `search_by` (`id` | `name` |
    `all`) + `value`, resolve the concrete resource IDs in the source account.
-2. **Migrate the selected type:**
+2. **Migrate the selected type** (upsert — create if absent in target, else
+   update the same resource after taking a pre-update backup):
    - **Connectors** — recreate each connector; authentication config is
      sanitized to the create (write) model with placeholder secrets, so
      connectors must be re-authenticated in the target UI. Copy permissions.
-   - **Knowledge bases** — verify the QuickSight service role, create the target
-     bucket (`knowledge-base-<env>-<account>`) + bucket policy + data source +
-     KB, then copy KB permissions. (S3 objects are not copied.)
+     Credential-backed connectors that the provider validates on create (e.g.
+     Salesforce OAuth2) are reported as **SKIPPED** with re-auth guidance rather
+     than a hard failure.
+   - **Knowledge bases** — behavior branches on the **source KB type**:
+     - **S3** — verify the QuickSight service role, create the target bucket
+       (`knowledge-base-<source>-<account>`, or your `target_kb_bucket`) +
+       bucket policy + data source + KB, preserving the source KB's filter
+       configuration. (S3 objects are not copied.)
+     - **WEB_CRAWLER** — replay the source data source (NO_AUTH) + KB config.
+     - **SharePoint / Confluence / Google Drive / QBusiness** — these use a
+       data source whose credentials **cannot** be copied across accounts. Pass
+       `target_data_source_arn` (a data source you created in the target first)
+       to migrate the KB structure against it; otherwise the KB is **SKIPPED**
+       with guidance.
+
+       Then copy KB permissions.
    - **Agents** — recreate each agent with its Action Connectors attached
-     (remapped to the target account) and **no Space attachment**, then copy
-     agent permissions.
-3. **Report** — return a JSON report of the created/updated resources, buckets,
-   `skipped_permissions`, and errors.
+     (remapped to the target account), then copy agent permissions.
+   - **Spaces** — recreate each space and re-link its resources (agents,
+     connectors, knowledge bases) with ARNs remapped to the target account
+     (migrate those linked resources first so the target ARNs resolve), then
+     copy space permissions.
+   - **Flows** — matched by **name** (CreateFlow assigns a new id in the
+     target); the flow definition's embedded source-account ARNs are remapped to
+     the target account, then permissions are copied. A duplicate name in the
+     target is treated as ambiguous and skipped.
+3. **Back up & snapshot** — before overwriting any existing target resource a
+   backup is written to the backup bucket; after a successful create/update a
+   snapshot is written. Both land under `<name> (<id>)/<id>_v<N>.json`.
+4. **Report** — return a JSON report of the created/updated resources, buckets,
+   `skipped_permissions`, `backups`, `snapshots`, and errors.
 
 > **Data note:** the migrator provisions the target KB bucket and registers the
 > knowledge base, but does **not** copy the S3 objects themselves. Sync the
@@ -95,15 +136,23 @@ idempotent work that should be automated.
 
 ```
 quick-space-migrator-mcp/
-├── src/
-│   └── server.py                     # The MCP server (the only first-party runtime file)
+├── src/                              # The MCP server (flat modules, flattened into the bundle root)
+│   ├── server.py                     #   MCP entrypoint: tools + do_migrate_resources dispatcher + preview + restore
+│   ├── common.py                     #   Shared foundation: role assumption, error/ARN/auth helpers, resource maps, config
+│   ├── resources.py                  #   Resource selection (resolve_resource_ids) + target existence/describe/permission helpers
+│   ├── backups.py                    #   Backup catalog, pre-update backups, post-migration snapshots
+│   ├── migrate_connectors.py         #   _migrate_connectors
+│   ├── migrate_agents.py             #   _migrate_agents
+│   ├── migrate_spaces.py             #   _migrate_spaces
+│   ├── migrate_knowledge_bases.py    #   _migrate_knowledge_bases (+ KB bucket helpers)
+│   └── migrate_flows.py              #   _migrate_flows (+ flow describe/remap/link helpers)
 ├── infrastructure/                   # CloudFormation templates (deploy in this order)
 │   ├── runner-role.yaml              #   1. Central account: AgentCore execution role
 │   ├── quick-migrator-role.yaml      #   2. Source & target account cross-account role
 │   ├── network.yaml                  #   3. VPC, subnets, NAT, endpoints, security groups
 │   └── agentcore-runtime.yaml        #   4. Cognito + AgentCore runtime
 ├── scripts/                          # Deployment automation (wrappers over the templates)
-│   ├── build.sh                      #   Package server.py + deps → build/deployment.zip (ARM64)
+│   ├── build.sh                      #   Package src/*.py + deps → build/deployment.zip (ARM64)
 │   ├── deploy-roles.sh               #   Deploy runner → source → target roles (ordered)
 │   ├── deploy-network.sh             #   Deploy the VPC network stack
 │   └── deploy.sh                     #   Build, upload artifact, deploy the runtime
@@ -114,14 +163,14 @@ quick-space-migrator-mcp/
 │   ├── knowledge-base-iam-setup.md   #   KB IAM policy + S3 bucket naming convention
 │   └── quick-app-integration.md      #   Build a Quick App on top of the MCP connector
 ├── images/
-│   └── architecture.svg
+│   └── architecture.png
 ├── requirements.txt                  # Runtime dependencies (resolved at build time)
-├── README.md
-├── CONTRIBUTING.md
-├── CODE_OF_CONDUCT.md
-├── THIRD_PARTY_LICENSES
-└── LICENSE
+└── README.md
 ```
+
+> License, contribution, and code-of-conduct files live at the **repository
+> root** (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `LICENSE`), not inside this
+> sub-project.
 
 No dependencies are vendored into the repository — `scripts/build.sh` resolves
 them from PyPI at package time into a git-ignored `build/` directory.
@@ -211,10 +260,14 @@ passed as a **tool input** at invocation time.
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `preview_migration` | read-only | Dry run: inventory the agents, connectors, and knowledge bases that would be migrated for the given selection. |
-| `migrate_resources` | read-write | Migrate the selected resources of one type into the target, copy permissions. Agents keep their connectors but get no Space attachment. |
+| `preview_migration` | read-only | Dry run: inventory the agents, connectors, knowledge bases, spaces, and flows that would be migrated, scan the target account, and return a source→target mapping (which resources already exist as CREATE vs UPDATE). |
+| `migrate_resources` | read-write | Migrate the selected resources of one type into the target and copy permissions. Upsert semantics with a pre-update backup. |
+| `list_backups` | read-only | List backed-up/snapshotted assets in the backup bucket (optionally filtered by name/id substring), grouped by asset with their versions. |
+| `get_backup` | read-only | Fetch a specific backup envelope (a given asset + version, or the latest) including its captured dependencies. |
+| `restore_backup` | read-write | Restore an asset from a backup version into the target, re-establishing links (without modifying the linked resources' own configs). |
 
-Both tools share the same selection model: `resource_type` +
+Both migration tools share the same selection model: `resource_type`
+(`agent` | `connector` | `knowledge_base` | `space` | `flow`) +
 `search_by` (`id` | `name` | `all`) + `value`.
 
 ### `migrate_resources` inputs
@@ -223,27 +276,32 @@ Both tools share the same selection model: `resource_type` +
 |-------|---------|-------------|
 | `source_account_id` | — | 12-digit source AWS account ID |
 | `target_account_id` | — | 12-digit target AWS account ID |
-| `resource_type` | — | `agent`, `connector`, or `knowledge_base` |
+| `resource_type` | — | `agent`, `connector`, `knowledge_base`, `space`, or `flow` |
 | `search_by` | `"all"` | `id`, `name`, or `all` |
 | `value` | `""` | The id or name to match (required when `search_by` is `id` or `name`) |
 | `region` | `"us-east-1"` | AWS region |
-| `source_env` | `"dev"` | Env segment of the source KB bucket name |
-| `target_env` | `"prod"` | Env segment of the target KB bucket name |
+| `source_env` | `"dev"` | Env segment used in KB bucket naming |
+| `target_env` | `"prod"` | Env segment used in KB bucket naming |
 | `qs_service_role` | `aws-quicksight-service-role-v0` | QuickSight service role for the KB bucket policy (no API exists to look this up) |
+| `target_kb_bucket` | `""` | **(S3 KBs only)** Optional target S3 bucket for the KB's data source. Must start with `knowledge-base-`. If omitted, a bucket named `knowledge-base-<source>-<target_account_id>` is created. |
+| `target_data_source_arn` | `""` | **(credentialed KB types — SharePoint, Confluence, Google Drive, QBusiness)** ARN of a data source you already created in the target account (its connection/auth cannot be copied across accounts). If omitted, such KBs are skipped with guidance. |
 
 ### `preview_migration` inputs
 
 | Input | Default | Description |
 |-------|---------|-------------|
 | `source_account_id` | — | Source AWS account ID |
-| `resource_type` | `"all"` | `agent`, `connector`, `knowledge_base`, or `all` (inventory every type) |
+| `target_account_id` | `""` | Target AWS account ID — when set, the target is scanned and each source resource is mapped to CREATE (absent) or UPDATE (already present) |
+| `resource_type` | `"all"` | `agent`, `connector`, `knowledge_base`, `space`, `flow`, or `all` (inventory every type) |
 | `search_by` | `"all"` | `id`, `name`, or `all` |
 | `value` | `""` | The id or name to match (required when `search_by` is `id` or `name`) |
 | `region` | `"us-east-1"` | AWS region |
+| `include_permissions` | `false` | When `true`, also describe each resource's permissions in the inventory (slower) |
 
 `migrate_resources` returns a JSON report with the created/updated agents,
-connectors, knowledge bases, and buckets, plus a `skipped_permissions` block for
-any principals that could not be resolved in the target account.
+connectors, knowledge bases, spaces, and flows, and buckets, plus
+`skipped_permissions` (principals that could not be resolved in the target),
+`backups`, and `snapshots`.
 
 ---
 
@@ -265,7 +323,8 @@ instructions in [docs/quick-app-integration.md](docs/quick-app-integration.md).
 - **Authentication:** OAuth2 via the Cognito **client ID**, **client secret**,
   token endpoint, and scope printed by `deploy.sh`. Register these with the
   connector's OAuth settings.
-- Exposes two actions: `preview_migration` and `migrate_resources`.
+- Exposes the migration and backup/restore actions: `preview_migration`,
+  `migrate_resources`, `list_backups`, `get_backup`, and `restore_backup`.
 
 ### 2. (Optional) Register a Slack connector
 
@@ -316,9 +375,18 @@ python3 examples/manage_agent_space.py show \
 - **S3 objects are not copied.** The migrator provisions the target KB bucket
   and registers the knowledge base, but you must sync the documents and trigger
   ingestion yourself.
+- **Credential-backed knowledge bases need a target data source.** SharePoint,
+  Confluence, Google Drive, and QBusiness KBs use a data source whose
+  credentials cannot be read from the source or created headless. Create the
+  connection/data source in the target account first, then pass its ARN as
+  `target_data_source_arn`; otherwise these KBs are skipped with guidance.
 - **Connectors require re-authentication.** Secrets are never read from the
   source; migrated connectors carry placeholders and must be re-authorized in
-  the target UI.
+  the target UI. Connectors whose provider validates credentials on create
+  (e.g. Salesforce OAuth2) are skipped with re-auth guidance.
+- **Flows are matched by name.** CreateFlow assigns a new id in the target, so
+  flows are matched to the target by name; a duplicate target name is ambiguous
+  and skipped.
 - **Principal resolution depends on target registration.** Permissions are
   granted to a target user only if that identity has been registered in the
   target account (i.e. has signed into QuickSight there at least once).
@@ -336,12 +404,12 @@ python3 examples/manage_agent_space.py show \
   Cognito API by `deploy.sh` and never committed.
 - Cross-account access is least-privilege: the source role is read-only and the
   target role is scoped to the QuickSight/KB/S3 actions required.
-- See [How to Contribute](/HOW-TO-CONTRIBUTE.md) for how to report a security
+- See [How to Contribute](/CONTRIBUTING.md) for how to report a security
   issue.
 
 ## Contributing
 
-See [How to Contribute](/HOW-TO-CONTRIBUTE.md).
+See [How to Contribute](/CONTRIBUTING.md).
 
 ## License
 
