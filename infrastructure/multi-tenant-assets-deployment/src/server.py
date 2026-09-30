@@ -68,6 +68,7 @@ from common import (
     format_error_for_report,
     remap_arn,
     sanitize_auth_config,
+    target_link_exists,
 )
 from mcp.server.fastmcp import FastMCP
 from migrate_agents import _migrate_agents
@@ -1245,17 +1246,40 @@ def _restore_resource(target_qs, target_account_id, region, envelope, report):
             if obj.get("description"):
                 params["Description"] = obj["description"]
             target_qs.update_space(**params)
+            # Read the target space's current links so existing ones are never
+            # touched — add only what isn't already linked. If the current links
+            # can't be read, add only resources confirmed to exist in the target
+            # (leaving existing links untouched).
+            existing_links = set()
+            existing_links_known = True
+            try:
+                cur = target_qs.describe_space(
+                    AwsAccountId=target_account_id, SpaceId=rid
+                ).get("Space", {})
+                for r in cur.get("resources", []) or []:
+                    cur_arn = (r.get("resourceDetails") or {}).get("resourceArn")
+                    if cur_arn:
+                        existing_links.add(cur_arn)
+            except ClientError:
+                existing_links_known = False
             add_resources = []
             for r in obj.get("resources", []) or []:
                 src_arn = (r.get("resourceDetails") or {}).get("resourceArn")
                 if not src_arn:
                     continue
+                target_arn = remap_arn(src_arn, target_account_id, region)
+                res_type = r.get("resourceType")
+                if existing_links_known:
+                    if target_arn in existing_links:
+                        continue
+                elif not target_link_exists(
+                    target_qs, target_account_id, res_type, target_arn
+                ):
+                    continue
                 add_resources.append(
                     {
-                        "ResourceType": r.get("resourceType"),
-                        "ResourceDetails": {
-                            "resourceArn": remap_arn(src_arn, target_account_id, region)
-                        },
+                        "ResourceType": res_type,
+                        "ResourceDetails": {"resourceArn": target_arn},
                     }
                 )
             if add_resources:

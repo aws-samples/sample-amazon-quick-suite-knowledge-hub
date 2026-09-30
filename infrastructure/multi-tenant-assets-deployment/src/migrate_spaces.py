@@ -7,6 +7,7 @@ from common import (
     copy_space_permissions,
     format_error_for_report,
     remap_arn,
+    target_link_exists,
 )
 
 
@@ -93,17 +94,42 @@ def _migrate_spaces(
         # Re-link the space's resources, remapping each ARN to the target account.
         linked = []
         if "FAILED" not in status:
+            # Read the target space's current linked resources so existing links
+            # are never touched — we only add what isn't already linked. If the
+            # current links can't be read, we add only resources confirmed to
+            # exist in the target (created successfully), leaving existing ones
+            # untouched.
+            existing_links = set()
+            existing_links_known = True
+            try:
+                cur = target_qs.describe_space(
+                    AwsAccountId=target_account_id, SpaceId=space_id
+                ).get("Space", {})
+                for r in cur.get("resources", []) or []:
+                    cur_arn = (r.get("resourceDetails") or {}).get("resourceArn")
+                    if cur_arn:
+                        existing_links.add(cur_arn)
+            except ClientError:
+                existing_links_known = False
+
             add_resources = []
             for res in space.get("resources", []) or []:
                 src_arn = (res.get("resourceDetails") or {}).get("resourceArn")
                 if not src_arn:
                     continue
+                target_arn = remap_arn(src_arn, target_account_id, region)
+                res_type = res.get("resourceType")
+                if existing_links_known:
+                    if target_arn in existing_links:
+                        continue
+                elif not target_link_exists(
+                    target_qs, target_account_id, res_type, target_arn
+                ):
+                    continue
                 add_resources.append(
                     {
-                        "ResourceType": res.get("resourceType"),
-                        "ResourceDetails": {
-                            "resourceArn": remap_arn(src_arn, target_account_id, region)
-                        },
+                        "ResourceType": res_type,
+                        "ResourceDetails": {"resourceArn": target_arn},
                     }
                 )
                 linked.append(src_arn.split("/")[-1])

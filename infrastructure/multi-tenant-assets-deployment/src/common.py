@@ -860,6 +860,41 @@ _RESOURCE_DESCRIBERS = {
 }
 
 
+# ARN resource-type segment -> our resource vocabulary (for existence checks on
+# a space's / agent's linked resources).
+_ARN_SEGMENT_TO_RTYPE = {
+    "space": "space",
+    "agent": "agent",
+    "action-connector": "connector",
+    "knowledge-base": "knowledge_base",
+    "flow": "flow",
+}
+
+
+def target_link_exists(target_qs, target_account_id, resource_type, arn):
+    """Return True if a linked resource (identified by its target ARN) can be
+    confirmed to exist in the target account. Used when a resource's current
+    links cannot be read, so only successfully created resources are linked and
+    existing links are never touched. Unknown types are treated as
+    not-confirmed (skipped)."""
+    seg = (resource_type or "").strip().lower()
+    rtype = _ARN_SEGMENT_TO_RTYPE.get(seg)
+    describer = _RESOURCE_DESCRIBERS.get(rtype)
+    if not describer:
+        return False
+    op_name, id_kwarg = describer
+    resource_id = (arn or "").split("/")[-1]
+    if not resource_id:
+        return False
+    try:
+        getattr(target_qs, op_name)(
+            **{"AwsAccountId": target_account_id, id_kwarg: resource_id}
+        )
+        return True
+    except ClientError:
+        return False
+
+
 _RESOURCE_DESCRIBE_KEYS = {
     "agent": ("describe_agent", "AgentId", "Agent"),
     "connector": ("describe_action_connector", "ActionConnectorId", "ActionConnector"),

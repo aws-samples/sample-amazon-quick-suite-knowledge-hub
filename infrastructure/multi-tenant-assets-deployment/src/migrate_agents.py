@@ -8,6 +8,7 @@ from common import (
     format_error_for_report,
     logger,
     remap_arn,
+    target_link_exists,
     wait_for_active,
 )
 
@@ -65,14 +66,32 @@ def _migrate_agents(
             remap_arn(a, target_account_id, region)
             for a in agent.get("ActionConnectors", [])
         ]
+        # Only attach connectors confirmed to exist in the target, so a missing
+        # or not-yet-created connector never fails the whole create_agent — the
+        # agent is still created and existing/valid connectors are attached.
+        create_connector_arns = [
+            arn
+            for arn in target_connector_arns
+            if target_link_exists(target_qs, target_account_id, "action-connector", arn)
+        ]
+        if create_connector_arns != target_connector_arns:
+            missing = [
+                arn.split("/")[-1]
+                for arn in target_connector_arns
+                if arn not in create_connector_arns
+            ]
+            logger.warning(
+                f"  ⚠ agent '{agent_id}': skipping connectors not confirmed in "
+                f"target: {missing}"
+            )
         create_params = {
             "AwsAccountId": target_account_id,
             "AgentId": agent_id,
             "Name": agent.get("Name", agent_id),
             "AgentLifecycle": agent.get("AgentLifecycle", "PUBLISHED"),
         }
-        if target_connector_arns:
-            create_params["ActionConnectors"] = target_connector_arns
+        if create_connector_arns:
+            create_params["ActionConnectors"] = create_connector_arns
         if agent.get("Description"):
             create_params["Description"] = agent["Description"]
         if custom_prompt_input:
@@ -113,15 +132,18 @@ def _migrate_agents(
                 try:
                     wait_for_active(target_qs, target_account_id, agent_id)
                     existing_connectors = set()
+                    existing_connectors_known = True
                     try:
                         cur = target_qs.describe_agent(
                             AwsAccountId=target_account_id, AgentId=agent_id
                         ).get("Agent", {})
                         existing_connectors = set(cur.get("ActionConnectors", []) or [])
                     except ClientError as de:
+                        existing_connectors_known = False
                         logger.warning(
                             f"  ⚠ describe_agent '{agent_id}' failed before update; "
-                            "continuing with empty existing connectors set",
+                            "will add only connectors confirmed to exist in the target "
+                            "and leave existing connectors untouched",
                             exc_info=de,
                         )
                     upd_params = {
@@ -139,9 +161,31 @@ def _migrate_agents(
                         upd_params["WelcomeMessage"] = agent["WelcomeMessage"]
                     if agent.get("IconId"):
                         upd_params["IconId"] = agent["IconId"]
-                    connectors_to_add = [
-                        a for a in target_connector_arns if a not in existing_connectors
-                    ]
+                    if existing_connectors_known:
+                        connectors_to_add = [
+                            a
+                            for a in target_connector_arns
+                            if a not in existing_connectors
+                        ]
+                    else:
+                        # Could not read the agent's current connectors. Add only
+                        # connectors confirmed to exist in the target, so existing
+                        # ones are never touched and only successfully created
+                        # connectors are attached.
+                        connectors_to_add = []
+                        for arn in target_connector_arns:
+                            if target_link_exists(
+                                target_qs,
+                                target_account_id,
+                                "action-connector",
+                                arn,
+                            ):
+                                connectors_to_add.append(arn)
+                            else:
+                                logger.warning(
+                                    f"  ⚠ skipping connector '{arn.split('/')[-1]}' "
+                                    f"for agent '{agent_id}': not confirmed in target"
+                                )
                     if connectors_to_add:
                         upd_params["ActionConnectorsToAdd"] = connectors_to_add
                     target_qs.update_agent(**upd_params)

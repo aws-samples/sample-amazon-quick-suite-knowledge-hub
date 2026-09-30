@@ -10,12 +10,8 @@ import json
 import re
 from datetime import UTC, datetime
 
+import common
 from botocore.exceptions import ClientError
-from common import (
-    _RESOURCE_DESCRIBE_KEYS,
-    classify_error,
-    logger,
-)
 
 
 class BackupError(Exception):
@@ -87,10 +83,10 @@ def backup_target_resource(s3, bucket, rtype, resource_id, name, described_obj):
             ContentType="application/json",
             ServerSideEncryption="AES256",
         )
-        logger.info(f"  ✓ Backup written: s3://{bucket}/{key}")
+        common.logger.info(f"  ✓ Backup written: s3://{bucket}/{key}")
         return key
     except ClientError as e:
-        raise BackupError(classify_error(e)["user_message"]) from e
+        raise BackupError(common.classify_error(e)["user_message"]) from e
 
 
 BACKUP_SCHEMA_VERSION = 2  # v2 = dependency-capturing envelope
@@ -161,7 +157,7 @@ def list_backup_catalog(s3, bucket, query=""):
             else:
                 break
     except ClientError as e:
-        return [], classify_error(e)["user_message"]
+        return [], common.classify_error(e)["user_message"]
 
     out = list(assets.values())
     for a in out:
@@ -202,7 +198,7 @@ def _collect_dependencies(target_qs, target_account_id, rtype, resource_obj):
                     entry["name"] = c.get("Name")
                     entry["type"] = c.get("Type")
                 except ClientError as e:
-                    entry["error"] = classify_error(e)["user_message"]
+                    entry["error"] = common.classify_error(e)["user_message"]
                 connectors.append(entry)
             deps["action_connectors"] = connectors
 
@@ -247,7 +243,7 @@ def _build_backup_envelope(target_qs, target_account_id, rtype, resource_id, nam
       { schema_version, backed_up_at, account_id, resource_type, resource_id,
         name, resource: <full describe>, dependencies: {...} }
     """
-    op_name, id_kwarg, obj_key = _RESOURCE_DESCRIBE_KEYS[rtype]
+    op_name, id_kwarg, obj_key = common._RESOURCE_DESCRIBE_KEYS[rtype]
     op = getattr(target_qs, op_name)
     call_kwargs = {"AwsAccountId": target_account_id, id_kwarg: resource_id}
     if rtype == "flow":
@@ -293,7 +289,7 @@ def snapshot_after_migrate(
         )
     except (ClientError, BackupError) as e:
         # Snapshot is best-effort — the migration already succeeded.
-        logger.warning(
+        common.logger.warning(
             f"  ⚠ post-migration snapshot failed for {rtype} '{name or resource_id}' "
             f"({resource_id}): {e}"
         )
@@ -319,7 +315,7 @@ def maybe_backup_before_update(
         msg = (
             f"Unable to take a backup before updating {rtype} '{name or resource_id}' "
             f"({resource_id}): could not read the current target resource "
-            f"({classify_error(e)['user_message']}). The resource was NOT modified."
+            f"({common.classify_error(e)['user_message']}). The resource was NOT modified."
         )
         report["errors"].append(
             {"context": f"backup({resource_id})", "user_message": msg}
