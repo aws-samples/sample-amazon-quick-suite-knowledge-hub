@@ -1,0 +1,141 @@
+[
+  {
+    "opp_id": "OPP-001",
+    "account_id": "ACC-001",
+    "name": "TechVision Q3 Expansion",
+    "stage": "Proposal",
+    "amount": 125000,
+    "close_date": "2026-07-15",
+    "products": [
+      "SKU-101",
+      "SKU-108",
+      "SKU-114"
+    ],
+    "probability": 70
+  },
+  {
+    "opp_id": "OPP-002",
+    "account_id": "ACC-002",
+    "name": "Global Mfg Production Line Upgrade",
+    "stage": "Negotiation",
+    "amount": 280000,
+    "close_date": "2026-06-30",
+    "products": [
+      "SKU-107",
+      "SKU-112",
+      "SKU-113"
+    ],
+    "probability": 85
+  },
+  {
+    "opp_id": "OPP-003",
+    "account_id": "ACC-005",
+    "name": "Apex Aerospace New Program",
+    "stage": "Qualification",
+    "amount": 450000,
+    "close_date": "2026-09-01",
+    "products": [
+      "SKU-110",
+      "SKU-106",
+      "SKU-111"
+    ],
+    "probability": 40
+  },
+  {
+    "opp_id": "OPP-004",
+    "account_id": "ACC-003",
+    "name": "MedTech Lab Equipment Refresh",
+    "stage": "Proposal",
+    "amount": 95000,
+    "close_date": "2026-07-20",
+    "products": [
+      "SKU-103",
+      "SKU-104"
+    ],
+    "probability": 65
+  },
+  {
+    "opp_id": "OPP-005",
+    "account_id": "ACC-006",
+    "name": "Sunrise Energy Solar Farm",
+    "stage": "Closed Won",
+    "amount": 190000,
+    "close_date": "2026-05-15",
+    "products": [
+      "SKU-108",
+      "SKU-109",
+      "SKU-102"
+    ],
+    "probability": 100
+  },
+  {
+    "opp_id": "OPP-006",
+    "account_id": "ACC-009",
+    "name": "Oceanic Foods Processing Plant",
+    "stage": "Proposal",
+    "amount": 165000,
+    "close_date": "2026-08-10",
+    "products": [
+      "SKU-113",
+      "SKU-104",
+      "SKU-107"
+    ],
+    "probability": 55
+  },
+  {
+    "opp_id": "OPP-007",
+    "account_id": "ACC-010",
+    "name": "Summit Construction Heavy Machinery",
+    "stage": "Negotiation",
+    "amount": 320000,
+    "close_date": "2026-06-25",
+    "products": [
+      "SKU-101",
+      "SKU-103",
+      "SKU-106",
+      "SKU-112"
+    ],
+    "probability": 80
+  },
+  {
+    "opp_id": "OPP-008",
+    "account_id": "ACC-004",
+    "name": "Pacific Retail Distribution Center",
+    "stage": "Qualification",
+    "amount": 75000,
+    "close_date": "2026-08-30",
+    "products": [
+      "SKU-113",
+      "SKU-102"
+    ],
+    "probability": 35
+  },
+  {
+    "opp_id": "OPP-009",
+    "account_id": "ACC-007",
+    "name": "NorthStar Fleet Modernization",
+    "stage": "Closed Won",
+    "amount": 210000,
+    "close_date": "2026-05-28",
+    "products": [
+      "SKU-101",
+      "SKU-108",
+      "SKU-105"
+    ],
+    "probability": 100
+  },
+  {
+    "opp_id": "OPP-010",
+    "account_id": "ACC-008",
+    "name": "DataStream Server Expansion",
+    "stage": "Proposal",
+    "amount": 88000,
+    "close_date": "2026-07-31",
+    "products": [
+      "SKU-108",
+      "SKU-109",
+      "SKU-114"
+    ],
+    "probability": 60
+  }
+]

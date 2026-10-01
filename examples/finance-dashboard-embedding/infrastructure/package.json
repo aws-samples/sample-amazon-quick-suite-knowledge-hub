@@ -15,5 +15,8 @@
   },
   "devDependencies": {
     "aws-cdk": "^2.120.0"
+  },
+  "overrides": {
+    "minimatch": "^10.2.4"
   }
 }

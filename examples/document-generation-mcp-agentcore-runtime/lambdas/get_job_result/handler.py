@@ -8,12 +8,20 @@ for the document download. Returns status to the Quick agent.
 import json
 import logging
 import os
+from threading import Event
 
 from dynamo_helpers import get_job
 from s3_helpers import generate_presigned_url
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
 
 
 def lambda_handler(event, context):
@@ -92,7 +100,7 @@ def lambda_handler(event, context):
 
         poll_end = _time.time() + 50
         while _time.time() < poll_end:
-            _time.sleep(10)
+            _poll_wait(10)
             job = get_job(job_id)
             if not job:
                 break

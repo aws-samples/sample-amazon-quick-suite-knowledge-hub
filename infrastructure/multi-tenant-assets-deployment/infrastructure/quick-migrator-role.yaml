@@ -50,9 +50,11 @@ Resources:
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:action-connector/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:agent/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:datasource/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:flow/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:group/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:namespace/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:space/*"
               - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:user/*"
             Action:
               # Action connectors
@@ -72,17 +74,28 @@ Resources:
               - quicksight:DescribeKnowledgeBase
               - quicksight:DescribeKnowledgeBasePermissions
               - quicksight:UpdateKnowledgeBasePermissions
+              # Data sources (read source DS to replay non-S3 KB data sources)
+              - quicksight:DescribeDataSource
+              # Flows (matched by name in target; CreateFlow mints a new id)
+              - quicksight:DescribeFlow
+              - quicksight:CreateFlow
+              - quicksight:UpdateFlow
+              - quicksight:GetFlowPermissions
+              - quicksight:UpdateFlowPermissions
+              - quicksight:GetFlowMetadata
+              # Spaces
+              - quicksight:CreateSpace
+              - quicksight:DescribeSpace
+              - quicksight:DescribeSpacePermissions
+              - quicksight:UpdateSpace
+              - quicksight:UpdateSpacePermissions
+              - quicksight:UpdateSpaceResources
+              - quicksight:ListSpaceResources
               # Principal resolution (target account)
               - quicksight:DescribeGroup
               - quicksight:DescribeUser
               - quicksight:ListUsers
   QuickMigrationPolicyAccount:
-    # checkov:skip=CKV_AWS_111: These QuickSight actions (Create*/Update*/List*
-    # for data sources, knowledge bases, and connector/KB enumeration) do NOT
-    # support resource-level IAM permissions — Create* runs before a resource
-    # ARN exists and List* enumerates account-wide. Resource "*" is required by
-    # the service; QuickSight still confines the calls to the caller's own
-    # AwsAccountId. See the QuickSight Service Authorization Reference.
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: !Sub "${RoleName}-quicksight-account-policy"
@@ -90,22 +103,37 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
+          - Sid: QuickSightMigrationWriteScoped
+            # Write actions that DO support resource-level ARNs are scoped to
+            # this account's data-source / knowledge-base resources.
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:datasource/*"
+              - !Sub "arn:${AWS::Partition}:quicksight:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+            Action:
+              - quicksight:CreateKnowledgeBase
+              - quicksight:UpdateKnowledgeBase
+              - quicksight:UpdateDataSource
+              # PassDataSource is required by CreateKnowledgeBase when it attaches
+              # a data source ARN to the KB (analogous to iam:PassRole): the caller
+              # must be authorized to "pass" that datasource into the new KB.
+              # Scoped to this account's datasource/* by the Resource block above.
+              - quicksight:PassDataSource
           - Sid: QuickSightMigrationAccountLevel
-            # These actions do not support resource-level permissions in IAM
-            # (Create*/List* that operate before a resource ARN exists or that
-            # enumerate account-wide). They require Resource "*"; QuickSight
-            # still confines them to the caller's own AwsAccountId.
+            # These actions do not support resource-level permissions in IAM:
+            # CreateDataSource operates before the resource ARN exists, and the
+            # List* actions enumerate account-wide. They require Resource "*";
+            # QuickSight still confines them to the caller's own AwsAccountId.
             Effect: Allow
             Resource: "*"
             Action:
-              # Data sources + knowledge base create/update (KB migration)
+              # Data source create (no resource-level ARN support)
               - quicksight:CreateDataSource
-              - quicksight:UpdateDataSource
-              - quicksight:CreateKnowledgeBase
-              - quicksight:UpdateKnowledgeBase
               # List ops used by resource resolution (search_by = name | all)
               - quicksight:ListActionConnectors
               - quicksight:ListKnowledgeBases
+              - quicksight:ListSpaces
+              - quicksight:ListFlows
 
   # ── S3 permissions to create/manage the knowledge-base-* buckets ──
   KnowledgeBaseS3Policy:

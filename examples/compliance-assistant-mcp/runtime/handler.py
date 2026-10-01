@@ -26,11 +26,20 @@ import logging
 import os
 import time
 import uuid
+from threading import Event
 
 import boto3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
+
 
 REGION = os.environ.get("DEPLOY_REGION", "us-east-1")
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
@@ -77,7 +86,7 @@ def _invoke_runtime_sync(payload: dict) -> dict:
                 if attempt < max_retries - 1:
                     wait_time = 15 * (attempt + 1)
                     logger.info("Cold start detected, waiting %ds...", wait_time)
-                    time.sleep(wait_time)
+                    _poll_wait(wait_time)
                     continue
             raise
     raise last_error

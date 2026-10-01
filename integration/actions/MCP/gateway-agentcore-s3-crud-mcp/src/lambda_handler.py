@@ -8,6 +8,7 @@ Supports Create, Read, Update, Delete operations on S3 objects with comprehensiv
 import logging
 import random
 import time
+from threading import Event
 from typing import Any
 
 import boto3
@@ -26,6 +27,14 @@ _max_requests_per_window = 100
 # Configure logging
 Config.configure_logging()
 logger = logging.getLogger(__name__)
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
+
 
 # Validate HTTPS configuration on module load
 try:
@@ -609,7 +618,7 @@ def retry_s3_operation(operation, max_retries: int = None):
                 logger.warning(
                     f"S3 operation failed, retrying in {delay:.2f}s (attempt {attempt + 1}/{max_retries + 1})"
                 )
-                time.sleep(delay)
+                _poll_wait(delay)
 
     # All retries failed
     raise last_exception

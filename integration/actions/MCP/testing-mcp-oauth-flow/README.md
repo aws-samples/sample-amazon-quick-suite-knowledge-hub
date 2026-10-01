@@ -126,7 +126,7 @@ Use `mcp_test-2LO.ipynb` for server-to-server integrations, background services,
 
 ## Security
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+See [CONTRIBUTING](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/CONTRIBUTING.md#security-issue-notifications) for more information.
 
 ## License
 

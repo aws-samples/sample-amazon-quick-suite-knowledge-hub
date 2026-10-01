@@ -27,7 +27,7 @@ This project creates a complete infrastructure for secure S3 operations through 
 - **IAM Roles**: Least privilege security policies
 - **CloudWatch Logs**: Monitoring and debugging
 
-![AgentCore Gateway - Lambda - S3](gatewaymcp-s3-crud.png)
+![AgentCore Gateway - Lambda - S3](images/gatewaymcp-s3-crud.png)
 
 ## Installation
 

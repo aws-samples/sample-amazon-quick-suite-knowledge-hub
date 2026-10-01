@@ -18,6 +18,8 @@
 #   ./deploy-network.sh --az1 us-east-1a --az2 us-east-1b \
 #     [--region us-east-1] [--stack-name quick-migrator-network] \
 #     [--name-prefix quick-migrator]
+#     [--assume-role-arn arn:aws:iam::<runner>:role/deployer] [--profile BASE]
+#   Precedence: --assume-role-arn > --profile > ambient/default creds.
 #
 set -euo pipefail
 
@@ -26,6 +28,8 @@ STACK_NAME="quick-migrator-network"
 NAME_PREFIX="quick-migrator"
 AZ1=""
 AZ2=""
+ASSUME_ROLE_ARN=""
+PROFILE=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TEMPLATE="${REPO_ROOT}/infrastructure/network.yaml"
@@ -37,12 +41,35 @@ while [[ $# -gt 0 ]]; do
     --region)       REGION="$2"; shift 2 ;;
     --stack-name)   STACK_NAME="$2"; shift 2 ;;
     --name-prefix)  NAME_PREFIX="$2"; shift 2 ;;
+    --assume-role-arn) ASSUME_ROLE_ARN="$2"; shift 2 ;;
+    --profile)      PROFILE="$2"; shift 2 ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
   esac
 done
 
 : "${AZ1:?--az1 is required (e.g. us-east-1a — must map to a supported AZ ID)}"
 : "${AZ2:?--az2 is required (e.g. us-east-1b — must map to a supported AZ ID)}"
+
+# ── Credentials ─────────────────────────────────────────────────────
+# Precedence: --assume-role-arn > --profile > ambient/default creds. Resolved
+# once here so every aws call below runs as the right identity.
+if [[ -n "${ASSUME_ROLE_ARN}" ]]; then
+  echo "→ Assuming role ${ASSUME_ROLE_ARN}..."
+  _base_prof=""; [[ -n "${PROFILE}" ]] && _base_prof="--profile ${PROFILE}"
+  _creds="$(aws sts assume-role ${_base_prof} --region "${REGION}" \
+    --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "deploy-network" \
+    --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" --output text)"
+  if [[ -z "${_creds}" || "${_creds}" == *None* ]]; then
+    echo "✗ Failed to assume ${ASSUME_ROLE_ARN}"; exit 1
+  fi
+  unset AWS_PROFILE
+  export AWS_ACCESS_KEY_ID="$(echo "${_creds}" | awk '{print $1}')"
+  export AWS_SECRET_ACCESS_KEY="$(echo "${_creds}" | awk '{print $2}')"
+  export AWS_SESSION_TOKEN="$(echo "${_creds}" | awk '{print $3}')"
+  echo "   ✓ Assumed role credentials active"
+elif [[ -n "${PROFILE}" ]]; then
+  export AWS_PROFILE="${PROFILE}"
+fi
 
 echo "════════════════════════════════════════════════════════"
 echo "  Quick Resource Migrator — network stack"

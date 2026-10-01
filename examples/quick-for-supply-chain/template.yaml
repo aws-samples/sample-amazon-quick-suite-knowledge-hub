@@ -1,0 +1,764 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Supply chain agents - deploys the Amazon Quick supply chain agent solution
+  and its supporting resources.
+
+# ══════════════════════════════════════════════════════════════════
+# Parameters
+# ══════════════════════════════════════════════════════════════════
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment (drives resource naming)
+
+  CallbackUrl:
+    Type: String
+    Default: ""
+    Description: >
+      Optional OAuth2 callback URL for the Quick MCP connector (3LO). Leave blank to
+      auto-derive the REGION-AWARE Quick default
+      (https://<region>.quicksight.aws.amazon.com/sn/oauthcallback). Override only if
+      your Quick account uses a non-default callback host.
+
+  ContainerUri:
+    Type: String
+    Description: >
+      Full ECR image URI for the order fulfillment agent runtime, e.g.
+      <account>.dkr.ecr.<region>.amazonaws.com/sc-order-fulfillment-agent:latest
+    AllowedPattern: '^\d{12}\.dkr\.ecr\.[a-z0-9-]+\.amazonaws\.com/[a-zA-Z0-9-_/]+:[a-zA-Z0-9-_.]+$'
+    ConstraintDescription: Must be a valid ECR image URI (<acct>.dkr.ecr.<region>.amazonaws.com/<repo>:<tag>)
+
+  TestUserName:
+    Type: String
+    Default: supply-chain-test-user
+    Description: Username for the Cognito test user (interactive OAuth sign-in for connectors)
+
+  TestUserPassword:
+    Type: String
+    Default: AmazonQuick1@
+    NoEcho: true
+    MinLength: 8
+    Description: >
+      Permanent password for the Cognito test user. Must satisfy the pool policy
+      (>=8 chars, upper, lower, number, symbol). Overridable at deploy time; the
+      default is a demo-only value.
+
+# ══════════════════════════════════════════════════════════════════
+# Conditions
+# ══════════════════════════════════════════════════════════════════
+Conditions:
+  # True when the user did NOT override CallbackUrl → derive the region-aware default.
+  CallbackUrlNotSet: !Equals [!Ref CallbackUrl, ""]
+
+# ══════════════════════════════════════════════════════════════════
+# Globals
+# ══════════════════════════════════════════════════════════════════
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+
+Resources:
+
+  # ════════════════════════════════════════════════════════════════
+  # 1. Cognito — shared User Pool + Resource Server + single client + domain
+  # ════════════════════════════════════════════════════════════════
+  ScUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: sc-supply-chain-pool
+      AliasAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      UsernameConfiguration:
+        CaseSensitive: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+
+  ScResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref ScUserPool
+      Identifier: supply-chain-api
+      Name: Supply Chain API
+      Scopes:
+        - ScopeName: orchestrator.full
+          ScopeDescription: Full access for orchestrator agent
+        - ScopeName: quoting.read
+          ScopeDescription: Read pricing data
+        - ScopeName: quoting.write
+          ScopeDescription: Generate and validate quotes
+        - ScopeName: governance.read
+          ScopeDescription: Read compliance data
+        - ScopeName: governance.write
+          ScopeDescription: Write audit records
+        - ScopeName: invoice.read
+          ScopeDescription: Read payment queue
+        - ScopeName: invoice.write
+          ScopeDescription: Apply approval rules
+        - ScopeName: disruption.read
+          ScopeDescription: Read disruption alerts
+        - ScopeName: disruption.write
+          ScopeDescription: Manage disruption responses
+
+  # SINGLE app client for EVERYTHING:
+  #  - Quick MCP connectors: interactive authorization-code (3LO) user sign-in.
+  #  - Order-fulfillment runtime: authenticates as the test user (USER_PASSWORD_AUTH)
+  #    to mint a user token for calling the gateways.
+  # The gateways' CUSTOM_JWT authorizer validates the pool issuer + this client id;
+  # it does NOT care whether the token came from a user or M2M grant — so one client
+  # covers both paths. (Cognito forbids client_credentials + code on one client, so we
+  # use the code flow the connectors require, and the runtime uses user auth.)
+  ScSupplyChainClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: ScResourceServer
+    Properties:
+      ClientName: !Sub sc-supply-chain-${Environment}
+      UserPoolId: !Ref ScUserPool
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - !If
+          - CallbackUrlNotSet
+          - !Sub https://${AWS::Region}.quicksight.aws.amazon.com/sn/oauthcallback
+          - !Ref CallbackUrl
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+        - supply-chain-api/orchestrator.full
+        - supply-chain-api/quoting.read
+        - supply-chain-api/quoting.write
+        - supply-chain-api/governance.read
+        - supply-chain-api/governance.write
+        - supply-chain-api/invoice.read
+        - supply-chain-api/invoice.write
+        - supply-chain-api/disruption.read
+        - supply-chain-api/disruption.write
+      SupportedIdentityProviders: [COGNITO]
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  ScUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub sc-supply-chain-${AWS::AccountId}
+      UserPoolId: !Ref ScUserPool
+
+  # Test user for interactive OAuth (CUSTOM_JWT) sign-in when creating connectors.
+  # Created here; a PERMANENT password is set post-deploy by deploy_agentcore.sh
+  # (Cognito has no CloudFormation resource to set a permanent password directly).
+  ScTestUser:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      UserPoolId: !Ref ScUserPool
+      Username: !Ref TestUserName
+      MessageAction: SUPPRESS
+      DesiredDeliveryMediums: []
+
+  # ════════════════════════════════════════════════════════════════
+  # 2. IAM Roles for AgentCore
+  # ════════════════════════════════════════════════════════════════
+
+  # Business gateway role — assumed by AgentCore; may invoke the 4 business MCP
+  # Lambdas (no wildcard).
+  ScGatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub sc-gateway-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeMcpLambdas
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt ScQuotingFunction.Arn
+                  - !GetAtt ScGovernanceFunction.Arn
+                  - !GetAtt ScInvoiceProcessingFunction.Arn
+                  - !GetAtt ScDisruptionAlertFunction.Arn
+
+  # Runtime role — assumed by AgentCore; may invoke Bedrock Claude Sonnet models.
+  ScRuntimeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub sc-runtime-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeBedrockClaudeSonnet
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.claude-sonnet-4-*
+                  - !Sub arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:inference-profile/*claude-sonnet-4-*
+        - PolicyName: PullAgentImageAndLog
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # ECR image pull for the AgentCore runtime container.
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/sc-order-fulfillment-agent
+              # GetAuthorizationToken is not resource-scoped (must be "*").
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              # CloudWatch Logs for the runtime.
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/*
+
+  # ════════════════════════════════════════════════════════════════
+  # 3. MCP Lambda Functions (4) — handler code unchanged
+  # ════════════════════════════════════════════════════════════════
+  ScQuotingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub sc-quoting-${Environment}
+      Description: Supply Chain Quoting MCP — pricing rules, quote generation & validation.
+      Handler: lambda_handler.handler
+      CodeUri: src/agents/mcp-quoting/
+      Policies: [AWSLambdaBasicExecutionRole]
+
+  ScGovernanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub sc-governance-${Environment}
+      Description: Supply Chain Governance MCP — approvals, budget authority, compliance, audit.
+      Handler: lambda_handler.handler
+      CodeUri: src/agents/mcp-governance/
+      Policies: [AWSLambdaBasicExecutionRole]
+
+  ScInvoiceProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub sc-invoice-processing-${Environment}
+      Description: Supply Chain Invoice Processing MCP — approval rules engine & AP payment queue.
+      Handler: lambda_handler.handler
+      CodeUri: src/agents/mcp-invoice-processing/
+      Policies: [AWSLambdaBasicExecutionRole]
+
+  ScDisruptionAlertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub sc-disruption-alert-${Environment}
+      Description: Supply Chain Disruption Alert MCP — impact assessment, severity, mitigation.
+      Handler: lambda_handler.handler
+      CodeUri: src/agents/mcp-disruption-alert/
+      Policies: [AWSLambdaBasicExecutionRole]
+
+  # ════════════════════════════════════════════════════════════════
+  # 4. AgentCore Runtime — container-based order fulfillment agent
+  # ════════════════════════════════════════════════════════════════
+  ScAgentRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    Properties:
+      # AgentRuntimeName pattern is [a-zA-Z][a-zA-Z0-9_]{0,47} — underscores only.
+      AgentRuntimeName: !Sub sc_order_fulfillment_agent_${Environment}
+      AgentRuntimeArtifact:
+        ContainerConfiguration:
+          ContainerUri: !Ref ContainerUri
+      NetworkConfiguration:
+        NetworkMode: PUBLIC
+      ProtocolConfiguration: MCP
+      # Inbound auth: Cognito CUSTOM_JWT so Quick's OAuth (authorization-code) token
+      # is accepted. Without this the runtime defaults to SigV4 and rejects the
+      # connector's OAuth token ("Authorization method mismatch"). AllowedClients =
+      # our single app client, matching the gateways' authorizer.
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ScUserPool}/.well-known/openid-configuration
+          AllowedClients:
+            - !Ref ScSupplyChainClient
+      RoleArn: !GetAtt ScRuntimeRole.Arn
+      EnvironmentVariables:
+        # Runtime authenticates as the test user (USER_PASSWORD_AUTH) to mint a
+        # user token accepted by the gateways' CUSTOM_JWT authorizer (single client).
+        COGNITO_USER_POOL_ID: !Ref ScUserPool
+        COGNITO_CLIENT_ID: !Ref ScSupplyChainClient
+        COGNITO_CLIENT_SECRET: !GetAtt ScSupplyChainClient.ClientSecret
+        COGNITO_USERNAME: !Ref TestUserName
+        COGNITO_PASSWORD: !Ref TestUserPassword
+        # JSON array string of the 4 BUSINESS gateway urls (excludes agent-gateway).
+        MCP_GATEWAY_URLS: !Sub
+          - '["${Q}","${G}","${I}","${D}"]'
+          - Q: !GetAtt ScQuotingGateway.GatewayUrl
+            G: !GetAtt ScGovernanceGateway.GatewayUrl
+            I: !GetAtt ScInvoiceGateway.GatewayUrl
+            D: !GetAtt ScDisruptionGateway.GatewayUrl
+
+  # ════════════════════════════════════════════════════════════════
+  # 5. AgentCore Gateways (4) — one per business MCP
+  # ════════════════════════════════════════════════════════════════
+  ScQuotingGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Sub sc-quoting-gateway-${Environment}
+      AuthorizerType: CUSTOM_JWT
+      ProtocolType: MCP
+      RoleArn: !GetAtt ScGatewayRole.Arn
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ScUserPool}/.well-known/openid-configuration
+          AllowedClients:
+            - !Ref ScSupplyChainClient
+      ProtocolConfiguration:
+        Mcp:
+          SupportedVersions:
+            - '2025-03-26'
+
+  ScGovernanceGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Sub sc-governance-gateway-${Environment}
+      AuthorizerType: CUSTOM_JWT
+      ProtocolType: MCP
+      RoleArn: !GetAtt ScGatewayRole.Arn
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ScUserPool}/.well-known/openid-configuration
+          AllowedClients:
+            - !Ref ScSupplyChainClient
+      ProtocolConfiguration:
+        Mcp:
+          SupportedVersions:
+            - '2025-03-26'
+
+  ScInvoiceGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Sub sc-invoice-gateway-${Environment}
+      AuthorizerType: CUSTOM_JWT
+      ProtocolType: MCP
+      RoleArn: !GetAtt ScGatewayRole.Arn
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ScUserPool}/.well-known/openid-configuration
+          AllowedClients:
+            - !Ref ScSupplyChainClient
+      ProtocolConfiguration:
+        Mcp:
+          SupportedVersions:
+            - '2025-03-26'
+
+  ScDisruptionGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Sub sc-disruption-alert-gateway-${Environment}
+      AuthorizerType: CUSTOM_JWT
+      ProtocolType: MCP
+      RoleArn: !GetAtt ScGatewayRole.Arn
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ScUserPool}/.well-known/openid-configuration
+          AllowedClients:
+            - !Ref ScSupplyChainClient
+      ProtocolConfiguration:
+        Mcp:
+          SupportedVersions:
+            - '2025-03-26'
+
+  # ════════════════════════════════════════════════════════════════
+  # 6. AgentCore GatewayTargets (4) — Lambda MCP targets w/ inline tool schemas
+  # ════════════════════════════════════════════════════════════════
+  ScQuotingTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !GetAtt ScQuotingGateway.GatewayIdentifier
+      Name: sc-quoting-mcp
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !GetAtt ScQuotingFunction.Arn
+            ToolSchema:
+              InlinePayload:
+                - Name: generate_quote
+                  Description: Generate a customer quote applying tier + volume discounts and margin validation. Quick passes account/tier/items/products data from the Space.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      account_id:
+                        Type: string
+                        Description: Customer account id (e.g. ACC-003).
+                      customer_tier:
+                        Type: string
+                        Description: Customer tier — Standard, Premium, or Enterprise.
+                      items:
+                        Type: array
+                        Description: Line items to quote, e.g. [{sku, quantity}].
+                        Items:
+                          Type: object
+                      products:
+                        Type: array
+                        Description: Product catalog rows from the Space [{sku, name, unit_price, cost, min_margin_pct}].
+                        Items:
+                          Type: object
+                      valid_days:
+                        Type: integer
+                        Description: Quote validity window in days (optional).
+                      notes:
+                        Type: string
+                        Description: Optional notes (e.g. contract alignment).
+                    Required:
+                      - account_id
+                      - customer_tier
+                      - items
+                      - products
+                - Name: get_pricing_rules
+                  Description: Return the active pricing rules, discount tiers and margin thresholds.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      category:
+                        Type: string
+                        Description: Optional product category filter.
+                    Required: []
+                - Name: validate_quote
+                  Description: Validate a draft quote against business rules (margins, approval thresholds).
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      quote:
+                        Type: object
+                        Description: The draft quote object to validate.
+                    Required:
+                      - quote
+
+  ScGovernanceTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !GetAtt ScGovernanceGateway.GatewayIdentifier
+      Name: sc-governance-mcp
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !GetAtt ScGovernanceFunction.Arn
+            ToolSchema:
+              InlinePayload:
+                - Name: check_supplier_approval
+                  Description: Validate a supplier against governance rules (approval status, audit dates, risk tier, category authorization).
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      supplier_id:
+                        Type: string
+                        Description: Supplier id or name to look up (e.g. SUP-104 or 'Sample Supplier Co 04').
+                      supplier_name:
+                        Type: string
+                        Description: Supplier name to search for.
+                      supplier_data:
+                        Type: object
+                        Description: Full supplier record (optional; overrides id/name lookup).
+                      category:
+                        Type: string
+                        Description: Product category being ordered (optional).
+                      po_value:
+                        Type: number
+                        Description: PO amount, for conditional supplier limit checks (optional).
+                    Required: []
+                - Name: validate_budget_authority
+                  Description: Check if a user role has spending authority for a given amount.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      user_role:
+                        Type: string
+                        Description: The approver role (e.g. Regional Manager, Director, VP).
+                      amount:
+                        Type: number
+                        Description: The PO / spend amount to authorize.
+                      po_type:
+                        Type: string
+                        Description: Optional PO type.
+                    Required:
+                      - user_role
+                      - amount
+                - Name: check_regulatory_compliance
+                  Description: Check regulatory requirements (export control, hazmat, sanctions, conflict minerals) for a shipment.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      shipment_type:
+                        Type: string
+                        Description: The shipment/transaction type.
+                      destination_country:
+                        Type: string
+                        Description: Destination country (optional).
+                      product_categories:
+                        Type: array
+                        Description: Product categories in the shipment (optional).
+                        Items:
+                          Type: string
+                    Required:
+                      - shipment_type
+                - Name: log_audit_event
+                  Description: Record an audit event to the governance audit trail.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      event:
+                        Type: object
+                        Description: Audit event payload (action, actor, resource, details).
+                    Required: []
+                - Name: get_policy_rules
+                  Description: Return active governance policies. Filter by category (procurement, compliance, regulatory).
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      category:
+                        Type: string
+                        Description: Optional policy category filter.
+                    Required: []
+                - Name: get_audit_trail
+                  Description: Retrieve prior audit trail entries.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      resource_id:
+                        Type: string
+                        Description: Optional resource id to filter the audit trail.
+                    Required: []
+
+  ScInvoiceTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !GetAtt ScInvoiceGateway.GatewayIdentifier
+      Name: sc-invoice-processing-mcp
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !GetAtt ScInvoiceProcessingFunction.Arn
+            ToolSchema:
+              InlinePayload:
+                - Name: apply_approval_rules
+                  Description: Invoice approval rules engine — applies 3-way match, variance tolerance, amount thresholds. Pass invoice_id (simple) or full invoice_data/po_data (advanced).
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      invoice_id:
+                        Type: string
+                        Description: Invoice id (e.g. SUP-INV-40003).
+                      po_number:
+                        Type: string
+                        Description: PO number (e.g. PO-2026-41003).
+                      amount:
+                        Type: number
+                        Description: Invoice amount.
+                      invoice_data:
+                        Type: object
+                        Description: Full invoice object (advanced; overrides simple params).
+                      po_data:
+                        Type: object
+                        Description: Full PO object (advanced).
+                      goods_receipt:
+                        Type: object
+                        Description: Optional goods-receipt data for 3-way match.
+                      vendor_contract:
+                        Type: object
+                        Description: Optional contract data (terms/pricing).
+                      daily_vendor_total:
+                        Type: number
+                        Description: Total already approved today for this vendor (optional).
+                    Required:
+                      - invoice_id
+                - Name: get_payment_queue
+                  Description: AP aging report and payment schedule — invoices by due date with aging buckets.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      status:
+                        Type: string
+                        Description: Filter by payment status (optional).
+                      days:
+                        Type: integer
+                        Description: Aging-bucket filter in days (optional).
+                      supplier_id:
+                        Type: string
+                        Description: Filter by supplier id (optional).
+                    Required: []
+
+  ScDisruptionTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      GatewayIdentifier: !GetAtt ScDisruptionGateway.GatewayIdentifier
+      Name: sc-disruption-alert-mcp
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !GetAtt ScDisruptionAlertFunction.Arn
+            ToolSchema:
+              InlinePayload:
+                - Name: assess_disruption_impact
+                  Description: Assess the business impact of a supply chain disruption (revenue at risk, affected orders/customers/shipments, inventory coverage). Only 'disruption' is required; the affected-scope arrays are optional.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      disruption:
+                        Type: object
+                        Description: The disruption record — e.g. {alert_id, type, region, severity, title, affected_routes, affected_products, est_duration_days}.
+                      affected_orders:
+                        Type: array
+                        Description: Orders impacted by the disruption (optional).
+                        Items:
+                          Type: object
+                      affected_shipments:
+                        Type: array
+                        Description: Shipments impacted by the disruption (optional).
+                        Items:
+                          Type: object
+                      inventory_data:
+                        Type: array
+                        Description: Inventory levels for affected SKUs (optional).
+                        Items:
+                          Type: object
+                      customer_accounts:
+                        Type: array
+                        Description: Customer accounts (tier, name) for affected orders (optional).
+                        Items:
+                          Type: object
+                    Required:
+                      - disruption
+                - Name: classify_severity
+                  Description: Classify the severity level (Level 1-4) of a disruption from its impact assessment.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      impact_assessment:
+                        Type: object
+                        Description: Output of assess_disruption_impact.
+                    Required:
+                      - impact_assessment
+                - Name: recommend_mitigation
+                  Description: Recommend mitigation actions for a disruption type (immediate/short/long-term plus alternate suppliers).
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      disruption_type:
+                        Type: string
+                        Description: One of port_closure, supplier_failure, natural_disaster, labor_strike, cybersecurity.
+                      impact_assessment:
+                        Type: object
+                        Description: Optional impact assessment for context.
+                      available_alternatives:
+                        Type: array
+                        Description: Alternate suppliers/routes (optional).
+                        Items:
+                          Type: object
+                    Required:
+                      - disruption_type
+                - Name: get_escalation_chain
+                  Description: Return the notification/escalation chain for a given severity level.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      severity_level:
+                        Type: string
+                        Description: One of level_4_critical, level_3_high, level_2_moderate, level_1_low.
+                      region:
+                        Type: string
+                        Description: Region code (default NA).
+                    Required:
+                      - severity_level
+
+# ══════════════════════════════════════════════════════════════════
+# Outputs
+# ══════════════════════════════════════════════════════════════════
+Outputs:
+  TestUserName:
+    Description: >
+      Cognito test user for interactive OAuth (CUSTOM_JWT) connector sign-in.
+      Password is the TestUserPassword parameter (NoEcho; default AmazonQuick1@),
+      set as permanent post-deploy by deploy_agentcore.sh.
+    Value: !Ref TestUserName
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref ScUserPool
+
+  CognitoClientId:
+    Description: Single shared Cognito app client ID
+    Value: !Ref ScSupplyChainClient
+
+  CognitoDomain:
+    Description: Cognito hosted-UI domain (full)
+    Value: !Sub sc-supply-chain-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com
+
+  TokenEndpoint:
+    Description: OAuth2 token endpoint
+    Value: !Sub https://sc-supply-chain-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/token
+
+  AuthorizeEndpoint:
+    Description: OAuth2 authorize endpoint (3LO)
+    Value: !Sub https://sc-supply-chain-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/authorize
+
+  QuotingGatewayUrl:
+    Description: sc-quoting-gateway MCP endpoint URL
+    Value: !GetAtt ScQuotingGateway.GatewayUrl
+
+  GovernanceGatewayUrl:
+    Description: sc-governance-gateway MCP endpoint URL
+    Value: !GetAtt ScGovernanceGateway.GatewayUrl
+
+  InvoiceGatewayUrl:
+    Description: sc-invoice-gateway MCP endpoint URL
+    Value: !GetAtt ScInvoiceGateway.GatewayUrl
+
+  DisruptionGatewayUrl:
+    Description: sc-disruption-alert-gateway MCP endpoint URL
+    Value: !GetAtt ScDisruptionGateway.GatewayUrl
+
+  AgentRuntimeArn:
+    Description: AgentCore Runtime ARN
+    Value: !GetAtt ScAgentRuntime.AgentRuntimeArn
+
+  AgentRuntimeId:
+    Description: AgentCore Runtime ID
+    Value: !GetAtt ScAgentRuntime.AgentRuntimeId

@@ -10,8 +10,16 @@ import json
 import os
 import time
 import zipfile
+from threading import Event
 
 import boto3
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
 
 
 def get_account_id():
@@ -48,7 +56,7 @@ def create_lambda_execution_role(role_name="hr-gateway-lambda-role"):
             PolicyArn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
         )
         print(f"✓ Lambda execution role created: {role_name}")
-        time.sleep(10)
+        _poll_wait(10)
         return role["Role"]["Arn"]
     except iam.exceptions.EntityAlreadyExistsException:
         role = iam.get_role(RoleName=role_name)
@@ -157,7 +165,7 @@ def create_agentcore_gateway_role(role_name="hr-agentcore-gateway-role"):
             PolicyDocument=json.dumps(lambda_policy),
         )
         print(f"✓ Gateway IAM role created: {role_name}")
-        time.sleep(10)
+        _poll_wait(10)
         return role["Role"]["Arn"]
     except iam.exceptions.EntityAlreadyExistsException:
         role = iam.get_role(RoleName=role_name)

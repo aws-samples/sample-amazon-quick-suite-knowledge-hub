@@ -86,7 +86,7 @@ This deploys: DynamoDB table, metrics Lambda, API Gateway, S3 bucket, CloudFront
 
 ### 3. Deploy Embedding API
 
-The QuickChat embedding Lambda and API Gateway are deployed via a separate CDK stack. See the [Embedding Setup Guide](./EMBEDDING_SETUP.md) for full instructions on:
+The QuickChat embedding Lambda and API Gateway are deployed via a separate CDK stack. See the [Finance Agent Setup Guide](./quicksuite-setup/FINANCE_AGENT_SETUP_GUIDE.md) for full instructions on:
 
 - Cognito User Pool creation
 - IAM Identity Center configuration
@@ -164,6 +164,8 @@ aws identitystore create-group-membership \
 | `ALLOWED_DOMAINS` | Comma-separated allowed embedding domains |
 | `DASHBOARD_ID` | QuickSight dashboard ID |
 | `AWS_ACCOUNT_ID` | AWS account ID |
+| `COGNITO_ISSUER` | Cognito user pool issuer URL used to verify the incoming ID token's signature, e.g. `https://cognito-idp.<region>.amazonaws.com/<userPoolId>`. **Required** — the ID token is rejected when unset. |
+| `COGNITO_APP_CLIENT_ID` | Cognito app client id the ID token's `aud`/`client_id` claim must match (audience check). |
 
 ## Troubleshooting
 

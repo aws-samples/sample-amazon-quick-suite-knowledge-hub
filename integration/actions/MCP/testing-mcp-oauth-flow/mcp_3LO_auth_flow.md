@@ -138,10 +138,10 @@ AS responds with tokens:
 
 ```json
 {
-  "access_token": "eyJhbGciOiJSUzI1NiJ9...",
+  "access_token": "<ACCESS_TOKEN_JWT>",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "refresh_token": "8xLOxBtZp8",
+  "refresh_token": "<REFRESH_TOKEN>",
   "scope": "mcp:read mcp:tools:execute"   // <-- AS confirms GRANTED scopes
                                            // may differ from what was requested!
 }

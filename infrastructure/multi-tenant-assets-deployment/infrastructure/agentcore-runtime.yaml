@@ -1,10 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  Quick Resource Migrator - Bedrock AgentCore Runtime (MCP server) with Cognito
-  machine-to-machine (client credentials) JWT authorization and VPC networking.
-  Creates a Cognito user pool, resource server (with scope), and an app client
-  WITH a generated client secret. The app client ID is wired into the runtime's
-  AllowedClients. The client secret is retrieved by deploy.sh (CFN cannot output it).
+  Quick asset migration - deploys the runtime that migrates Amazon Quick assets
+  (agents, action connectors, and knowledge bases) between accounts.
 
 # ═══════════════════════════════════════════════════════════════════
 # PARAMETERS
@@ -70,6 +67,24 @@ Parameters:
       by the Amazon Quick MCP connector. Must exactly match the redirect URI the
       connector sends.
 
+  # ── Test user (3LO login) ──
+  TestUsername:
+    Type: String
+    Default: migrator-test
+    Description: Username of the Cognito test user created for the 3LO login flow.
+
+  TestUserEmail:
+    Type: String
+    Default: migrator-test@example.com
+    Description: Email attribute for the Cognito test user (marked verified).
+
+  TestPassword:
+    Type: String
+    NoEcho: true
+    Description: >
+      Permanent password for the Cognito test user (>=12 chars, upper/lower/
+      number/symbol). NoEcho keeps it out of CloudFormation console/events.
+
   # ── Networking (VPC mode) ──
   VpcSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
@@ -78,6 +93,14 @@ Parameters:
   VpcSecurityGroupIds:
     Type: List<AWS::EC2::SecurityGroup::Id>
     Description: Security group IDs for the runtime ENIs.
+
+  BackupBucket:
+    Type: String
+    Default: ""
+    Description: >
+      S3 bucket (in this runner account) for pre-update resource backups —
+      output BackupBucketName from runner-role.yaml. When set, the migrator
+      snapshots each target resource before updating it. Leave blank to disable.
 
 # ═══════════════════════════════════════════════════════════════════
 # CONDITIONS
@@ -149,6 +172,169 @@ Resources:
       EnableTokenRevocation: true
       PreventUserExistenceErrors: ENABLED
 
+  # ── Custom resource: expose the generated app-client secret ──
+  # CloudFormation cannot return a Cognito app-client secret via GetAtt
+  # (AWS::Cognito::UserPoolClient exposes ClientSecret in the docs but the
+  # attribute does not resolve). A small Lambda-backed custom resource reads it
+  # from the Cognito API so it can be surfaced as a stack output.
+  CognitoHelperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cognito-helper
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: DescribeThisAppClient
+                Effect: Allow
+                Action: cognito-idp:DescribeUserPoolClient
+                Resource: !GetAtt UserPool.Arn
+              - Sid: ManageTestUser
+                Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminSetUserPassword
+                  - cognito-idp:AdminDeleteUser
+                  - cognito-idp:AdminGetUser
+                Resource: !GetAtt UserPool.Arn
+              - Sid: WriteLambdaLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+  CognitoHelperFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Cognito custom-resource helper — reads the app-client secret and manages the test user.
+      Runtime: python3.13
+      Handler: index.handler
+      Timeout: 30
+      ReservedConcurrentExecutions: 1
+      Role: !GetAtt CognitoHelperRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          cognito = boto3.client("cognito-idp")
+
+          def _read_secret(props):
+              resp = cognito.describe_user_pool_client(
+                  UserPoolId=props["UserPoolId"],
+                  ClientId=props["ClientId"],
+              )
+              return {"ClientSecret": resp["UserPoolClient"].get("ClientSecret", "")}
+
+          def _upsert_user(props):
+              pool = props["UserPoolId"]
+              username = props["Username"]
+              # Create the user if it does not already exist (idempotent).
+              try:
+                  cognito.admin_create_user(
+                      UserPoolId=pool,
+                      Username=username,
+                      UserAttributes=[
+                          {"Name": "email", "Value": props["Email"]},
+                          {"Name": "email_verified", "Value": "true"},
+                      ],
+                      MessageAction="SUPPRESS",
+                  )
+              except cognito.exceptions.UsernameExistsException:
+                  pass
+              # Set (or reset) the permanent password so login needs no reset.
+              cognito.admin_set_user_password(
+                  UserPoolId=pool,
+                  Username=username,
+                  Password=props["Password"],
+                  Permanent=True,
+              )
+              return {"Username": username}
+
+          def _build_endpoint(props):
+              # AgentCore MCP invocations URL: the runtime ARN is URL-encoded
+              # into the path (': ' -> %3A, '/' -> %2F).
+              import urllib.parse
+              arn = props["RuntimeArn"]
+              region = props["Region"]
+              encoded = urllib.parse.quote(arn, safe="")
+              url = (
+                  f"https://bedrock-agentcore.{region}.amazonaws.com"
+                  f"/runtimes/{encoded}/invocations?qualifier=DEFAULT"
+              )
+              return {"McpEndpoint": url}
+
+          def handler(event, context):
+              props = event.get("ResourceProperties", {})
+              action = props.get("Action")
+              try:
+                  if event["RequestType"] == "Delete":
+                      if action == "manage-user":
+                          try:
+                              cognito.admin_delete_user(
+                                  UserPoolId=props["UserPoolId"],
+                                  Username=props["Username"],
+                              )
+                          except Exception:
+                              pass
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+
+                  if action == "read-secret":
+                      data = _read_secret(props)
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, data, noEcho=True)
+                  elif action == "manage-user":
+                      data = _upsert_user(props)
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, data)
+                  elif action == "build-endpoint":
+                      data = _build_endpoint(props)
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, data)
+                  else:
+                      raise ValueError(f"Unknown Action: {action}")
+              except Exception as exc:  # surface the failure to CloudFormation
+                  cfnresponse.send(
+                      event, context, cfnresponse.FAILED,
+                      {"Error": str(exc)},
+                  )
+
+  AppClientSecretCR:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt CognitoHelperFunction.Arn
+      Action: read-secret
+      UserPoolId: !Ref UserPool
+      ClientId: !Ref UserPoolClient
+      # Force a re-read whenever the client changes.
+      ClientVersion: !Ref UserPoolClient
+
+  TestUser:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt CognitoHelperFunction.Arn
+      Action: manage-user
+      UserPoolId: !Ref UserPool
+      Username: !Ref TestUsername
+      Email: !Ref TestUserEmail
+      Password: !Ref TestPassword
+
+  # ── Build the AgentCore MCP invocations endpoint URL (runtime ARN URL-encoded) ──
+  McpEndpoint:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt CognitoHelperFunction.Arn
+      Action: build-endpoint
+      RuntimeArn: !GetAtt MigratorRuntime.AgentRuntimeArn
+      Region: !Ref "AWS::Region"
+
   # ── AgentCore Runtime (VPC network mode + Cognito JWT inbound auth) ──
   MigratorRuntime:
     Type: AWS::BedrockAgentCore::Runtime
@@ -170,6 +356,12 @@ Resources:
       EnvironmentVariables:
         SOURCE_ROLE_ARN: !Ref SourceRoleArn
         TARGET_ROLE_ARN: !Ref TargetRoleArn
+        # AgentCore delivers requests from outside the container's loopback, so
+        # the server must listen on all interfaces in the runtime. The code
+        # defaults to 127.0.0.1 for local use; the runtime opts in explicitly.
+        BIND_HOST: "0.0.0.0"
+        # Bucket (this account) for pre-update resource backups; blank disables.
+        BACKUP_BUCKET: !Ref BackupBucket
       NetworkConfiguration:
         NetworkMode: VPC
         NetworkModeConfig:
@@ -188,6 +380,9 @@ Outputs:
   RuntimeArn:
     Description: AgentCore Runtime ARN.
     Value: !GetAtt MigratorRuntime.AgentRuntimeArn
+  McpEndpoint:
+    Description: AgentCore MCP invocations endpoint URL (register this in the Amazon Quick connector).
+    Value: !GetAtt McpEndpoint.McpEndpoint
   RuntimeId:
     Description: AgentCore Runtime ID.
     Value: !GetAtt MigratorRuntime.AgentRuntimeId
@@ -197,6 +392,15 @@ Outputs:
   AppClientId:
     Description: Cognito app client ID (wired into AllowedClients).
     Value: !Ref UserPoolClient
+  ClientSecret:
+    Description: Cognito app client secret (read via custom resource; sensitive).
+    Value: !GetAtt AppClientSecretCR.ClientSecret
+  TestUsername:
+    Description: Cognito test user for the 3LO login flow.
+    Value: !Ref TestUsername
+  TestPassword:
+    Description: Cognito test user password (sensitive).
+    Value: !Ref TestPassword
   DiscoveryUrl:
     Description: OIDC discovery URL used by the runtime authorizer.
     Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}/.well-known/openid-configuration"
@@ -209,9 +413,3 @@ Outputs:
   OAuthScope:
     Description: Scopes to request in the authorization_code flow.
     Value: !Sub "openid email ${ResourceServerIdentifier}/${ResourceServerScope}"
-  GetClientSecretCommand:
-    Description: CLI to retrieve the app client secret (CFN cannot output it directly).
-    Value: !Sub >-
-      aws cognito-idp describe-user-pool-client --user-pool-id ${UserPool}
-      --client-id ${UserPoolClient} --region ${AWS::Region}
-      --query "UserPoolClient.ClientSecret" --output text

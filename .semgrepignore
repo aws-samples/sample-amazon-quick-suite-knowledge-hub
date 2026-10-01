@@ -1,0 +1,16 @@
+# Paths excluded from semgrep scanning.
+# Generated build artifacts and vendored dependencies — not first-party source.
+cdk.out/
+**/cdk.out/
+build/
+**/build/
+node_modules/
+**/node_modules/
+.venv/
+**/.venv/
+.aws-sam/
+**/.aws-sam/
+site/
+dist/
+**/dist/
+*.min.js

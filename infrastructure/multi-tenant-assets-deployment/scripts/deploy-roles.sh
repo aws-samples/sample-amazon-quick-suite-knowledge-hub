@@ -22,6 +22,15 @@
 #     [--role-name quick-space-migrator-role] \
 #     [--external-id SOME_ID]
 #
+# CI/CD (no local profiles): instead of --*-profile, pass a role to assume per
+# account. The job's ambient credentials (OIDC/env/instance role) assume each:
+#     [--runner-assume-role-arn arn:aws:iam::<runner>:role/deployer] \
+#     [--source-assume-role-arn arn:aws:iam::<source>:role/deployer] \
+#     [--target-assume-role-arn arn:aws:iam::<target>:role/deployer]
+# Precedence per account: assume-role-arn > --*-profile > ambient/default creds.
+# (If both a profile and an assume-arn are given for an account, the profile is
+#  used as the BASE identity that performs the assume-role.)
+#
 set -euo pipefail
 
 REGION="us-east-1"
@@ -31,6 +40,9 @@ EXTERNAL_ID=""
 RUNNER_PROFILE=""
 SOURCE_PROFILE=""
 TARGET_PROFILE=""
+RUNNER_ASSUME_ROLE_ARN=""
+SOURCE_ASSUME_ROLE_ARN=""
+TARGET_ASSUME_ROLE_ARN=""
 ARTIFACT_BUCKET=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -42,6 +54,9 @@ while [[ $# -gt 0 ]]; do
     --runner-profile)  RUNNER_PROFILE="$2"; shift 2 ;;
     --source-profile)  SOURCE_PROFILE="$2"; shift 2 ;;
     --target-profile)  TARGET_PROFILE="$2"; shift 2 ;;
+    --runner-assume-role-arn)  RUNNER_ASSUME_ROLE_ARN="$2"; shift 2 ;;
+    --source-assume-role-arn)  SOURCE_ASSUME_ROLE_ARN="$2"; shift 2 ;;
+    --target-assume-role-arn)  TARGET_ASSUME_ROLE_ARN="$2"; shift 2 ;;
     --artifact-bucket) ARTIFACT_BUCKET="$2"; shift 2 ;;
     --region)          REGION="$2"; shift 2 ;;
     --runtime-name)    RUNTIME_NAME="$2"; shift 2 ;;
@@ -55,16 +70,64 @@ done
 
 prof() { [[ -n "$1" ]] && echo "--profile $1" || echo ""; }
 
-# Resolve an account ID from a profile via STS (empty profile → default creds).
-account_for() {
-  local p="$1"
-  aws sts get-caller-identity $(prof "$p") --query Account --output text
+# Per-account auth resolver for CI/CD.
+#
+# Prints shell `export` lines that set temporary credentials for an account,
+# so a phase can run inside a subshell with the right identity:
+#     ( eval "$(auth_env "$ASSUME_ARN" "$PROFILE" "$SESSION")"; aws ... )
+#
+# Precedence (per the agreed design):
+#   1. assume-role-arn set  → sts:assume-role (base creds = this account's
+#      --profile if given, else ambient/default) and export the temp creds.
+#   2. else                 → print nothing; callers fall back to `prof()`
+#                             (a --profile flag) or ambient/default creds.
+auth_env() {
+  local assume_arn="$1" base_profile="$2" session="$3"
+  [[ -z "${assume_arn}" ]] && return 0
+  local creds
+  creds="$(aws sts assume-role \
+    $(prof "${base_profile}") --region "${REGION}" \
+    --role-arn "${assume_arn}" \
+    --role-session-name "${session}" \
+    --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+    --output text)"
+  if [[ -z "${creds}" || "${creds}" == *None* ]]; then
+    echo "echo '✗ Failed to assume ${assume_arn}' >&2; exit 1"
+    return 0
+  fi
+  local ak sk st
+  ak="$(echo "${creds}" | awk '{print $1}')"
+  sk="$(echo "${creds}" | awk '{print $2}')"
+  st="$(echo "${creds}" | awk '{print $3}')"
+  # Clear any inherited profile so the exported keys take effect cleanly.
+  printf 'unset AWS_PROFILE; export AWS_ACCESS_KEY_ID=%q AWS_SECRET_ACCESS_KEY=%q AWS_SESSION_TOKEN=%q\n' \
+    "${ak}" "${sk}" "${st}"
 }
 
-echo "→ Resolving account IDs from profiles..."
-RUNNER_ACCOUNT="$(account_for "${RUNNER_PROFILE}")"
-SOURCE_ACCOUNT="$(account_for "${SOURCE_PROFILE}")"
-TARGET_ACCOUNT="$(account_for "${TARGET_PROFILE}")"
+# Auth flags for a single inline call (used only when NOT assuming a role):
+# returns `--profile X` or empty. When an assume-arn is set for the account,
+# the call must instead run inside a subshell seeded by auth_env (see phases).
+auth_flags() {
+  local assume_arn="$1" base_profile="$2"
+  [[ -n "${assume_arn}" ]] && { echo ""; return 0; }
+  prof "${base_profile}"
+}
+
+# Resolve an account ID from a profile/assumed-role via STS.
+account_for() {
+  local assume_arn="$1" base_profile="$2" session="$3"
+  if [[ -n "${assume_arn}" ]]; then
+    ( eval "$(auth_env "${assume_arn}" "${base_profile}" "${session}")"
+      aws sts get-caller-identity --region "${REGION}" --query Account --output text )
+  else
+    aws sts get-caller-identity $(prof "${base_profile}") --query Account --output text
+  fi
+}
+
+echo "→ Resolving account IDs..."
+RUNNER_ACCOUNT="$(account_for "${RUNNER_ASSUME_ROLE_ARN}" "${RUNNER_PROFILE}" "deploy-roles-runner")"
+SOURCE_ACCOUNT="$(account_for "${SOURCE_ASSUME_ROLE_ARN}" "${SOURCE_PROFILE}" "deploy-roles-source")"
+TARGET_ACCOUNT="$(account_for "${TARGET_ASSUME_ROLE_ARN}" "${TARGET_PROFILE}" "deploy-roles-target")"
 
 # Fail fast if any lookup came back empty (bad/expired profile).
 for pair in "runner:${RUNNER_ACCOUNT}" "source:${SOURCE_ACCOUNT}" "target:${TARGET_ACCOUNT}"; do
@@ -92,42 +155,51 @@ echo "════════════════════════�
 
 # ── 1. Runner execution role (CENTRAL account) — FIRST ──
 echo "→ [1/3] Runner execution role (central ${RUNNER_ACCOUNT})..."
-aws cloudformation deploy \
-  $(prof "${RUNNER_PROFILE}") --region "${REGION}" \
-  --stack-name "${RUNNER_ROLE_STACK}" \
-  --template-file "${RUNNER_TEMPLATE}" \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    "RuntimeName=${RUNTIME_NAME}" \
-    "ArtifactBucket=${ARTIFACT_BUCKET}" \
-    "SourceRoleArn=${SOURCE_ROLE_ARN}" \
-    "TargetRoleArn=${TARGET_ROLE_ARN}"
+(
+  eval "$(auth_env "${RUNNER_ASSUME_ROLE_ARN}" "${RUNNER_PROFILE}" "deploy-roles-runner")"
+  aws cloudformation deploy \
+    $(auth_flags "${RUNNER_ASSUME_ROLE_ARN}" "${RUNNER_PROFILE}") --region "${REGION}" \
+    --stack-name "${RUNNER_ROLE_STACK}" \
+    --template-file "${RUNNER_TEMPLATE}" \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --parameter-overrides \
+      "RuntimeName=${RUNTIME_NAME}" \
+      "ArtifactBucket=${ARTIFACT_BUCKET}" \
+      "SourceRoleArn=${SOURCE_ROLE_ARN}" \
+      "TargetRoleArn=${TARGET_ROLE_ARN}"
+)
 echo "   ✓ Runner exec role ready: ${EXEC_ROLE_ARN}"
 
 # ── 2. Source quick-space-migrator-role ──
 echo "→ [2/3] Source role (${SOURCE_ACCOUNT})..."
-aws cloudformation deploy \
-  $(prof "${SOURCE_PROFILE}") --region "${REGION}" \
-  --stack-name "${ROLE_NAME}-stack" \
-  --template-file "${QUICK_TEMPLATE}" \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    "RoleName=${ROLE_NAME}" \
-    "RunnerExecRoleArn=${EXEC_ROLE_ARN}" \
-    "ExternalId=${EXTERNAL_ID}"
+(
+  eval "$(auth_env "${SOURCE_ASSUME_ROLE_ARN}" "${SOURCE_PROFILE}" "deploy-roles-source")"
+  aws cloudformation deploy \
+    $(auth_flags "${SOURCE_ASSUME_ROLE_ARN}" "${SOURCE_PROFILE}") --region "${REGION}" \
+    --stack-name "${ROLE_NAME}-stack" \
+    --template-file "${QUICK_TEMPLATE}" \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --parameter-overrides \
+      "RoleName=${ROLE_NAME}" \
+      "RunnerExecRoleArn=${EXEC_ROLE_ARN}" \
+      "ExternalId=${EXTERNAL_ID}"
+)
 echo "   ✓ Source role ready"
 
 # ── 3. Target quick-space-migrator-role ──
 echo "→ [3/3] Target role (${TARGET_ACCOUNT})..."
-aws cloudformation deploy \
-  $(prof "${TARGET_PROFILE}") --region "${REGION}" \
-  --stack-name "${ROLE_NAME}-stack" \
-  --template-file "${QUICK_TEMPLATE}" \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    "RoleName=${ROLE_NAME}" \
-    "RunnerExecRoleArn=${EXEC_ROLE_ARN}" \
-    "ExternalId=${EXTERNAL_ID}"
+(
+  eval "$(auth_env "${TARGET_ASSUME_ROLE_ARN}" "${TARGET_PROFILE}" "deploy-roles-target")"
+  aws cloudformation deploy \
+    $(auth_flags "${TARGET_ASSUME_ROLE_ARN}" "${TARGET_PROFILE}") --region "${REGION}" \
+    --stack-name "${ROLE_NAME}-stack" \
+    --template-file "${QUICK_TEMPLATE}" \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --parameter-overrides \
+      "RoleName=${ROLE_NAME}" \
+      "RunnerExecRoleArn=${EXEC_ROLE_ARN}" \
+      "ExternalId=${EXTERNAL_ID}"
+)
 echo "   ✓ Target role ready"
 
 echo ""

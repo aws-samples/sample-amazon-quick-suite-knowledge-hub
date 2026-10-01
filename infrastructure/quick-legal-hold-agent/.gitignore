@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+.npm-cache/
+
+# CDK synth output (regenerated; contains resolved account/resource identifiers)
+cdk.out/
+
+# Compiled TypeScript (source of truth is the .ts files)
+*.js
+*.d.ts
+!jest.config.js
+
+# Generated deployment outputs (embed a real account id, Cognito pool ids, gateway
+# URLs, KMS ARNs, client secrets, etc.). Created per-deployment by the scripts.
+outputs/
+
+# OS / editor
+.DS_Store
+*.log

@@ -245,6 +245,14 @@ Resources:
     Properties:
       GroupDescription: Interface VPC endpoints - inbound 443 from the runtime SG
       VpcId: !Ref Vpc
+      # Interface endpoints only receive inbound traffic; they never initiate
+      # outbound connections. Declare an explicit, locked-down egress rule so
+      # CloudFormation does not fall back to the implicit allow-all-outbound
+      # default (cfn_nag F1000).
+      SecurityGroupEgress:
+        - Description: No outbound access required (endpoints are inbound-only)
+          IpProtocol: "-1"
+          CidrIp: 127.0.0.1/32
       Tags:
         - Key: Name
           Value: !Sub "${NamePrefix}-endpoint-sg"

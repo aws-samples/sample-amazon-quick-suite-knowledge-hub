@@ -27,20 +27,25 @@ CloudTrail Tools (1):
 import json
 import logging
 import os
-import time
 from datetime import datetime, timedelta
+from threading import Event
 
 import boto3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
+
+
 logs_client = boto3.client("logs")
 cloudwatch_client = boto3.client("cloudwatch")
 cloudtrail_client = boto3.client("cloudtrail")
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 logs_client = boto3.client("logs")
 cloudwatch_client = boto3.client("cloudwatch")
@@ -134,15 +139,13 @@ def execute_logs_query(log_group, query, hours=24):
         query_id = response["queryId"]
 
         # Wait for query
-        import time
-
         while True:
             result = logs_client.get_query_results(queryId=query_id)
             if result["status"] == "Complete":
                 return {"status": "success", "results": result["results"]}
             elif result["status"] == "Failed":
                 return {"status": "failed", "error": "Query failed"}
-            time.sleep(0.5)
+            _poll_wait(0.5)
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -972,7 +975,7 @@ def _handle_request(event, context):
             )["queryId"]
 
             # Wait for queries
-            time.sleep(3)
+            _poll_wait(3)
 
             dau_result = logs_client.get_query_results(queryId=query_id_dau)
             wau_result = logs_client.get_query_results(queryId=query_id_wau)

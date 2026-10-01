@@ -22,9 +22,16 @@ Usage:
 """
 
 import argparse
-import time
+from threading import Event
 
 import boto3
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait ``seconds`` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
 
 
 def wait_for_active(qs, account_id: str, agent_id: str, timeout: int = 60):
@@ -35,7 +42,7 @@ def wait_for_active(qs, account_id: str, agent_id: str, timeout: int = 60):
         if status == "ACTIVE":
             return True
         print(f"  Waiting... (status: {status})")
-        time.sleep(5)
+        _poll_wait(5)
     return False
 
 
@@ -119,7 +126,7 @@ def main():
         print("  ✓ Space removed")
 
     # Verify
-    time.sleep(2)
+    _poll_wait(2)
     detail = qs.describe_agent(AwsAccountId=args.account_id, AgentId=args.agent_id)
     print(f"\nCurrent spaces: {detail['Agent'].get('Spaces', [])}")
 

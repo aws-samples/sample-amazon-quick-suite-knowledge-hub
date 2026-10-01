@@ -37,11 +37,12 @@
     ]
   },
   "overrides": {
+    "minimatch": "^10.2.4",
     "nth-check": "^2.1.1",
     "css-select": "^5.1.0",
     "svgo": "^3.3.2",
     "postcss": "^8.4.31",
-    "serialize-javascript": "^6.0.2",
+    "serialize-javascript": "^7.0.3",
     "webpack-dev-server": "^4.15.2",
     "sockjs": "^0.3.24",
     "resolve-url-loader": "^5.0.0",

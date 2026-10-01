@@ -1,0 +1,167 @@
+[
+  {
+    "sku": "SKU-101",
+    "name": "Industrial Servo Motor X200",
+    "category": "Motors",
+    "unit_price": 150.0,
+    "weight_lbs": 12.5,
+    "warehouse": "WH-EAST-01",
+    "stock_qty": 340,
+    "reorder_point": 100,
+    "lead_time_days": 7
+  },
+  {
+    "sku": "SKU-102",
+    "name": "Precision Bearing Assembly",
+    "category": "Bearings",
+    "unit_price": 80.0,
+    "weight_lbs": 2.3,
+    "warehouse": "WH-EAST-01",
+    "stock_qty": 1200,
+    "reorder_point": 300,
+    "lead_time_days": 5
+  },
+  {
+    "sku": "SKU-103",
+    "name": "Hydraulic Pump HP-500",
+    "category": "Pumps",
+    "unit_price": 87.5,
+    "weight_lbs": 8.7,
+    "warehouse": "WH-WEST-01",
+    "stock_qty": 180,
+    "reorder_point": 50,
+    "lead_time_days": 10
+  },
+  {
+    "sku": "SKU-104",
+    "name": "Stainless Steel Valve SS-25",
+    "category": "Valves",
+    "unit_price": 140.0,
+    "weight_lbs": 5.4,
+    "warehouse": "WH-EAST-01",
+    "stock_qty": 450,
+    "reorder_point": 100,
+    "lead_time_days": 6
+  },
+  {
+    "sku": "SKU-105",
+    "name": "Control Panel Module CPM-3",
+    "category": "Electronics",
+    "unit_price": 200.0,
+    "weight_lbs": 3.8,
+    "warehouse": "WH-CENTRAL-01",
+    "stock_qty": 95,
+    "reorder_point": 30,
+    "lead_time_days": 14
+  },
+  {
+    "sku": "SKU-106",
+    "name": "Titanium Gear Set TG-44",
+    "category": "Gears",
+    "unit_price": 180.0,
+    "weight_lbs": 6.2,
+    "warehouse": "WH-WEST-01",
+    "stock_qty": 220,
+    "reorder_point": 60,
+    "lead_time_days": 12
+  },
+  {
+    "sku": "SKU-107",
+    "name": "Rubber Gasket Pack RG-100",
+    "category": "Seals",
+    "unit_price": 120.0,
+    "weight_lbs": 1.1,
+    "warehouse": "WH-EAST-01",
+    "stock_qty": 2800,
+    "reorder_point": 500,
+    "lead_time_days": 3
+  },
+  {
+    "sku": "SKU-108",
+    "name": "Power Supply Unit PSU-750W",
+    "category": "Electronics",
+    "unit_price": 260.0,
+    "weight_lbs": 4.5,
+    "warehouse": "WH-CENTRAL-01",
+    "stock_qty": 160,
+    "reorder_point": 40,
+    "lead_time_days": 8
+  },
+  {
+    "sku": "SKU-109",
+    "name": "Aluminum Heat Sink AHS-L",
+    "category": "Thermal",
+    "unit_price": 140.0,
+    "weight_lbs": 3.2,
+    "warehouse": "WH-EAST-01",
+    "stock_qty": 780,
+    "reorder_point": 200,
+    "lead_time_days": 5
+  },
+  {
+    "sku": "SKU-110",
+    "name": "Carbon Fiber Panel CF-30",
+    "category": "Composites",
+    "unit_price": 202.86,
+    "weight_lbs": 2.8,
+    "warehouse": "WH-WEST-01",
+    "stock_qty": 130,
+    "reorder_point": 35,
+    "lead_time_days": 18
+  },
+  {
+    "sku": "SKU-111",
+    "name": "Optical Sensor Array OSA-5",
+    "category": "Sensors",
+    "unit_price": 280.0,
+    "weight_lbs": 0.8,
+    "warehouse": "WH-CENTRAL-01",
+    "stock_qty": 85,
+    "reorder_point": 25,
+    "lead_time_days": 15
+  },
+  {
+    "sku": "SKU-112",
+    "name": "Pneumatic Cylinder PC-200",
+    "category": "Actuators",
+    "unit_price": 200.0,
+    "weight_lbs": 9.5,
+    "warehouse": "WH-EAST-01",
+    "stock_qty": 310,
+    "reorder_point": 80,
+    "lead_time_days": 7
+  },
+  {
+    "sku": "SKU-113",
+    "name": "Conveyor Belt Module CBM-5M",
+    "category": "Conveyors",
+    "unit_price": 166.0,
+    "weight_lbs": 22.0,
+    "warehouse": "WH-WEST-01",
+    "stock_qty": 65,
+    "reorder_point": 20,
+    "lead_time_days": 21
+  },
+  {
+    "sku": "SKU-114",
+    "name": "PLC Controller PLC-X1000",
+    "category": "Electronics",
+    "unit_price": 320.0,
+    "weight_lbs": 2.1,
+    "warehouse": "WH-CENTRAL-01",
+    "stock_qty": 110,
+    "reorder_point": 30,
+    "lead_time_days": 10
+  },
+  {
+    "sku": "SKU-115",
+    "name": "Welding Wire Spool WW-500",
+    "category": "Welding",
+    "unit_price": 126.0,
+    "weight_lbs": 35.0,
+    "warehouse": "WH-EAST-01",
+    "stock_qty": 40,
+    "reorder_point": 80,
+    "lead_time_days": 4
+  }
+]

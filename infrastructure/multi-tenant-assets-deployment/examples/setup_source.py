@@ -23,9 +23,17 @@ Usage:
 
 import argparse
 import json
-import time
+from threading import Event
 
 import boto3
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait ``seconds`` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
+
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIG
@@ -247,7 +255,7 @@ def wait_for_active(qs, account_id, agent_id, timeout=60):
         if resp["Agent"].get("AgentStatus") == "ACTIVE":
             return
         print(f"    Waiting... ({resp['Agent'].get('AgentStatus')})")
-        time.sleep(5)
+        _poll_wait(5)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -359,7 +367,7 @@ def setup_knowledge_base(qs, s3, args, space_id, cfg, principal):
                         break
                 except Exception:
                     break
-                time.sleep(5)
+                _poll_wait(5)
             try:
                 qs.update_knowledge_base_permissions(
                     AwsAccountId=account_id,

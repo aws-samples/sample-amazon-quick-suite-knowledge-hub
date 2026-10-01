@@ -8,7 +8,7 @@ on:
       - "**/*.py"
       - "mkdocs.yml"
       - "pyproject.toml"
-      - "docs/static/**"
+      - "static/**"
   workflow_dispatch:
 
 permissions:
@@ -65,7 +65,7 @@ jobs:
       - name: Build Amazon Quick Knowledge Hub documentation
         run: |
           echo "📚 Building Amazon Quick Knowledge Hub documentation..."
-          uv run mkdocs build --verbose -f mkdocs.yml
+          uv run mkdocs build --strict --verbose
 
       - name: Upload Amazon Quick Knowledge Hub pages artifact
         uses: actions/upload-pages-artifact@v3

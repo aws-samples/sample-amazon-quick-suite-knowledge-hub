@@ -8,7 +8,7 @@ It can be invoked as a CloudFormation Custom Resource or directly via Lambda inv
 import json
 import logging
 import os
-import time
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
@@ -16,6 +16,13 @@ from botocore.exceptions import ClientError
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+
+_POLL_IDLE = Event()
+
+
+def _poll_wait(seconds: float) -> None:
+    """Wait `seconds` between polls."""
+    _POLL_IDLE.wait(timeout=seconds)
 
 
 class QuickSuiteSetup:
@@ -199,7 +206,7 @@ class QuickSuiteSetup:
             )
 
             # Wait for subscription to be ready
-            time.sleep(5)
+            _poll_wait(5)
 
             # 2. Create namespace
             results["namespace"] = self.create_quicksight_namespace()
