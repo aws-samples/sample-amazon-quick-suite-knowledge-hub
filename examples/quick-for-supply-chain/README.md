@@ -1,4 +1,4 @@
-# quick-for-supply-chain
+# Amazon Quick for Supply Chain
 
 > Conversational supply chain intelligence on Amazon Bedrock AgentCore and Amazon Quick, using a supervisor/orchestrator pattern over MCP tools.
 
@@ -38,6 +38,12 @@ console-only manual steps in between.
 ---
 
 ## Architecture
+
+![Supply chain solution architecture](docs/SupplyChain_Architecture.png)
+
+*High-level architecture: Amazon Quick (supervisor) over the AgentCore-hosted MCP
+business-rule servers and the order-fulfillment reasoning agent, with the AWS Agent
+Registry as the discovery catalog and data in the Quick Space (datasets + S3 knowledge base).*
 
 ```
 Amazon Quick (Supervisor / Orchestrator)
@@ -80,6 +86,12 @@ A business user works entirely in **Amazon Quick Chat** using natural language.
 Quick (the supervisor) owns the data connectors and UX; it queries data, calls
 the MCP business-rule tools, optionally invokes the reasoning agent, and returns
 a decision or a branded document.
+
+![End-to-end request sequence](docs/SupplyChain_Sequence.png)
+
+*Sequence of a request: the user asks Quick, Quick queries the Space data, passes
+the facts to the relevant MCP business-rule server (or the order-fulfillment agent
+for multi-step requests), then synthesizes the answer and confirms any writes.*
 
 **The pattern for every request:**
 `User asks Quick → Quick queries data (Space datasets / Salesforce / docs) → Quick passes
