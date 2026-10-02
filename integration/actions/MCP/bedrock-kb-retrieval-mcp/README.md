@@ -29,7 +29,7 @@ This MCP integration enables:
 
 ## Project Structure
 
-```
+```text
 bedrock-kb-retrieval-mcp/
  app.py                          # CDK deployment entry point
  cdk.json                        # CDK configuration
@@ -68,14 +68,14 @@ cdk deploy --require-approval never
 
 ### 3. Get Outputs
 
-**Option 1: AWS Console (Recommended)**
+#### Option 1: AWS Console (Recommended)
 
 1. Go to **AWS CloudFormation** in the AWS Console
 2. Find the **quicksuite-bedrock-kb-mcp** stack
 3. Click on the **Outputs** tab
 4. Copy the required values for Quick integration
 
-**Option 2: CLI Commands**
+#### Option 2: CLI Commands
 
 ```bash
 aws cloudformation describe-stacks --stack-name quicksuite-bedrock-kb-mcp --query 'Stacks[0].Outputs'
@@ -132,7 +132,7 @@ From your CDK deployment, you'll need:
 
 ### Configure MCP Action in Quick
 
-**Step 1: Access Integrations**
+#### Step 1: Access Integrations
 
 1. Navigate to **Integrations** in Amazon Quick
 2. Click on **Actions**
@@ -146,7 +146,7 @@ Fill in the MCP configuration:
 - **MCP Server Endpoint**: Paste your `GatewayUrl` from CDK deployment outputs
 - Click **Next**
 
-**Step 3: Configure Authentication**
+#### Step 3: Configure Authentication
 
 1. For Authentication, select **Service Authentication**
 2. Keep **Service-to-service OAuth** within the Authentication type field
@@ -156,7 +156,7 @@ Fill in the MCP configuration:
    - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)
    - **Token URL** → Paste your `CognitoTokenUrl`
 
-**Step 4: Complete Setup**
+#### Step 4: Complete Setup
 
 1. Click **Create and Continue**
 2. Select **Next**
@@ -164,7 +164,7 @@ Fill in the MCP configuration:
 
 ### Usage in Quick
 
-```
+```text
 "List all available knowledge bases"
 "Search for AWS Lambda best practices in my knowledge base"
 "Find documents about data encryption with reranking enabled"

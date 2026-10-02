@@ -50,21 +50,17 @@ jobs:
               - "mkdocs.yml"
 
       - name: Set up Python for Amazon Quick Knowledge Hub
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
+        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install uv package manager
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
-        uses: astral-sh/setup-uv@v3
-
-      - name: Install uv
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
+        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
         uses: astral-sh/setup-uv@v3
 
       - name: Install Python dependencies
-        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true'
+        if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
         run: uv sync --dev
 
       - name: Install Python linting tools

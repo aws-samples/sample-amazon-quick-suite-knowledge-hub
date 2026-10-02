@@ -10,7 +10,6 @@ Interactive Jupyter notebooks for testing OAuth authorization flows on remote [M
 - [Usage](#usage)
   - [3LO (Three-Legged OAuth)](#3lo-three-legged-oauth)
   - [2LO (Two-Legged OAuth / Client Credentials)](#2lo-two-legged-oauth--client-credentials)
-- [Tested MCP Servers](#tested-mcp-servers)
 - [Troubleshooting](#troubleshooting)
 - [Repository Structure](#repository-structure)
 - [Security](#security)
@@ -99,8 +98,6 @@ Use `mcp_test-2LO.ipynb` for server-to-server integrations, background services,
 2. POST `grant_type=client_credentials` with your `client_id` and `client_secret`
 3. Use the returned access token to call the MCP endpoint
 
-
-
 ## Troubleshooting
 
 | Symptom | Likely Cause | What to Check |
@@ -114,7 +111,7 @@ Use `mcp_test-2LO.ipynb` for server-to-server integrations, background services,
 
 ## Repository Structure
 
-```
+```text
 ├── mcp_test-3LO.ipynb       # Interactive 3LO OAuth testing notebook
 ├── mcp_test-2LO.ipynb       # 2LO (client credentials) flow notebook
 ├── guide.md                  # Detailed walkthrough of the 3LO notebook
