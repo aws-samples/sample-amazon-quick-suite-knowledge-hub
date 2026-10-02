@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Reads the uploaded data from S3 (bucket populated in Phase 2), then:
 #   - ensures the Quick Space exists,
-#   - catalogs each CSV prefix under s3://$BUCKET/dataset/<TABLE>/ as a Glue table,
+#   - catalogs each CSV prefix under s3://$BUCKET/structured/<TABLE>/ as a Glue table,
 #   - creates ONE QuickSight Athena data source over the Glue database,
 #   - creates one SPICE dataset per Glue table (all through that Athena source),
 #   - creates an S3 knowledge base over s3://$BUCKET/knowledge-base/,
@@ -18,7 +18,7 @@ set -euo pipefail
 # to the bucket + linking the Agent Registry / creating MCP connectors are
 # documented MANUAL pre-reqs done between Phase 2 and Phase 3 (see README).
 #
-# The table list is read from the S3 'dataset/' prefix (not local files), so
+# The table list is read from the S3 'structured/' prefix (not local files), so
 # this works even without local synthetic_data present.
 #
 # This is Phase 3 of a THREE-phase deployment:
@@ -115,7 +115,7 @@ REGION="${AWS_REGION:-us-east-1}"
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 KB_NAME="${QUICK_KB_NAME:-Supply Chain Knowledge Base}"
 AGENT_NAME="${QUICK_AGENT_NAME:-Supply Chain Operations Agent}"
-INSTRUCTIONS_FILE="skill/AGENT_INSTRUCTIONS.md"
+INSTRUCTIONS_FILE="agent/AGENT_INSTRUCTIONS.md"
 
 # ── Glue catalog + single Athena data source (feeds all datasets) ──
 GLUE_DATABASE="${GLUE_DATABASE:-sc_supply_chain}"
@@ -207,8 +207,8 @@ else
 fi
 echo ""
 
-# ── Step 2: Discover CSV tables from the S3 'dataset/' prefix ────
-# Layout is one folder per table: dataset/<TABLE>/<TABLE>.csv, so we list the
+# ── Step 2: Discover CSV tables from the S3 'structured/' prefix ────
+# Layout is one folder per table: structured/<TABLE>/<TABLE>.csv, so we list the
 # common prefixes (aws s3 ls prints 'PRE ACCOUNTS/' etc.).
 echo "━━━ Step 2: Discover datasets from s3://${BUCKET}/${DATASET_PREFIX}/ ━━━"
 TABLES=()

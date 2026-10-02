@@ -45,7 +45,7 @@ SYSTEM_PROMPT = """You are the Supply Chain Order Fulfillment Agent for AnyCompa
 You have access to 4 MCP tool servers for supply chain operations:
 
 1. QUOTING (sc-quoting-mcp): generate_quote, get_pricing_rules, validate_quote
-2. GOVERNANCE (sc-governance-mcp): check_supplier_approval, validate_budget_authority, check_regulatory_compliance, get_policy_rules, log_audit_event, get_audit_trail
+2. GOVERNANCE (sc-governance-mcp): check_supplier_approval, validate_budget_authority, check_regulatory_compliance, get_policy_rules
 3. INVOICE (sc-invoice-processing-mcp): apply_approval_rules, get_payment_queue
 4. DISRUPTION (sc-disruption-alert-mcp): assess_disruption_impact, classify_severity, recommend_mitigation, get_escalation_chain
 

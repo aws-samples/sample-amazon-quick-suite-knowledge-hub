@@ -100,6 +100,17 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
     // 2. S3 WORM bucket (own): Object Lock GOVERNANCE, versioned, SSE-KMS,
     //    public access blocked, removable for TEST.
     // ===============================================================
+    // Server access log bucket for the WORM bucket (audit trail of who read /
+    // wrote the preserved evidence). SSE-S3 (S3 log delivery cannot use SSE-KMS).
+    const accessLogsBucket = new s3.Bucket(this, 'WormAccessLogsBucket', {
+      bucketName: `${PREFIX}worm-logs-${account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      versioned: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     const wormBucket = new s3.Bucket(this, 'WormBucket', {
       bucketName: `${PREFIX}worm-${account}`,
       objectLockEnabled: true,
@@ -110,6 +121,8 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       bucketKeyEnabled: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
+      serverAccessLogsBucket: accessLogsBucket,
+      serverAccessLogsPrefix: 'worm-access/',
       // WORM correctness: never auto-delete or destroy the preserved legal-hold
       // evidence. RETAIN the bucket on stack delete and do NOT attach the
       // auto-delete-objects custom resource (it delete-marked delivered records).
@@ -123,12 +136,28 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       tableName: `${PREFIX}users`,
       partitionKey: { name: 'user_arn', type: ddb.AttributeType.STRING },
       billingMode: ddb.BillingMode.PAY_PER_REQUEST,
+      // Legal-hold records are chain-of-custody evidence. Encrypt with the
+      // stack CMK and keep point-in-time recovery so a hold table can be
+      // restored after accidental or malicious writes.
+      encryption: ddb.TableEncryption.CUSTOMER_MANAGED,
+      encryptionKey: cmk,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // ===============================================================
     // 4. Filter Lambda + Firehose delivery stream (own) -> WORM bucket
     // ===============================================================
+    // Managed CloudWatch log group per Lambda: explicit retention (instead of
+    // the never-expiring default group CDK would otherwise create) and cleaned
+    // up with the stack.
+    const fnLogGroup = (fnName: string) =>
+      new logs.LogGroup(this, `${fnName}LogGroup`, {
+        logGroupName: `/aws/lambda/${PREFIX}${fnName}`,
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      });
+
     const filterFn = new lambda.Function(this, 'FilterFn', {
       functionName: `${PREFIX}filter`,
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -136,6 +165,7 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda', 'filter')),
       timeout: cdk.Duration.minutes(1),
       memorySize: 256,
+      logGroup: fnLogGroup('filter'),
       environment: { USERS_TABLE: usersTable.tableName },
     });
     usersTable.grantReadData(filterFn);
@@ -223,6 +253,7 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda', 'delivery_wiring')),
       timeout: cdk.Duration.minutes(2),
       memorySize: 256,
+      logGroup: fnLogGroup('delivery-wiring'),
     });
     // Least-privilege: only the vended-log delivery + enable actions we use.
     wiringFn.addToRolePolicy(
@@ -422,6 +453,7 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda', 'hold_manager_mcp')),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      logGroup: fnLogGroup('hold-manager'),
       environment: {
         USERS_TABLE: usersTable.tableName,
         IDENTITY_MODE: identityMode,
@@ -429,17 +461,40 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       },
     });
     usersTable.grantReadWriteData(mcpFn);
-    mcpFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'identitystore:ListUsers', 'identitystore:ListGroups', 'identitystore:GetGroupId',
-          'identitystore:ListGroupMemberships', 'identitystore:DescribeUser', 'identitystore:DescribeGroup',
-          'identitystore:GetUserId', 'identitystore:DescribeGroupMembership',
-          'sso:DescribeInstance', 'sso:ListInstances',
-        ],
-        resources: ['*'],
-      })
-    );
+    // Read-only IAM Identity Center resolution, attached ONLY in idc mode.
+    // In direct mode no IDC/SSO permissions are granted at all (least privilege).
+    // The identitystore List*/Describe* calls are not resource-scopable, but we
+    // constrain them to the configured identity store; sso:*Instance(s) do not
+    // support resource ARNs, so we constrain them by account with a condition.
+    if (identityMode === 'idc' && identityStoreId) {
+      mcpFn.addToRolePolicy(
+        new iam.PolicyStatement({
+          sid: 'IdentityStoreReadOnly',
+          actions: [
+            'identitystore:ListUsers',
+            'identitystore:ListGroups',
+            'identitystore:GetGroupId',
+            'identitystore:ListGroupMemberships',
+            'identitystore:DescribeUser',
+            'identitystore:DescribeGroup',
+            'identitystore:GetUserId',
+            'identitystore:DescribeGroupMembership',
+          ],
+          resources: [
+            `arn:aws:identitystore:::identitystore/${identityStoreId}`,
+            `arn:aws:identitystore:${region}:${account}:identitystore/${identityStoreId}`,
+          ],
+        })
+      );
+      mcpFn.addToRolePolicy(
+        new iam.PolicyStatement({
+          sid: 'SsoDescribeInstances',
+          actions: ['sso:DescribeInstance', 'sso:ListInstances'],
+          resources: ['*'],
+          conditions: { StringEquals: { 'aws:PrincipalAccount': account } },
+        })
+      );
+    }
     mcpFn.addPermission('AllowAgentCoreInvoke', {
       principal: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
       action: 'lambda:InvokeFunction',
@@ -453,6 +508,7 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda', 'interceptor')),
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
+      logGroup: fnLogGroup('interceptor'),
     });
     interceptorFn.addPermission('AllowAgentCoreInvokeInterceptor', {
       principal: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),

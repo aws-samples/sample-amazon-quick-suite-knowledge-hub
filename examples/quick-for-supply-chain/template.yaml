@@ -535,15 +535,6 @@ Resources:
                           Type: string
                     Required:
                       - shipment_type
-                - Name: log_audit_event
-                  Description: Record an audit event to the governance audit trail.
-                  InputSchema:
-                    Type: object
-                    Properties:
-                      event:
-                        Type: object
-                        Description: Audit event payload (action, actor, resource, details).
-                    Required: []
                 - Name: get_policy_rules
                   Description: Return active governance policies. Filter by category (procurement, compliance, regulatory).
                   InputSchema:
@@ -552,15 +543,6 @@ Resources:
                       category:
                         Type: string
                         Description: Optional policy category filter.
-                    Required: []
-                - Name: get_audit_trail
-                  Description: Retrieve prior audit trail entries.
-                  InputSchema:
-                    Type: object
-                    Properties:
-                      resource_id:
-                        Type: string
-                        Description: Optional resource id to filter the audit trail.
                     Required: []
 
   ScInvoiceTarget:

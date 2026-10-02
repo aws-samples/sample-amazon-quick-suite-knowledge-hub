@@ -16,11 +16,6 @@ Object Lock bucket.
 This is a sample intended for evaluation and as a starting point. Review it against your
 own security and compliance requirements before using it with production data.
 
-> The stack deploys to **your** AWS account and region, resolved from your credentials
-> (`CDK_DEFAULT_ACCOUNT` / `aws sts get-caller-identity`); region defaults to `us-east-1`
-> (override with `AWS_REGION`). It is fully self-contained and creates all of its own
-> infrastructure.
-
 ## Contents
 
 1. [Architecture](#architecture)

@@ -83,12 +83,13 @@ def _caller_from_claims(claims: dict):
 
 
 def lambda_handler(event, context):
-    # First-run diagnostic: log the event shape (redacting the raw token).
+    # Diagnostic: log only the top-level event keys, never the event body (which
+    # carries the Authorization header / raw JWT). Best-effort; never fatal.
     try:
-        red = json.dumps(event)[:1200]
-        logger.info(f"[interceptor] event(redacted-preview)={red}")
-    except Exception:  # noqa: BLE001, S110 - redacted preview logging is best-effort
-        pass
+        keys = list(event.keys()) if isinstance(event, dict) else type(event).__name__
+        logger.debug("[interceptor] event keys=%s", keys)
+    except Exception:  # noqa: BLE001
+        logger.debug("[interceptor] event key introspection failed")
 
     mcp = event.get("mcp", {}) if isinstance(event, dict) else {}
     gw_req = mcp.get("gatewayRequest", {})

@@ -93,6 +93,16 @@ def _b64url_json(segment: str):
         return {}
 
 
+def _maybe_json_obj(val: str):
+    """Parse a JSON object string, returning the dict or None if it isn't valid
+    JSON. Keeps the caller free of a bare try/except swallow."""
+    try:
+        parsed = json.loads(val)
+    except (ValueError, TypeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
 def _claims_from_context(context, event) -> dict:
     """
     Best-effort extraction of the caller's JWT claims from the AgentCore
@@ -131,10 +141,9 @@ def _claims_from_context(context, event) -> dict:
         if isinstance(val, dict) and val:
             return val
         if isinstance(val, str) and val.strip().startswith("{"):
-            try:
-                return json.loads(val)
-            except Exception:  # noqa: BLE001, S110 - best-effort parse; fall through to other strategies
-                pass
+            parsed = _maybe_json_obj(val)
+            if parsed:
+                return parsed
 
     # 2. A raw JWT string anywhere in custom -> decode payload segment.
     for _k, v in custom.items():
