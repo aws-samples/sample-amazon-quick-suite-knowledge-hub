@@ -1,4 +1,4 @@
-# Amazon Quick for Supply Chain
+# Quick for Supply Chain
 
 > Conversational supply chain intelligence on Amazon Bedrock AgentCore and Amazon Quick, using a supervisor/orchestrator pattern over MCP tools.
 
@@ -45,7 +45,7 @@ console-only manual steps in between.
 business-rule servers and the order-fulfillment reasoning agent, with the AWS Agent
 Registry as the discovery catalog and data in the Quick Space (datasets + S3 knowledge base).*
 
-```
+```text
 Amazon Quick (Supervisor / Orchestrator)
   │
   ├── Database (via Quick Space)      ── Structured data (orders, inventory, suppliers…)
@@ -147,7 +147,7 @@ entities so they run as-is.
 
 ## Repository Layout
 
-```
+```text
 .
 ├── README.md                        ← You are here (the single source of docs)
 ├── template.yaml                    ← Unified SAM stack: Cognito + 4 Lambdas + 4 Gateways + 4 Targets + Runtime
@@ -242,8 +242,8 @@ Cognito or gateway steps, no manual CLI resource creation:
 3. `sam build` then **one `sam deploy`** of `template.yaml`, creating:
    - **Cognito** user pool + resource server + **one app client** (user-based
      authorization-code OAuth — used by the Quick connectors *and* by the runtime,
-     which signs in as the test user) + domain
-     + a **test user** (`supply-chain-test-user`) for the connector OAuth sign-in
+     which signs in as the test user) + domain, plus a **test user**
+     (`supply-chain-test-user`) for the connector OAuth sign-in
    - **4 business MCP Lambdas** (quoting, governance, invoice-processing, disruption-alert)
    - **4 AgentCore Gateways** (`CUSTOM_JWT`) + **4 Gateway Targets** (Lambda + tool schemas)
    - **1 AgentCore Runtime** (the agent container) + least-privilege IAM roles
@@ -330,6 +330,7 @@ and before Phase 3**.
 **1. Grant Amazon Quick / QuickSight access to Amazon S3 AND Amazon Athena.**
 Amazon QuickSight console → **Manage QuickSight → Security & permissions →
 QuickSight access to AWS services → Manage**, then:
+
 - **Amazon S3** → **Select S3 buckets** → **check** the bucket that Phase 2 printed
   (default `sc-supply-chain-data-<account>-<region>`).
 - **Amazon Athena** → **check** it as well.
@@ -355,6 +356,7 @@ lets QuickSight create the Athena data source Phase 3 uses to catalog the CSV
 tables. Missing it is the #1 cause of Phase 3 creating 0 datasets.*
 
 **2. Link the AWS Agent Registry in Quick + create the MCP connectors.**
+
 - **Link the registry (admin, one-time):** Quick admin console → **Manage account →
   Permissions → AWS Agent Registry** → toggle on **`sc-supply-chain-registry`** and
   confirm. (Prereqs, all satisfied by Phase 1: same account + region, **AWS_IAM**
@@ -520,7 +522,7 @@ Operations Agent** (UI only):
 > `--action-connectors <id1,id2,id3,id4>` so `setup_quick.sh` attaches them to the
 > agent automatically (the `sc-order-fulfillment-agent` connector is still added
 > manually here since it's created by hand).
-
+>
 > Make sure each connector was **shared with the right teammates / user groups** (see
 > the connector setup step) so the agent works for everyone on your team, not just you.
 
@@ -532,9 +534,11 @@ is a directory (`skill/`) with `SKILL.md`, `references/`, and `assets/`.
 
 1. **Copy the whole skill directory into the Quick desktop skills folder** (create it
    if missing):
+
    ```bash
    cp -R skill ~/.quickwork/profiles/<your-profile>/skills/supply-chain-ops
    ```
+
 2. **Configure it** (see [`skill/README.md`](skill/README.md)). The skill takes
    runtime inputs, not hardcoded values:
    - `space_id`: the Space id, which defaults to `supply-chain-management`.
@@ -553,7 +557,7 @@ is a directory (`skill/`) with `SKILL.md`, `references/`, and `assets/`.
 
 ## End-to-End Order
 
-```
+```text
 1. ./deploy_agentcore.sh dev
       → AgentCore infra: Cognito + 4 MCPs (Lambda+Gateway+Target) + Runtime + 6 Agent Registry records
 
@@ -600,6 +604,7 @@ Use synthetic entity names/SKUs from the generated CSVs (e.g. open
 synthetic (`Sample …` names, `example.com` emails).
 
 **Smoke-test the deployed infra (no Quick needed):**
+
 ```bash
 REGION=us-east-1
 aws cloudformation describe-stacks --stack-name sc-agents-dev --region $REGION \
@@ -615,6 +620,7 @@ aws bedrock-agentcore-control list-agent-runtimes --region $REGION \
 ## Components Reference
 
 ### Agent - `sc-order-fulfillment-agent` (AgentCore Runtime)
+
 Multi-step reasoning across quoting, governance, invoice, and disruption
 domains. Model: Claude Sonnet 4. Receives data from Quick as parameters; calls
 the MCPs as tools. **Why an agent (not an MCP):** autonomous multi-turn
@@ -639,6 +645,7 @@ reasoning.
 > endpoint above. `deploy_agentcore.sh` prints the exact Agent endpoint.
 >
 > **Runtime implementation notes (why the connector shows a callable tool):**
+>
 > - The runtime uses **`ProtocolConfiguration: MCP`** and the container serves a
 >   FastMCP streamable-http server on **port 8000** at `/mcp` (the AgentCore MCP
 >   protocol contract — HTTP protocol uses 8080; MCP uses 8000). A plain HTTP
@@ -650,6 +657,7 @@ reasoning.
 >   ("Authorization method mismatch").
 
 ### Authentication
+
 - **One** shared Cognito user pool (`sc-supply-chain-pool`) and **one** app client
   (`CognitoClientId`), using the **authorization-code (user)** OAuth flow.
 - **Connector sign-in is user-based.** Users sign in (e.g. `supply-chain-test-user`)
@@ -682,6 +690,7 @@ reasoning.
     `aws cognito-idp admin-set-user-password --user-pool-id <UserPoolId> --username supply-chain-test-user --password '<new>' --permanent`.
 
 ### Data stores
+
 - **Database** (`SUPPLY_CHAIN.SCM`) - orders, inventory, suppliers, contracts,
   shipments, sales history, etc. Any engine: Snowflake (default), PostgreSQL/RDS,
   or any SQLAlchemy-supported DB (selected via `DB_ENGINE`).
@@ -693,7 +702,7 @@ reasoning.
 
 ## Design Principles
 
-**Data vs. rules separation**
+### Data vs. rules separation
 
 | Data type | Store | Accessed by |
 |-----------|-------|-------------|
