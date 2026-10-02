@@ -30,7 +30,7 @@ This MCP integration enables:
 
 ## Project Structure
 
-```
+```text
 redshift-data-query-mcp/
  app.py                              # CDK deployment entry point
  cdk.json                            # CDK configuration
@@ -77,14 +77,14 @@ cdk deploy --require-approval never
 
 ### 3. Get Outputs
 
-**Option 1: AWS Console (Recommended)**
+#### Option 1: AWS Console (Recommended)
 
 1. Go to **AWS CloudFormation** in the AWS Console
 2. Find the **RedshiftAgentCoreStack** stack
 3. Click on the **Outputs** tab
 4. Copy the required values for Quick integration
 
-**Option 2: CLI Commands**
+#### Option 2: CLI Commands
 
 ```bash
 aws cloudformation describe-stacks --stack-name RedshiftAgentCoreStack --query 'Stacks[0].Outputs'
@@ -169,7 +169,7 @@ Key outputs for Quick Actions:
 
 Complete guide to integrate Amazon Redshift with Amazon Quick using MCP Actions.
 
-### Prerequisites
+### Integration Prerequisites
 
 From your CDK deployment, you'll need:
 
@@ -178,82 +178,9 @@ From your CDK deployment, you'll need:
 - `ClientSecret` - Cognito Client Secret
 - `CognitoTokenUrl` - OAuth2 token endpoint
 
-### Configure MCP Action in Quick
-
-**Step 1: Access Integrations**
-
-1. Navigate to **Integrations** in Amazon Quick
-2. Click on **Actions**
-3. Click the **+** button for **Model Context Protocol**
-
-**Step 2: Configure MCP Server**
-Fill in the MCP configuration:
-
-- **Name**: Amazon Redshift Data Query
-- **Description**: Amazon Redshift database operations with read-only access
-- **MCP Server Endpoint**: Paste your `GatewayUrl` from CDK deployment outputs
-- Click **Next**
-
-**Step 3: Configure Authentication**
-
-1. For Authentication, select **Service Authentication**
-2. Keep **Service-to-service OAuth** within the Authentication type field
-3. Fill in the authentication values from your CDK deployment outputs:
-
-   - **Client ID** → Paste your `ClientId` (ensure no leading/trailing spaces)
-   - **Client Secret** → Paste your `ClientSecret` (ensure no leading/trailing spaces)
-   - **Token URL** → Paste your `CognitoTokenUrl`
-
-**Step 4: Complete Setup**
-
-1. Click **Create and Continue**
-2. Select **Next**
-3. Select **Next**
-
-### Usage in Quick
-
-```
-"List all available Redshift clusters"
-"Show me databases in cluster my-cluster"
-"What tables are in the public schema of database dev?"
-"Execute query: SELECT COUNT(*) FROM sales WHERE date > '2024-01-01'"
-```
-
-## Troubleshooting
-
-**MCP Authentication Issues:**
-
-- Verify OAuth2 credentials in Quick MCP Actions
-- Check Cognito token endpoint configuration
-- Ensure client secret is correctly copied
-
-**Redshift Access:**
-
-- Verify Amazon Redshift cluster exists and is accessible
-- Check IAM permissions for Redshift Data API
-- Confirm cluster status is available
-
-**AgentCore Gateway:**
-
-- Monitor AgentCore Gateway throttling limits
-- Check Lambda timeout and memory settings
-- Review CORS configuration for Quick
-
-## Documentation
-
-- [CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/redshift-data-query-mcp/cdk/README.md) - Infrastructure details
-- [MCP Tool Definitions](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/redshift-data-query-mcp/tools/redshift_agentcore_tools.json) - API specifications
-- [AWS LAB Redshift MCP Server](https://awslabs.github.io/mcp/servers/redshift-mcp-server) - Official implementation
-
-## License
-
-This library is licensed under the MIT-0 License.
-
-- `CognitoTokenUrl` - OAuth2 token endpoint
-
 ### Configure MCP Action in Amazon Quick
 
-**Step 1: Access Integrations**
+#### Step 1: Access Integrations
 
 1. Navigate to **Integrations** in Amazon Quick
 2. Select **Actions**
@@ -267,7 +194,7 @@ Complete the MCP configuration:
 - **MCP Server Endpoint**: Enter your `GatewayUrl` from AWS CDK deployment outputs
 - Select **Next**
 
-**Step 3: Configure Authentication**
+#### Step 3: Configure Authentication
 
 1. For Authentication, select **Service Authentication**
 2. Keep **Service-to-service OAuth** within the Authentication type field
@@ -277,7 +204,7 @@ Complete the MCP configuration:
    - **Client Secret** → Enter your `ClientSecret` (ensure no leading/trailing spaces)
    - **Token URL** → Enter your `CognitoTokenUrl`
 
-**Step 4: Complete Setup**
+#### Step 4: Complete Setup
 
 1. Select **Create and Continue**
 2. Select **Next**
@@ -287,7 +214,7 @@ Complete the MCP configuration:
 
 Example queries:
 
-```
+```text
 "List all available Redshift clusters"
 "Show me databases in cluster my-redshift-cluster"
 "List tables in the public schema"

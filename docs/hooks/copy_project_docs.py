@@ -62,6 +62,7 @@ _IGNORE_DIRS = {"MCP", "images", "img", "assets", "node_modules", "docs"}
 _SKIP_MD = {"SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md"}
 _CODE_SUFFIXES = {".py", ".ts", ".js", ".tsx", ".jsx", ".java", ".go", ".sh"}
 _IMG_DIRS = ("images", "img", "assets", "diagrams", "screenshots")
+_IMG_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp")
 _EXTRA_MD = ("enable_ssl.md", "guide.md", "mcp_3LO_auth_flow.md", "EMBEDDING_SETUP.md")
 
 _staged: list[Path] = []
@@ -368,6 +369,9 @@ def _copy_project(src: Path, dest: Path) -> None:
         for md in sorted(proj_docs.glob("*.md")):
             if md.name not in _SKIP_MD:
                 shutil.copy2(md, dest / "docs" / md.name)
+        for img in proj_docs.iterdir():
+            if img.is_file() and img.suffix.lower() in _IMG_SUFFIXES:
+                shutil.copy2(img, dest / "docs" / img.name)
         _copy_images(proj_docs, dest / "docs")
     for sub in sorted(p for p in src.iterdir() if p.is_dir()):
         if sub.name in {"docs", "node_modules", *_IMG_DIRS}:
