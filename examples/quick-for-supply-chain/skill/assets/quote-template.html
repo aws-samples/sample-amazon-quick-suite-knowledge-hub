@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<!--
+  Branded quote template. Fill every {{PLACEHOLDER}} with values from the quoting
+  connector response. For multiple line items, duplicate the <tr> in <tbody>.
+  Margin badge: green (#468254) if margin ok, red (#C62828) if below floor.
+  Status badge class: status-draft for draft, status-approved for approved.
+  Colors and type follow references/branding.md.
+-->
+<html>
+<head>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Inter", Helvetica, Arial, sans-serif; color: #303030; background: #fff; }
+.doc { max-width: 800px; margin: 0 auto; border: 1px solid #E0E0E0; }
+.header { padding: 30px 40px; border-bottom: 1px solid #E0E0E0; display: flex; justify-content: space-between; align-items: center; border-top: 4px solid #D32F2F; }
+.header-left h1 { font-size: 28px; font-weight: 700; color: #1D1D1D; letter-spacing: -0.5px; }
+.header-left .doc-type { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #D32F2F; font-weight: 600; margin-bottom: 4px; }
+.header-right .wordmark { font-size: 15px; font-weight: 700; color: #D22630; letter-spacing: -0.2px; }
+.meta { padding: 24px 40px; background: #F7F7F7; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-bottom: 1px solid #E0E0E0; }
+.meta-group label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #535353; display: block; margin-bottom: 2px; }
+.meta-group span { font-size: 14px; font-weight: 600; color: #1D1D1D; }
+.meta-group .mono { font-family: "SF Mono", "Fira Code", Consolas, monospace; }
+.content { padding: 30px 40px; }
+.section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #D32F2F; font-weight: 600; margin-bottom: 12px; border-bottom: 1px solid #E0E0E0; padding-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+thead th { background: #1D1D1D; color: #fff; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+thead th.right { text-align: right; }
+tbody td { padding: 12px; border-bottom: 1px solid #E0E0E0; font-size: 13px; }
+tbody tr:nth-child(even) { background: #F7F7F7; }
+tbody td.right { text-align: right; }
+tbody td.bold { font-weight: 700; }
+.totals { display: flex; justify-content: flex-end; margin-bottom: 30px; }
+.totals-box { background: rgba(211, 47, 47, 0.04); border-left: 3px solid #D32F2F; padding: 16px 24px; min-width: 280px; }
+.totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+.totals-row.grand { font-size: 18px; font-weight: 700; color: #1D1D1D; border-top: 2px solid #D32F2F; margin-top: 8px; padding-top: 12px; }
+.margin-badge { display: inline-block; background: #468254; color: #fff; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: 8px; }
+.terms { padding: 20px 40px; background: #F7F7F7; border-top: 1px solid #E0E0E0; }
+.terms h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #535353; margin-bottom: 8px; }
+.terms p { font-size: 12px; color: #535353; line-height: 1.6; }
+.footer { padding: 16px 40px; border-top: 1px solid #E0E0E0; display: flex; justify-content: space-between; align-items: center; }
+.footer-text { font-size: 10px; color: #535353; }
+.footer-wordmark { font-size: 11px; font-weight: 700; color: #D22630; opacity: 0.8; }
+.status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.status-draft { background: #FFF3E0; color: #E65100; }
+.status-approved { background: #E8F5E9; color: #2E7D32; }
+@media print { .doc { border: none; } }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="header">
+    <div class="header-left">
+      <div class="doc-type">Quotation</div>
+      <h1>{{QUOTE_ID}}</h1>
+    </div>
+    <div class="header-right">
+      <span class="wordmark">AnyCompany Manufacturing</span>
+    </div>
+  </div>
+  <div class="meta">
+    <div class="meta-group"><label>Customer</label><span>{{CUSTOMER_NAME}}</span></div>
+    <div class="meta-group"><label>Account ID</label><span class="mono">{{ACCOUNT_ID}}</span></div>
+    <div class="meta-group"><label>Date</label><span>{{DATE}}</span></div>
+    <div class="meta-group"><label>Valid Until</label><span>{{VALID_UNTIL}}</span></div>
+    <div class="meta-group"><label>Tier</label><span>{{TIER}}</span></div>
+    <div class="meta-group"><label>Status</label><span class="status-badge status-draft">{{STATUS}}</span></div>
+  </div>
+  <div class="content">
+    <div class="section-title">Line Items</div>
+    <table>
+      <thead>
+        <tr><th>Product</th><th>SKU</th><th class="right">Qty</th><th class="right">List Price</th><th class="right">Discount</th><th class="right">Unit Price</th><th class="right">Total</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{PRODUCT_NAME}}</td><td class="mono">{{SKU}}</td><td class="right">{{QTY}}</td><td class="right">{{LIST_PRICE}}</td><td class="right">{{DISCOUNT}}</td><td class="right bold">{{UNIT_PRICE}}</td><td class="right bold">{{LINE_TOTAL}}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="totals">
+      <div class="totals-box">
+        <div class="totals-row"><span>Subtotal</span><span>{{SUBTOTAL}}</span></div>
+        <div class="totals-row"><span>Tax Estimate</span><span>{{TAX}}</span></div>
+        <div class="totals-row grand"><span>Total</span><span>{{TOTAL}}</span></div>
+        <div class="totals-row"><span>Margin</span><span>{{MARGIN}} <span class="margin-badge">{{MARGIN_LABEL}}</span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="terms">
+    <h3>Terms &amp; Conditions</h3>
+    <p><strong>Payment:</strong> {{PAYMENT_TERMS}} | <strong>Validity:</strong> {{VALIDITY}} | <strong>Shipping:</strong> {{SHIPPING}}</p>
+    <p>Prices subject to change after validity period. All amounts in USD.</p>
+  </div>
+  <div class="footer">
+    <div class="footer-text">Company Confidential (c) 2026 AnyCompany Inc. All rights reserved.<br>Generated by Supply Chain Operations - {{DATE}}</div>
+    <span class="footer-wordmark">AnyCompany Manufacturing</span>
+  </div>
+</div>
+</body>
+</html>

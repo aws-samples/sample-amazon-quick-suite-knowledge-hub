@@ -200,9 +200,6 @@ def with_retries(
     fn, *, attempts: int = 3, base_delay: float = 1.5, label: str = "operation"
 ):
     """Call ``fn`` with exponential backoff on transient errors."""
-    if attempts < 1:
-        raise ValueError("attempts must be >= 1")
-
     last_exc: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
@@ -221,7 +218,8 @@ def with_retries(
                 delay,
             )
             _poll_wait(delay)
-    raise last_exc  # pragma: no cover - unreachable when attempts >= 1
+    if last_exc:  # pragma: no cover - defensive
+        raise last_exc
 
 
 def discover_generated_csvs(generated_dir: Path) -> list[Path]:

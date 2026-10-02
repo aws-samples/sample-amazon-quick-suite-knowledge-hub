@@ -167,9 +167,13 @@ entities so they run as-is.
 │   ├── structured/tables/*.csv      ← 19 per-table CSVs (no SQL; schema lives in generators/schema.py)
 │   ├── documents/                   ← invoices & contracts + GENERATION_GUIDE.md
 │   └── salesforce/                  ← Accounts.csv, Contacts.csv, Opportunities.csv
-├── skill/
-│   ├── SKILL.md                     ← The `supply-chain-ops` Quick skill
+├── skill/                           ← The `supply-chain-ops` Quick desktop skill (Quick Skills standard)
+│   ├── SKILL.md                     ← Frontmatter + workflow
+│   ├── references/                  ← Lookup data (connectors, data-queries, routing, presentation, branding)
+│   ├── assets/                      ← quote-template.html
 │   └── README.md                    ← Skill install notes
+├── agent/
+│   └── AGENT_INSTRUCTIONS.md        ← CustomInstructions body for the Quick agent (used by setup_quick.sh)
 └── docs/                            ← Architecture/sequence diagrams + console screenshots (PNG)
 ```
 
@@ -198,13 +202,13 @@ entities so they run as-is.
 | Step | Script / Action | What it does |
 |------|-----------------|--------------|
 | **Phase 1** | [`deploy_agentcore.sh`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/deploy_agentcore.sh) `[env] [--recreate]` | Build+push the agent container, `sam deploy` the stack (Cognito + 4 MCP Lambdas + gateways + targets + runtime), register 6 records to the Agent Registry. |
-| **Phase 2** | [`generate_and_upload.sh`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/generate_and_upload.sh) `[--bucket <name>]` | Generate synthetic data, create the S3 bucket, upload dataset CSVs (`dataset/`) + documents (`knowledge-base/`). Prints the bucket name. |
+| **Phase 2** | [`generate_and_upload.sh`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/generate_and_upload.sh) `[--bucket <name>]` | Generate synthetic data, create the S3 bucket, upload dataset CSVs (`structured/`) + documents (`knowledge-base/`). Prints the bucket name. |
 | **Manual** | AWS console | (1) Grant Quick/QuickSight access to Amazon S3 **and Amazon Athena**. (2) Link the AWS Agent Registry in Quick + create the MCP connectors. |
 | **Phase 3** | [`setup_quick.sh`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/setup_quick.sh) `--s3-bucket <b> (--quicksight-user <u> \| --quicksight-group <g>) [--action-connectors <ids>]` | Create QuickSight datasets + S3 knowledge base + Space + the Quick agent (attached to the Space), and share as owner. |
 
 Supporting code: [`registry/deploy_registry.py`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/quick-for-supply-chain/registry/deploy_registry.py) (registry records),
 [`generate_synthetic_data/`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/tree/main/examples/quick-for-supply-chain/generate_synthetic_data) (data generators + DB loaders),
-[`skill/AGENT_INSTRUCTIONS.md`](skill/AGENT_INSTRUCTIONS.md) (the Quick agent's instructions).
+[`agent/AGENT_INSTRUCTIONS.md`](agent/AGENT_INSTRUCTIONS.md) (the Quick agent's instructions).
 
 ---
 
@@ -283,7 +287,7 @@ AWS_REGION=us-west-2 ./generate_and_upload.sh  # target another region
    synthetic, deterministic dataset (seeded - no real names/emails/addresses).
 2. Creates the **S3 bucket** if missing (region-aware) with **AES256** default encryption.
 3. Uploads:
-   - `synthetic_data/structured/tables/*.csv` → `s3://<bucket>/dataset/`
+   - `synthetic_data/structured/tables/*.csv` → `s3://<bucket>/structured/`
    - `synthetic_data/documents/*` → `s3://<bucket>/knowledge-base/`
 4. **Prints the bucket name** - you pass it to Phase 3 (`setup_quick.sh --s3-bucket <bucket>`).
 
@@ -447,7 +451,7 @@ tables. Missing it is the #1 cause of Phase 3 creating 0 datasets.*
 ## Deploy - Phase 3: Quick datasets, KB, Space, agent
 
 Build the Amazon Quick layer from the S3 bucket populated in Phase 2. This reads
-the table list **directly from the S3 `dataset/` prefix** (so it works even
+the table list **directly from the S3 `structured/` prefix** (so it works even
 without local `synthetic_data/`).
 
 ```bash
@@ -465,7 +469,7 @@ if the bucket is missing, if no principal is given, or if both are given).
 
 1. Ensures the **Amazon Quick Space** exists (`create-space`, idempotent;
    default id `supply-chain-management`, override with `--space-id`).
-2. Discovers the CSV tables via `aws s3 ls s3://<bucket>/dataset/`, then creates a
+2. Discovers the CSV tables via `aws s3 ls s3://<bucket>/structured/`, then creates a
    a **QuickSight dataset per table** (SPICE import mode; columns inferred from each CSV header).
 3. Creates an **S3 knowledge base** over `s3://<bucket>/knowledge-base/`
    (default id `sc-supply-chain-kb`, override with `--kb-id`).
@@ -473,7 +477,7 @@ if the bucket is missing, if no principal is given, or if both are given).
    `DATA_SET` + `KNOWLEDGE_BASE`).
 5. Creates/updates the **Amazon Quick agent** (default id `sc-supply-chain-agent`),
    **attached to the Space** (`--spaces`), with instructions from
-   `skill/AGENT_INSTRUCTIONS.md`, starter prompts, a welcome message, and - if
+   `agent/AGENT_INSTRUCTIONS.md`, starter prompts, a welcome message, and - if
    `--action-connectors` is passed - the MCP connectors from the manual step.
 6. **Shares** every dataset, data source, the KB, the Space, and the agent with
    the given user/group **as owner** (resolves the ARN via `describe-user` /
@@ -483,8 +487,8 @@ Optional flags: `--namespace` (default `default`), `--space-id`
 (default `supply-chain-management`), `--kb-id` (default `sc-supply-chain-kb`),
 `--agent-id` (default `sc-supply-chain-agent`).
 
-Finally, set the Space id in `skill/SKILL.md` (replace
-`<your-quick-suite-space-id>`), then demo in Quick Chat.
+Finally, install the `supply-chain-ops` skill in your Quick desktop client (see
+"install the Supply Chain Operations skill" below), then demo in Quick Chat.
 
 ### Manual step after Phase 3 — attach the action connectors to the Agent
 
@@ -511,19 +515,22 @@ Operations Agent** (UI only):
 ### Manual step after Phase 3 — install the Supply Chain Operations skill (Quick desktop)
 
 The golden-path action *"Activate the Supply Chain Operations skill"* requires the
-`supply-chain-ops` skill to be installed in your Quick **desktop** client. Install it
-from `skill/SKILL.md`:
+`supply-chain-ops` skill to be installed in your Quick **desktop** client. The skill
+is a directory (`skill/`) with `SKILL.md`, `references/`, and `assets/`.
 
-1. **Customize `skill/SKILL.md` first** (see [`skill/README.md`](skill/README.md)):
-   - Replace `<your-quick-suite-space-id>` with your Space id (`supply-chain-management`).
-   - *(Optional)* replace the AnyCompany brand color `#D22630` / logo with your own.
-2. **Copy it into the Quick desktop skills directory** (create the folder if missing):
+1. **Copy the whole skill directory into the Quick desktop skills folder** (create it
+   if missing):
    ```bash
-   mkdir -p ~/.quickwork/profiles/<your-profile>/skills/supply-chain-ops
-   cp skill/SKILL.md ~/.quickwork/profiles/<your-profile>/skills/supply-chain-ops/SKILL.md
+   cp -R skill ~/.quickwork/profiles/<your-profile>/skills/supply-chain-ops
    ```
+2. **Configure it** (see [`skill/README.md`](skill/README.md)). The skill takes
+   runtime inputs, not hardcoded values:
+   - `space_id`: the Space id, which defaults to `supply-chain-management`.
+   - `approver_email`: the default recipient for emailed quotes (optional).
+   - *(Optional)* to rebrand, edit `skill/references/branding.md` (color tokens and
+     company name; the brand shows as a styled text wordmark, there is no logo).
 3. In Quick, the skill now activates on supply-chain phrases (e.g. *"Activate the
-   Supply Chain Operations skill"*) and connects the MCP tools + Space data.
+   Supply Chain Operations skill"*) and connects the connector tools + Space data.
 
 > The skill is what loads/orchestrates the 4 business MCPs + the order-fulfillment
 > agent + the Space (data/documents). Without it installed, Quick Chat can still use
@@ -548,10 +555,10 @@ from `skill/SKILL.md`:
       and create the MCP connectors from the cards (note the connector IDs).
 
 3. ./setup_quick.sh --s3-bucket <bucket> (--quicksight-user <u> | --quicksight-group <g>) [--action-connectors <ids>]
-      → datasets from s3://<bucket>/dataset/ + S3 KB from s3://<bucket>/knowledge-base/
+      → datasets from s3://<bucket>/structured/ + S3 KB from s3://<bucket>/knowledge-base/
         + Space (datasets+KB attached) + Quick agent (attached to the Space); shared as owner
 
-4. Set the Space id in skill/SKILL.md, then demo in Quick Chat (see "Test / Demo Flow").
+4. Install the `supply-chain-ops` skill in Quick desktop, then demo in Quick Chat (see "Test / Demo Flow").
 ```
 
 Phases 1–3 are **scripted**. The steps **between** Phase 2 and Phase 3 are the
@@ -606,7 +613,7 @@ reasoning.
 | MCP | Tools |
 |-----|-------|
 | `sc-quoting-mcp` | `generate_quote`, `get_pricing_rules`, `validate_quote` |
-| `sc-governance-mcp` | `check_supplier_approval`, `validate_budget_authority`, `check_regulatory_compliance`, `log_audit_event`, `get_policy_rules`, `get_audit_trail` |
+| `sc-governance-mcp` | `check_supplier_approval`, `validate_budget_authority`, `check_regulatory_compliance`, `get_policy_rules` |
 | `sc-invoice-processing-mcp` | `apply_approval_rules`, `get_payment_queue` |
 | `sc-disruption-alert-mcp` | `assess_disruption_impact`, `classify_severity`, `recommend_mitigation`, `get_escalation_chain` |
 

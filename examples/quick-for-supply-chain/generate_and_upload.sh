@@ -13,7 +13,7 @@ set -euo pipefail
 #   Phase 3  ./setup_quick.sh            — Quick datasets + KB + Space + agent
 #
 # Uploads (one prefix per table so Glue/Athena can catalog each as a table):
-#   synthetic_data/structured/tables/<TABLE>.csv → s3://$BUCKET/dataset/<TABLE>/<TABLE>.csv
+#   synthetic_data/structured/tables/<TABLE>.csv → s3://$BUCKET/structured/<TABLE>/<TABLE>.csv
 #   synthetic_data/documents/*                    → s3://$BUCKET/knowledge-base/
 #
 # Account/region-agnostic and idempotent — no hardcoded account IDs.
@@ -103,7 +103,7 @@ echo ""
 # ─── Step 3: Upload structured CSVs (per-table prefix) + documents ───
 echo "━━━ Step 3: Upload data to S3 ━━━"
 # Each CSV goes to its OWN prefix so Glue/Athena can catalog it as a table:
-#   dataset/<TABLE>/<TABLE>.csv   (e.g. dataset/ACCOUNTS/ACCOUNTS.csv)
+#   structured/<TABLE>/<TABLE>.csv   (e.g. structured/ACCOUNTS/ACCOUNTS.csv)
 _csv_count=0
 for _csv in "${STRUCTURED_DIR}"/*.csv; do
   [[ -e "$_csv" ]] || continue
