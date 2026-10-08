@@ -3,10 +3,11 @@ Provisions EC2 instances for MSP clients with JIT hook via User Data.
 via Amazon QuickSight MCP Action Connector
 """
 
-import boto3
-import json
 import base64
+import json
 import logging
+
+import boto3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
