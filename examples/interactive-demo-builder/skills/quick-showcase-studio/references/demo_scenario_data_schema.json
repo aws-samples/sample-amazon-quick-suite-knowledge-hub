@@ -1,0 +1,706 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "demo-scenario-data.schema.json",
+  "title": "Amazon Quick Demo Data Export",
+  "description": "Schema for an Amazon Quick demo data export bundling an activity feed, a knowledge graph, and long-term memories. All timestamps are RELATIVE offsets from the moment the file is loaded (negative = past, positive = future) so the data stays fresh regardless of import time. Reconstruct absolute time with: absolute_time = NOW + offset. Fields ending in '_offset_seconds' are in seconds; fields ending in '_offset_days' are in days.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "_meta",
+    "activity_feed",
+    "knowledge_graph",
+    "memories"
+  ],
+  "properties": {
+    "_meta": {
+      "type": "object",
+      "description": "Export metadata and self-describing conventions.",
+      "additionalProperties": false,
+      "required": [
+        "description",
+        "date_convention",
+        "generated_by",
+        "total_feed_items",
+        "total_kg_entities",
+        "total_memories",
+        "kg_stats"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the export."
+        },
+        "date_convention": {
+          "type": "string",
+          "description": "Explanation of the relative-offset date convention used throughout the file."
+        },
+        "generated_by": {
+          "type": "string",
+          "description": "Producer of the file, e.g. 'Amazon Quick'."
+        },
+        "total_feed_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of items in activity_feed."
+        },
+        "total_kg_entities": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of entities in knowledge_graph."
+        },
+        "total_memories": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of items in memories."
+        },
+        "kg_stats": {
+          "type": "object",
+          "description": "Aggregate statistics about the knowledge graph.",
+          "additionalProperties": false,
+          "required": [
+            "total_entities",
+            "total_edges",
+            "categories",
+            "edge_types"
+          ],
+          "properties": {
+            "total_entities": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_edges": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "categories": {
+              "type": "object",
+              "description": "Map of entity category name -> count.",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "edge_types": {
+              "type": "object",
+              "description": "Map of edge relation name -> count.",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "activity_feed": {
+      "type": "array",
+      "description": "Chronological list of feed items (notifications, upcoming calendar events, and a day plan). Every item shares the same top-level envelope; the 'details' object varies by event_type.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "timestamp_offset_seconds",
+          "source",
+          "event_type",
+          "summary",
+          "details",
+          "category",
+          "status",
+          "updated_at_offset_seconds",
+          "importance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^evt_[0-9]+$",
+            "description": "Unique feed item id, e.g. 'evt_00001'."
+          },
+          "timestamp_offset_seconds": {
+            "type": "number",
+            "description": "When the event occurred, as an offset in seconds from load time (negative = past)."
+          },
+          "source": {
+            "type": "string",
+            "description": "Producing agent, e.g. 'agent:slack-monitor', 'agent:outlook-monitor', 'agent:chat-skill'."
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "notification",
+              "calendar_soon",
+              "day_plan"
+            ],
+            "description": "Discriminator controlling the shape of 'details'."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-line summary shown in the feed."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "feed"
+            ],
+            "description": "Feed bucket; always 'feed' in this export."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolved",
+              "dismissed"
+            ],
+            "description": "Lifecycle status of the item."
+          },
+          "updated_at_offset_seconds": {
+            "type": "number",
+            "description": "Last-updated offset in seconds from load time."
+          },
+          "importance": {
+            "type": "string",
+            "enum": [
+              "fyi",
+              "important",
+              "urgent"
+            ],
+            "description": "Importance/priority of the item."
+          },
+          "details": {
+            "type": "object",
+            "description": "Type-specific payload. Its shape is determined by event_type (see allOf/if-then branches)."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "const": "notification"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "title",
+                    "full_message",
+                    "context",
+                    "importance",
+                    "choices"
+                  ],
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "full_message": {
+                      "type": "string",
+                      "description": "Full message body, may contain Markdown."
+                    },
+                    "importance": {
+                      "type": "string",
+                      "enum": [
+                        "fyi",
+                        "important",
+                        "urgent"
+                      ]
+                    },
+                    "choices": {
+                      "$ref": "#/$defs/choices"
+                    },
+                    "context": {
+                      "description": "Source context. A Slack-style context, an email-style context, OR an internal context for Quick-generated suggestions/notifications that reference a KG entity.",
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/slackContext"
+                        },
+                        {
+                          "$ref": "#/$defs/emailContext"
+                        },
+                        {
+                          "$ref": "#/$defs/internalContext"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "const": "calendar_soon"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "meetingId",
+                    "subject",
+                    "start_offset_seconds",
+                    "end_offset_seconds",
+                    "organizer",
+                    "isRecurring",
+                    "importance",
+                    "title",
+                    "choices",
+                    "relevant_until_offset_seconds"
+                  ],
+                  "properties": {
+                    "meetingId": {
+                      "type": "string"
+                    },
+                    "subject": {
+                      "type": "string"
+                    },
+                    "start_offset_seconds": {
+                      "type": "number",
+                      "description": "Meeting start offset in seconds from load time."
+                    },
+                    "end_offset_seconds": {
+                      "type": "number",
+                      "description": "Meeting end offset in seconds from load time."
+                    },
+                    "organizer": {
+                      "type": "string"
+                    },
+                    "isRecurring": {
+                      "type": "boolean"
+                    },
+                    "importance": {
+                      "type": "string",
+                      "enum": [
+                        "fyi",
+                        "important",
+                        "urgent"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "choices": {
+                      "$ref": "#/$defs/choices"
+                    },
+                    "relevant_until_offset_seconds": {
+                      "type": "number",
+                      "description": "Offset after which the item is no longer relevant."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "const": "day_plan"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "events",
+                    "recommendations",
+                    "target_date"
+                  ],
+                  "properties": {
+                    "target_date": {
+                      "type": "string",
+                      "description": "Date the plan targets (ISO date or descriptive)."
+                    },
+                    "events": {
+                      "type": "array",
+                      "description": "The day's meetings.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "title",
+                          "start_offset_seconds",
+                          "end_offset_seconds",
+                          "organizer",
+                          "status",
+                          "meetingId"
+                        ],
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "start_offset_seconds": {
+                            "type": "number"
+                          },
+                          "end_offset_seconds": {
+                            "type": "number"
+                          },
+                          "organizer": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "confirmed",
+                              "tentative",
+                              "cancelled"
+                            ]
+                          },
+                          "meetingId": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "recommendations": {
+                      "type": "array",
+                      "description": "Suggested actions (conflicts, prep, focus time, etc.).",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "type",
+                          "priority",
+                          "title",
+                          "summary"
+                        ],
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "description": "Recommendation kind, e.g. 'conflict', 'prep', 'focus'."
+                          },
+                          "priority": {
+                            "type": "string",
+                            "enum": [
+                              "low",
+                              "medium",
+                              "high"
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string",
+                            "description": "Explanation, may contain Markdown."
+                          },
+                          "context": {
+                            "type": "object",
+                            "description": "Free-form supporting identifiers (e.g. related meeting ids)."
+                          },
+                          "choices": {
+                            "$ref": "#/$defs/choices"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "knowledge_graph": {
+      "type": "array",
+      "description": "Knowledge-graph entities with their relationships (edges).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "category",
+          "summary",
+          "created_at_offset_seconds",
+          "source_type",
+          "node_class",
+          "score",
+          "edges",
+          "name",
+          "last_informative_observation_at_offset_seconds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^entity:[0-9a-f]+$",
+            "description": "Unique entity id, e.g. 'entity:90a4119663eb'."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the entity."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "Person",
+              "Project",
+              "Decision",
+              "Event",
+              "DOCUMENT",
+              "Team",
+              "Topic",
+              "Organization",
+              "Meeting"
+            ],
+            "description": "Entity type."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Description of the entity."
+          },
+          "created_at_offset_seconds": {
+            "type": "number",
+            "description": "Creation offset in seconds from load time."
+          },
+          "last_informative_observation_at_offset_seconds": {
+            "type": "number",
+            "description": "Offset of the most recent informative observation."
+          },
+          "source_type": {
+            "type": "string",
+            "description": "Origin of the entity, e.g. 'other', 'slack', 'email'."
+          },
+          "node_class": {
+            "type": "string",
+            "enum": [
+              "entity"
+            ],
+            "description": "Graph node class."
+          },
+          "score": {
+            "type": "number",
+            "description": "Relevance/importance score (0-1 in the sample)."
+          },
+          "edges": {
+            "type": "array",
+            "description": "Relationships to other entities (by name).",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "relation",
+                "target_name",
+                "direction",
+                "reason"
+              ],
+              "properties": {
+                "relation": {
+                  "type": "string",
+                  "description": "Relationship type, e.g. 'worksOn', 'reportsTo', 'authored', 'attendsMeeting', 'collaboratesWith', 'manages', 'memberOf', 'madeDecision', 'dependsOn', 'relatedTo'."
+                },
+                "target_name": {
+                  "type": "string",
+                  "description": "Name of the entity on the other end of the edge."
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "incoming",
+                    "outgoing"
+                  ],
+                  "description": "Edge direction relative to this entity."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Short justification for the relationship."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "memories": {
+      "type": "array",
+      "description": "Long-term memory facts/preferences.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "category",
+          "provenance",
+          "confidence",
+          "created_offset_days",
+          "tags",
+          "text",
+          "is_global_behavior"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique memory id (hex)."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "procedure",
+              "preference"
+            ],
+            "description": "Memory kind."
+          },
+          "category": {
+            "type": "string",
+            "description": "Sub-classification, e.g. 'preference'."
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "explicit",
+              "inferred"
+            ],
+            "description": "How the memory was captured."
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence score (0-1)."
+          },
+          "created_offset_days": {
+            "type": "number",
+            "description": "Creation offset in DAYS from load time (negative = past)."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Free-form tags."
+          },
+          "text": {
+            "type": "string",
+            "description": "The memory content."
+          },
+          "is_global_behavior": {
+            "type": "boolean",
+            "description": "Whether this memory shapes global agent behavior."
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "choices": {
+      "type": "array",
+      "description": "Suggested follow-up actions offered to the user.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "prompt"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Button label."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Prompt injected when the choice is selected."
+          }
+        }
+      }
+    },
+    "slackContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel_id",
+        "channel_name",
+        "user_id",
+        "user_name",
+        "permalink"
+      ],
+      "properties": {
+        "channel_id": {
+          "type": "string"
+        },
+        "channel_name": {
+          "type": "string",
+          "description": "e.g. '#general'."
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "user_name": {
+          "type": "string"
+        },
+        "permalink": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "emailContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_id",
+        "conversation_id",
+        "sender_name",
+        "sender_email",
+        "subject"
+      ],
+      "properties": {
+        "message_id": {
+          "type": "string"
+        },
+        "conversation_id": {
+          "type": "string"
+        },
+        "sender_name": {
+          "type": "string"
+        },
+        "sender_email": {
+          "type": "string",
+          "format": "email"
+        },
+        "subject": {
+          "type": "string"
+        }
+      }
+    },
+    "internalContext": {
+      "type": "object",
+      "description": "Context for Quick-generated suggestions/notifications (e.g. day-plan prompts, recommended actions) that reference a knowledge-graph entity rather than a specific Slack message or email.",
+      "additionalProperties": false,
+      "required": [
+        "related_entity"
+      ],
+      "properties": {
+        "related_entity": {
+          "type": "string",
+          "description": "Name of the KG entity this item relates to."
+        },
+        "client": {
+          "type": "string",
+          "description": "Client or person the item concerns (optional)."
+        },
+        "sender_email": {
+          "type": "string",
+          "format": "email",
+          "description": "Sender email, when the item also originated from mail (optional)."
+        },
+        "suggestion_type": {
+          "type": "string",
+          "description": "Kind of suggested action, e.g. 'task_delegation', 'financial_review', 'automation' (optional)."
+        }
+      }
+    }
+  }
+}

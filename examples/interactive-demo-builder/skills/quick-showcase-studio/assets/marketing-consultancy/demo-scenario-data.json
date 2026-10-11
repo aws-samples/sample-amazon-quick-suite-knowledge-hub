@@ -1,0 +1,1757 @@
+{
+  "_meta": {
+    "description": "AnyCompany SOHO Studio \u2014 SOHO Marketing Consulting Demo. A day-in-the-life demo for a 2-person marketing and brand consultancy (Darla Emiliano, founder + Diego Ram\u00edrez, first hire) on Quick Plus.",
+    "date_convention": "All timestamps use relative offsets from load time. Negative values = past. Fields ending in '_offset_seconds' are seconds; '_offset_days' are days. Reconstruct absolute time with: absolute_time = NOW + offset.",
+    "generated_by": "Amazon Quick",
+    "total_feed_items": 18,
+    "total_kg_entities": 40,
+    "total_memories": 6,
+    "kg_stats": {
+      "total_entities": 40,
+      "total_edges": 83,
+      "categories": {
+        "Person": 16,
+        "Organization": 15,
+        "Project": 5,
+        "Decision": 1,
+        "Event": 2,
+        "DOCUMENT": 1
+      },
+      "edge_types": {
+        "worksFor": 2,
+        "manages": 1,
+        "worksOn": 5,
+        "communicatedWith": 14,
+        "reportsTo": 1,
+        "relatedTo": 52,
+        "memberOf": 2,
+        "dependsOn": 2,
+        "object": 1,
+        "participatesIn": 3
+      }
+    }
+  },
+  "activity_feed": [
+    {
+      "id": "evt_00005",
+      "timestamp_offset_seconds": -259200,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Marcus Lindqvist** (design) sent a rate increase starting next quarter: brand projects $2,000\u2192$2,400, hourly $85\u2192$95. Includes volume commitment options.",
+      "details": {
+        "title": "Marcus \u2014 Rate Increase Next Quarter",
+        "full_message": "Marcus (design subcontractor): \"Starting next quarter I'm adjusting my rates. Brand projects move from $2,000 to $2,400, and hourly goes from $85 to $95. I've included a few options that could keep your project costs predictable, including a retainer block and a volume commitment.\" Attachment: subcontractor_rate_quote.pdf",
+        "importance": "important",
+        "choices": [
+          {
+            "label": "Analyze impact",
+            "prompt": "Model it the other way: if I bring Marcus in for both projects, what does that do to my margin given his new rates?"
+          },
+          {
+            "label": "Reply to Marcus",
+            "prompt": "Draft a reply to Marcus acknowledging the rate increase and asking about the volume commitment option."
+          }
+        ],
+        "context": {
+          "message_id": "msg-marcus-001",
+          "conversation_id": "conv-marcus-001",
+          "sender_name": "Marcus Lindqvist",
+          "sender_email": "hello@mlindqvistdesign.example",
+          "subject": "Rate & availability update"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -259200,
+      "importance": "important"
+    },
+    {
+      "id": "evt_00011",
+      "timestamp_offset_seconds": -172800,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Design Suite** annual plan ($420/yr) renews in about a week. No action needed to continue.",
+      "details": {
+        "title": "Design Suite Renewal in 7 Days",
+        "full_message": "Your AnyCompany SOHO Studio annual Design Suite plan ($420/yr) renews in about a week. No action needed to continue.",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Review expenses",
+            "prompt": "Show me a summary of our recurring software subscriptions and their annual costs."
+          }
+        ],
+        "context": {
+          "message_id": "msg-renewal-001",
+          "conversation_id": "conv-renewal-001",
+          "sender_name": "Design Suite",
+          "sender_email": "billing@designsuite.example",
+          "subject": "Your annual plan renews in 7 days"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -172800,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00012",
+      "timestamp_offset_seconds": -172800,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Local Business Chamber** invited you to speak at their small-business marketing morning \u2014 $1,500 honorarium.",
+      "details": {
+        "title": "Chamber Speaking Invitation",
+        "full_message": "The Local Business Chamber would love you to run a 45-minute session on marketing for small businesses at their next member morning (about 2.5 weeks from now). They can offer a $1,500 honorarium. Interested?",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Accept",
+            "prompt": "Draft a reply accepting the Local Business Chamber speaking invitation and ask about logistics."
+          },
+          {
+            "label": "Decline politely",
+            "prompt": "Draft a polite decline for the Chamber speaking invitation \u2014 too busy with the Harbor Point launch."
+          }
+        ],
+        "context": {
+          "message_id": "msg-chamber-001",
+          "conversation_id": "conv-chamber-001",
+          "sender_name": "Local Business Chamber",
+          "sender_email": "events@localchamber.example",
+          "subject": "Would you speak at our small-business marketing morning?"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -172800,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00006",
+      "timestamp_offset_seconds": -90000,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Dr. Neel Shah** at Lumen Pediatrics wants a discovery call this week (mornings). Referred by Dr. Rivera.",
+      "details": {
+        "title": "Lumen Pediatrics \u2014 Discovery Lead",
+        "full_message": "Dr. Neel Shah: \"Ana Rivera spoke very highly of you. We're a new pediatrics practice and we need help with our brand and getting found online. She mentioned you handle everything for her. Could we set up a call this week to see if we'd be a fit? Mornings are best for us.\"",
+        "importance": "important",
+        "choices": [
+          {
+            "label": "Schedule call",
+            "prompt": "Find a morning slot this week for a discovery call with Dr. Neel Shah at Lumen Pediatrics and draft a reply."
+          },
+          {
+            "label": "Prep notes",
+            "prompt": "Prepare discovery call notes for Lumen Pediatrics \u2014 a new pediatrics practice referred by Rivera Dental."
+          }
+        ],
+        "context": {
+          "message_id": "msg-lumen-001",
+          "conversation_id": "conv-lumen-001",
+          "sender_name": "Dr. Neel Shah",
+          "sender_email": "dr.shah@lumenpediatrics.example",
+          "subject": "Referred by Dr. Rivera - marketing help"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -90000,
+      "importance": "important"
+    },
+    {
+      "id": "evt_00007",
+      "timestamp_offset_seconds": -90000,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Marcus Bell** at Foundry Coffee asked for the monthly social/newsletter performance recap by end of week.",
+      "details": {
+        "title": "Foundry Coffee \u2014 Monthly Recap Request",
+        "full_message": "Marcus Bell: \"Whenever you get a chance, could you send over the monthly recap of how our social and newsletter did? Owner likes to see the numbers. No rush, end of week is fine.\"",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Generate recap",
+            "prompt": "Build a monthly performance recap for Foundry Coffee covering their social media and newsletter results."
+          },
+          {
+            "label": "Assign to Diego",
+            "prompt": "Draft a message asking Diego to prepare the Foundry Coffee monthly recap using the marketing analytics data."
+          }
+        ],
+        "context": {
+          "message_id": "msg-foundry-001",
+          "conversation_id": "conv-foundry-001",
+          "sender_name": "Marcus Bell",
+          "sender_email": "marcus.bell@foundrycoffee.example",
+          "subject": "Monthly recap?"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -90000,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00004",
+      "timestamp_offset_seconds": -86400,
+      "source": "agent:slack-monitor",
+      "event_type": "notification",
+      "summary": "**Diego Ram\u00edrez** accepted the Quick Plus invite and is ready to start \u2014 offered to take the Foundry recap and Bloom & Vine posts.",
+      "details": {
+        "title": "Diego Ready to Start",
+        "full_message": "Diego: \"Thanks again for bringing me on! I accepted the invite to the Quick trial. What's the best way for me to get up to speed on the clients without pulling too much of your time? Happy to start with the Foundry recap and the Bloom & Vine posts if you want to hand those over.\"",
+        "importance": "important",
+        "choices": [
+          {
+            "label": "Set up Diego",
+            "prompt": "Draft a plan to onboard Diego: which agent and shared space to give him access to, and the message I would send him. Do not share anything yet."
+          },
+          {
+            "label": "Reply",
+            "prompt": "Draft a welcome reply to Diego with his first tasks for the week."
+          }
+        ],
+        "context": {
+          "channel_id": "C-studio-team",
+          "channel_name": "#studio-team",
+          "user_id": "U-diego",
+          "user_name": "Diego Ram\u00edrez",
+          "permalink": "https://slack.example.com/archives/C-studio-team/p001"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -86400,
+      "importance": "important"
+    },
+    {
+      "id": "evt_00010",
+      "timestamp_offset_seconds": -14400,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Foundry Coffee** paid Invoice #2044 ($2,000, retainer). Funds arriving in 1-2 business days.",
+      "details": {
+        "title": "Payment Received \u2014 Foundry Coffee",
+        "full_message": "Good news! Foundry Coffee Roasters paid Invoice #2044 ($2,000, retainer). Funds should arrive in 1-2 business days.",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "View receivables",
+            "prompt": "Show me the full accounts receivable summary \u2014 what's paid, what's outstanding, and what's overdue."
+          }
+        ],
+        "context": {
+          "message_id": "msg-payment-001",
+          "conversation_id": "conv-payment-001",
+          "sender_name": "Invoicing App",
+          "sender_email": "notifications@invoicingapp.example",
+          "subject": "Payment received - $2,000"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -14400,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00009",
+      "timestamp_offset_seconds": -10800,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Tess Okoro** at Northside Yoga wants to move the Wednesday check-in to Thursday.",
+      "details": {
+        "title": "Northside Yoga \u2014 Reschedule Check-in",
+        "full_message": "Tess: \"Morning Darla! Something came up - can we push our weekly check-in from Wednesday to Thursday this week? Same time works.\"",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Reschedule",
+            "prompt": "Draft a reply to Tess proposing we move the Northside Yoga check-in from Wednesday to Thursday this week, same time."
+          },
+          {
+            "label": "Check calendar",
+            "prompt": "Check if Thursday at the same time works for the Northside Yoga check-in."
+          }
+        ],
+        "context": {
+          "message_id": "msg-northside-001",
+          "conversation_id": "conv-northside-001",
+          "sender_name": "Tess Okoro",
+          "sender_email": "tess@northsideyoga.example",
+          "subject": "Can we move our check-in?"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -10800,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00008",
+      "timestamp_offset_seconds": -3600,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Dr. Rivera** approved the newsletter \u2014 one small tip swap (summer sensitivity / cold drinks).",
+      "details": {
+        "title": "Rivera Dental \u2014 Newsletter Approved",
+        "full_message": "Dr. Rivera: \"Looks great, Darla! Approved. One tiny change: can we swap the second tip to something about summer sensitivity / cold drinks? Otherwise send it whenever you normally do.\"",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Make the swap",
+            "prompt": "Update the Rivera Dental newsletter: swap the second tip to something about summer tooth sensitivity and cold drinks, and prepare the final version ready to send. Draft only, do not send it."
+          },
+          {
+            "label": "Acknowledge",
+            "prompt": "Draft a reply to Dr. Rivera confirming the tip swap and that the newsletter will go out on schedule."
+          }
+        ],
+        "context": {
+          "message_id": "msg-rivera-001",
+          "conversation_id": "conv-rivera-001",
+          "sender_name": "Dr. Ana Rivera",
+          "sender_email": "dr.rivera@riverafamilydental.example",
+          "subject": "Re: Newsletter draft"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -3600,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00013",
+      "timestamp_offset_seconds": -9000,
+      "source": "agent:feed-agent",
+      "event_type": "day_plan",
+      "summary": "Your Monday schedule: 3 meetings and a strategy block. Prep reminder for the Harbor Point kickoff discussion.",
+      "details": {
+        "target_date": "today",
+        "events": [
+          {
+            "title": "Weekly Planning & Diego Sync",
+            "start_offset_seconds": -7200,
+            "end_offset_seconds": -3600,
+            "organizer": "darla@anycompanystudio.example",
+            "status": "confirmed",
+            "meetingId": "mtg-planning-001"
+          },
+          {
+            "title": "Rivera Dental Check-in",
+            "start_offset_seconds": 0,
+            "end_offset_seconds": 1800,
+            "organizer": "darla@anycompanystudio.example",
+            "status": "confirmed",
+            "meetingId": "mtg-rivera-001"
+          },
+          {
+            "title": "Grid Street Strategy Work",
+            "start_offset_seconds": 10800,
+            "end_offset_seconds": 14400,
+            "organizer": "darla@anycompanystudio.example",
+            "status": "confirmed",
+            "meetingId": "mtg-gridstreet-001"
+          }
+        ],
+        "recommendations": [
+          {
+            "type": "prep",
+            "priority": "high",
+            "title": "Prep for Harbor Point B&B \u2014 review capacity before replying to Sam",
+            "summary": "Sam Whitfield just accepted your proposal and wants to start in 6 weeks. Before replying, assess whether you and Diego can absorb this alongside the Grid Street project and 5 retainers. Consider the design subcontractor's new rates.",
+            "context": {
+              "related_entity": "Harbor Point B&B"
+            },
+            "choices": [
+              {
+                "label": "Assess capacity",
+                "prompt": "Harbor Point wants to start a brand and campaign and launch in about six weeks. Look at our current client load, the project in delivery, and my calendar. Can we realistically take this on without dropping a ball?"
+              }
+            ]
+          },
+          {
+            "type": "prep",
+            "priority": "medium",
+            "title": "Block focus time for Grid Street strategy brief",
+            "summary": "You have a 2 PM strategy work block. The brief is almost done and Marcus needs it for the moodboard by Wednesday. Jordan is also waiting for the sitemap.",
+            "context": {
+              "related_entity": "Grid Street Bikes Brand Project"
+            },
+            "choices": [
+              {
+                "label": "Review brief status",
+                "prompt": "Show me the current state of the Grid Street Bikes strategy brief and what's left to finish."
+              }
+            ]
+          }
+        ]
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -9000,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00014",
+      "timestamp_offset_seconds": -1800,
+      "source": "agent:feed-agent",
+      "event_type": "notification",
+      "summary": "**Sam Whitfield** wants to start ASAP. You need a polished proposal with scope, timeline, and pricing before the kickoff call. The rate sheet and capacity assessment are ready.",
+      "details": {
+        "title": "Harbor Point B&B \u2014 Proposal Needed for Kickoff",
+        "full_message": "Sam Whitfield accepted the proposal and wants to launch in about 6 weeks. You need to send a polished proposal with scope, timeline, and pricing before the kickoff call. Your rate sheet is in the shared Space and the capacity assessment is ready.",
+        "importance": "important",
+        "choices": [
+          {
+            "label": "Create proposal",
+            "prompt": "Create a proposal for Harbor Point B&B. Include a project overview, scope of work (brand identity + campaign launch), a 6-week timeline, and pricing based on our services rate sheet. Make it polished and client-ready."
+          },
+          {
+            "label": "Review capacity first",
+            "prompt": "Harbor Point wants to start a brand and campaign and launch in about six weeks. Look at our current client load, the project in delivery, and my calendar. Can we realistically take this on?"
+          }
+        ],
+        "context": {
+          "related_entity": "Harbor Point B&B Launch",
+          "client": "Sam Whitfield",
+          "sender_email": "sam.whitfield@harborpointbnb.example"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -1800,
+      "importance": "important"
+    },
+    {
+      "id": "evt_00015",
+      "timestamp_offset_seconds": -2400,
+      "source": "agent:feed-agent",
+      "event_type": "notification",
+      "summary": "The Grid Street brand project has multiple moving pieces. **Jake** would benefit from a shareable tracker so he can see progress without emailing you.",
+      "details": {
+        "title": "Grid Street Bikes \u2014 Project Tracker Needed",
+        "full_message": "The Grid Street brand project has multiple moving pieces (strategy brief, moodboard, website copy, launch). Jake Torres would benefit from a shareable tracker so he can see progress without emailing you.",
+        "importance": "important",
+        "choices": [
+          {
+            "label": "Build project tracker",
+            "prompt": "Build a project tracker for the Grid Street Bikes brand project. Include the key milestones (strategy brief, moodboard, website copy, brand guidelines, and launch) with status, owner, and due dates. Make it a tracker I could share with the client later as a link."
+          },
+          {
+            "label": "Check project status",
+            "prompt": "Summarize what's going on with the Grid Street Bikes project \u2014 what's done, what's in progress, and what's still pending."
+          }
+        ],
+        "context": {
+          "related_entity": "Grid Street Bikes Brand Project",
+          "client": "Jake Torres"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -2400,
+      "importance": "important"
+    },
+    {
+      "id": "evt_00016",
+      "timestamp_offset_seconds": -3000,
+      "source": "agent:feed-agent",
+      "event_type": "notification",
+      "summary": "**Diego** is ramping and has several items to pick up: Foundry Coffee recap, Bloom & Vine posts, and general retainer support. He'll need a clear priority list.",
+      "details": {
+        "title": "Diego's Week \u2014 Tasks Need Prioritizing",
+        "full_message": "Diego is ramping and has several items to pick up this week: Foundry Coffee monthly recap, Bloom & Vine social posts, and general retainer support. He'll need a clear priority list to stay focused.",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Prioritize Diego's tasks",
+            "prompt": "What should Diego work on this week? Prioritize his tasks based on what's in the feed and what clients need."
+          },
+          {
+            "label": "Message Diego",
+            "prompt": "Draft a message to Diego with his prioritized tasks for the week."
+          }
+        ],
+        "context": {
+          "related_entity": "Diego Ram\u00edrez",
+          "suggestion_type": "task_delegation"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -3000,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00017",
+      "timestamp_offset_seconds": -3600,
+      "source": "agent:feed-agent",
+      "event_type": "notification",
+      "summary": "With **$4,300 overdue** and Foundry Coffee's **$2,000 payment** just received, it's a good time to review your full cash position.",
+      "details": {
+        "title": "Weekly Money Check \u2014 Receivables & Cash",
+        "full_message": "With $4,300 overdue and Foundry Coffee's $2,000 payment just received, it's a good time to review your full cash position. Bank balance is approximately $24,800 with $7,400 set aside for taxes.",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Show cash position",
+            "prompt": "What's my cash position right now? Walk me through what's paid, what's outstanding, and what's overdue."
+          },
+          {
+            "label": "Chase overdue invoices",
+            "prompt": "Draft polite but firm payment reminders for both overdue invoices."
+          }
+        ],
+        "context": {
+          "related_entity": "AnyCompany SOHO Studio",
+          "suggestion_type": "financial_review"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -3600,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00018",
+      "timestamp_offset_seconds": -4200,
+      "source": "agent:feed-agent",
+      "event_type": "notification",
+      "summary": "You and **Diego** don't have a recurring summary. Consider setting up a weekly digest so you both start Monday aligned on tasks, meetings, and deadlines.",
+      "details": {
+        "title": "No Weekly Digest Set Up Yet",
+        "full_message": "You and Diego don't have a recurring weekly summary. Setting up a digest that runs every Friday would ensure you both start Monday aligned on open tasks, upcoming meetings, overdue invoices, and content deadlines.",
+        "importance": "fyi",
+        "choices": [
+          {
+            "label": "Set up weekly digest",
+            "prompt": "Draft what a weekly Friday digest would look like for me and Diego, covering open client tasks, upcoming meetings for next week, any overdue invoices, and content due dates, and how I would set it up. Do not schedule or send anything yet."
+          },
+          {
+            "label": "Skip for now",
+            "prompt": "Draft a brief note outlining the weekly digest idea for my own later reference, since I'm not setting it up now. Do not schedule anything or create a reminder."
+          }
+        ],
+        "context": {
+          "related_entity": "AnyCompany SOHO Studio",
+          "suggestion_type": "automation"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -4200,
+      "importance": "fyi"
+    },
+    {
+      "id": "evt_00002",
+      "timestamp_offset_seconds": -10800,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**2 invoices overdue** \u2014 $4,300 total: Cedar & Co. Law ($2,200, 12 days) and Grid Street Bikes deposit ($2,100, 6 days).",
+      "details": {
+        "title": "2 Invoices Overdue \u2014 $4,300 Outstanding",
+        "full_message": "Accounts receivable alert: Invoice #2041 for Cedar & Co. Law ($2,200) is 12 days overdue (Net 15 terms). Invoice #2038 for Grid Street Bikes project deposit balance ($2,100) is 6 days overdue (50% on start terms). Total outstanding: $4,300.",
+        "importance": "urgent",
+        "choices": [
+          {
+            "label": "Draft reminders",
+            "prompt": "Draft polite but firm payment reminders for both overdue invoices. Reference the invoice number, amount, and how many days overdue. Warm for Cedar & Co. since they're a good ongoing client; a little firmer for the Grid Street deposit since the project is already underway."
+          },
+          {
+            "label": "View details",
+            "prompt": "Show me the full details of both overdue invoices."
+          }
+        ],
+        "context": {
+          "message_id": "msg-invoice-001",
+          "conversation_id": "conv-invoice-001",
+          "sender_name": "Invoicing App",
+          "sender_email": "notifications@invoicingapp.example",
+          "subject": "2 invoices are overdue - $4,300 outstanding"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -10800,
+      "importance": "urgent"
+    },
+    {
+      "id": "evt_00001",
+      "timestamp_offset_seconds": -7200,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Sam Whitfield** (Harbor Point B&B) replied to your proposal \u2014 they want to move ahead and launch in about 6 weeks. Asking about timeline and an annual commitment discount.",
+      "details": {
+        "title": "Harbor Point B&B \u2014 Proposal Accepted",
+        "full_message": "Sam Whitfield replied: \"We loved the proposal and the direction you laid out. We would like to move ahead, and ideally we'd want to launch the new brand and campaign before our busy season starts in about six weeks. Can you take us on that timeline? And would there be any flexibility on the monthly retainer if we commit to a full year?\"",
+        "importance": "urgent",
+        "choices": [
+          {
+            "label": "Draft reply",
+            "prompt": "Draft a reply to Sam Whitfield at Harbor Point B&B confirming we can take them on, addressing the 6-week timeline and the annual commitment discount question."
+          },
+          {
+            "label": "Assess capacity",
+            "prompt": "Harbor Point wants to start a brand and campaign and launch in about six weeks. Look at our current client load, the project in delivery, and my calendar. Can we realistically take this on without dropping a ball?"
+          }
+        ],
+        "context": {
+          "message_id": "msg-harbor-001",
+          "conversation_id": "conv-harbor-001",
+          "sender_name": "Sam Whitfield",
+          "sender_email": "sam.whitfield@harborpointbnb.example",
+          "subject": "Re: Proposal for Harbor Point B&B"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -7200,
+      "importance": "urgent"
+    },
+    {
+      "id": "evt_00003",
+      "timestamp_offset_seconds": -5400,
+      "source": "agent:outlook-monitor",
+      "event_type": "notification",
+      "summary": "**Priya** at Bloom & Vine needs a rush Instagram caption and story for tomorrow \u2014 same-day wedding order.",
+      "details": {
+        "title": "Bloom & Vine \u2014 Rush Instagram Post",
+        "full_message": "Priya at Bloom & Vine Florals: \"Sorry for the short notice. We just got a big same-day wedding order and I'd love to post about our custom arrangements while it's fresh. Could you put together an Instagram caption and a story for tomorrow morning? Nothing fancy, just on-brand.\"",
+        "importance": "important",
+        "choices": [
+          {
+            "label": "Draft the post",
+            "prompt": "Draft the Bloom & Vine rush post: an Instagram caption with a call to action and 5-7 hashtags, plus 3 story frames for a same-day wedding order, in Bloom & Vine's voice."
+          },
+          {
+            "label": "Assign to Diego",
+            "prompt": "Draft a message asking Diego to handle the Bloom & Vine rush post using the Client Voice Brief agent."
+          }
+        ],
+        "context": {
+          "message_id": "msg-bloom-001",
+          "conversation_id": "conv-bloom-001",
+          "sender_name": "Priya Patel",
+          "sender_email": "priya@bloomandvine.example",
+          "subject": "Quick favor - need a post for tomorrow!"
+        }
+      },
+      "category": "feed",
+      "status": "open",
+      "updated_at_offset_seconds": -5400,
+      "importance": "important"
+    }
+  ],
+  "knowledge_graph": [
+    {
+      "id": "entity:a001000001",
+      "name": "Darla Emiliano",
+      "category": "Person",
+      "summary": "Founder and owner of AnyCompany SOHO Studio, a marketing and brand consultancy. Handles client strategy, pitching, invoicing, and marketing. Recently brought on her first hire, Diego Ram\u00edrez.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -3600,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 1.0,
+      "edges": [
+        {
+          "relation": "worksFor",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Founder and owner of the studio"
+        },
+        {
+          "relation": "manages",
+          "target_name": "Diego Ram\u00edrez",
+          "direction": "outgoing",
+          "reason": "Darla hired Diego as her first employee"
+        },
+        {
+          "relation": "worksOn",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "Leading the brand project currently in delivery"
+        },
+        {
+          "relation": "worksOn",
+          "target_name": "Harbor Point B&B Launch",
+          "direction": "outgoing",
+          "reason": "New prospect just accepted proposal"
+        },
+        {
+          "relation": "communicatedWith",
+          "target_name": "Sam Whitfield",
+          "direction": "outgoing",
+          "reason": "Proposal discussions for Harbor Point B&B"
+        },
+        {
+          "relation": "communicatedWith",
+          "target_name": "Marcus Lindqvist",
+          "direction": "outgoing",
+          "reason": "Design subcontractor for studio projects"
+        },
+        {
+          "relation": "communicatedWith",
+          "target_name": "Dr. Ana Rivera",
+          "direction": "outgoing",
+          "reason": "Retainer client \u2014 Rivera Family Dental"
+        }
+      ]
+    },
+    {
+      "id": "entity:a002000002",
+      "name": "Diego Ram\u00edrez",
+      "category": "Person",
+      "summary": "Part-time associate marketer and first hire at AnyCompany SOHO Studio. Ramping up on client work, starting with Foundry Coffee recap and Bloom & Vine posts.",
+      "created_at_offset_seconds": -604800,
+      "last_informative_observation_at_offset_seconds": -86400,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.9,
+      "edges": [
+        {
+          "relation": "worksFor",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "First hire at the studio"
+        },
+        {
+          "relation": "reportsTo",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Diego reports to Darla as the founder"
+        },
+        {
+          "relation": "worksOn",
+          "target_name": "Foundry Coffee Retainer",
+          "direction": "outgoing",
+          "reason": "Taking over the Foundry Coffee monthly recap"
+        }
+      ]
+    },
+    {
+      "id": "entity:a003000003",
+      "name": "AnyCompany SOHO Studio",
+      "category": "Organization",
+      "summary": "A 2-person marketing and brand consultancy run from a home office. Serves 5 active retainer clients, 1 project in delivery, and 2 prospects. Monthly retainer revenue is about $9,500 (Cedar & Co. Law $2,200, Foundry Coffee $2,000, Rivera Family Dental $2,000, Bloom & Vine $1,800, Northside Yoga $1,500); with active project work a typical month runs roughly $12,000-$14,000.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -3600,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 1.0,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "Active project in delivery"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Harbor Point B&B Launch",
+          "direction": "outgoing",
+          "reason": "New project \u2014 prospect just accepted"
+        }
+      ]
+    },
+    {
+      "id": "entity:a004000004",
+      "name": "Sam Whitfield",
+      "category": "Person",
+      "summary": "Owner of Harbor Point B&B. Just accepted the marketing proposal and wants to launch a new brand and campaign in about 6 weeks. Asking about an annual commitment discount.",
+      "created_at_offset_seconds": -1209600,
+      "last_informative_observation_at_offset_seconds": -7200,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.85,
+      "edges": [
+        {
+          "relation": "memberOf",
+          "target_name": "Harbor Point B&B",
+          "direction": "outgoing",
+          "reason": "Owner of the bed and breakfast"
+        },
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Proposal discussions and acceptance"
+        }
+      ]
+    },
+    {
+      "id": "entity:a005000005",
+      "name": "Harbor Point B&B",
+      "category": "Organization",
+      "summary": "A bed and breakfast, now a confirmed new client of AnyCompany SOHO Studio. Wants a full brand and campaign launch before their busy season in about 6 weeks.",
+      "created_at_offset_seconds": -1209600,
+      "last_informative_observation_at_offset_seconds": -7200,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.85,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Harbor Point B&B Launch",
+          "direction": "outgoing",
+          "reason": "The organization behind the launch project"
+        }
+      ]
+    },
+    {
+      "id": "entity:a006000006",
+      "name": "Harbor Point B&B Launch",
+      "category": "Project",
+      "summary": "New brand and campaign launch for Harbor Point B&B. Tight 6-week timeline. Proposal accepted. Kickoff call tentatively scheduled. Capacity assessment needed given existing workload.",
+      "created_at_offset_seconds": -7200,
+      "last_informative_observation_at_offset_seconds": -7200,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.9,
+      "edges": [
+        {
+          "relation": "dependsOn",
+          "target_name": "Capacity Decision",
+          "direction": "outgoing",
+          "reason": "Team needs to confirm they can take this on without overloading"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Marcus Lindqvist",
+          "direction": "outgoing",
+          "reason": "Will need design subcontractor for brand work"
+        }
+      ]
+    },
+    {
+      "id": "entity:a007000007",
+      "name": "Grid Street Bikes Brand Project",
+      "category": "Project",
+      "summary": "Brand project currently in delivery for Grid Street Bikes. Strategy brief nearly complete, moodboard in progress with Marcus (design), website copy pending with Jordan. Deposit invoice overdue by 6 days.",
+      "created_at_offset_seconds": -1209600,
+      "last_informative_observation_at_offset_seconds": -86400,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.85,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Marcus Lindqvist",
+          "direction": "outgoing",
+          "reason": "Design subcontractor handling moodboard and brand design"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Jordan",
+          "direction": "outgoing",
+          "reason": "Copywriter handling website copy"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Jake Torres",
+          "direction": "outgoing",
+          "reason": "Client who owns Grid Street Bikes"
+        }
+      ]
+    },
+    {
+      "id": "entity:a008000008",
+      "name": "Priya Patel",
+      "category": "Person",
+      "summary": "Owner of Bloom & Vine Florals, a retainer client. Requested a rush Instagram post about a same-day wedding order.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -5400,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.7,
+      "edges": [
+        {
+          "relation": "memberOf",
+          "target_name": "Bloom & Vine Florals",
+          "direction": "outgoing",
+          "reason": "Owner of the floral shop"
+        },
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Rush post request via email and chat"
+        }
+      ]
+    },
+    {
+      "id": "entity:a009000009",
+      "name": "Bloom & Vine Florals",
+      "category": "Organization",
+      "summary": "A floral shop and retainer client of AnyCompany SOHO Studio. $1,800/mo retainer for social media content. Currently needs a rush Instagram post.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -5400,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.7,
+      "edges": []
+    },
+    {
+      "id": "entity:a010000010",
+      "name": "Marcus Lindqvist",
+      "category": "Person",
+      "summary": "Freelance design subcontractor who works with AnyCompany SOHO Studio on a per-project basis. Sent a rate increase: brand projects $2,000 to $2,400, hourly $85 to $95. Includes volume commitment options.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -259200,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.8,
+      "edges": [
+        {
+          "relation": "worksOn",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "Handling moodboard and brand design for Grid Street"
+        },
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Sent rate increase and project updates"
+        }
+      ]
+    },
+    {
+      "id": "entity:a011000011",
+      "name": "Jordan",
+      "category": "Person",
+      "summary": "Freelance copywriter subcontractor who works with AnyCompany SOHO Studio per project. Available to start Grid Street Bikes website copy once the strategy brief and sitemap are ready.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -90000,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.65,
+      "edges": [
+        {
+          "relation": "worksOn",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "Will handle the website homepage and About copy"
+        }
+      ]
+    },
+    {
+      "id": "entity:a012000012",
+      "name": "Marcus Bell",
+      "category": "Person",
+      "summary": "Contact at Foundry Coffee Roasters, a retainer client. Requested the monthly social and newsletter performance recap by end of week.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -90000,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.65,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Foundry Coffee Retainer",
+          "direction": "outgoing",
+          "reason": "Point of contact for the Foundry Coffee retainer"
+        }
+      ]
+    },
+    {
+      "id": "entity:a013000013",
+      "name": "Foundry Coffee Retainer",
+      "category": "Project",
+      "summary": "Monthly retainer engagement with Foundry Coffee Roasters. Covers social media management and email newsletter. Diego is ramping up to help with the monthly recap.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -90000,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.65,
+      "edges": []
+    },
+    {
+      "id": "entity:a014000014",
+      "name": "Dr. Ana Rivera",
+      "category": "Person",
+      "summary": "Owner of Rivera Family Dental, a retainer client. Approved the newsletter with a minor tip swap. Referred Dr. Neel Shah at Lumen Pediatrics.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -3600,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.7,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Retainer client \u2014 newsletter approval"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Dr. Neel Shah",
+          "direction": "outgoing",
+          "reason": "Referred Dr. Shah to AnyCompany SOHO Studio"
+        }
+      ]
+    },
+    {
+      "id": "entity:a015000015",
+      "name": "Dr. Neel Shah",
+      "category": "Person",
+      "summary": "Owner of Lumen Pediatrics, a new practice. Interested in marketing help \u2014 brand and getting found online. Referred by Dr. Ana Rivera. Wants a discovery call this week, mornings preferred.",
+      "created_at_offset_seconds": -90000,
+      "last_informative_observation_at_offset_seconds": -90000,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.7,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Reached out for a discovery call about marketing services"
+        }
+      ]
+    },
+    {
+      "id": "entity:a016000016",
+      "name": "Tess Okoro",
+      "category": "Person",
+      "summary": "Owner of Northside Yoga, a retainer client. Asked to reschedule this week's check-in from Wednesday to Thursday.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -10800,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.6,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Retainer client \u2014 rescheduling weekly check-in"
+        }
+      ]
+    },
+    {
+      "id": "entity:a017000017",
+      "name": "Jake Torres",
+      "category": "Person",
+      "summary": "Owner of Grid Street Bikes, a project client. Brand project currently in delivery. Deposit invoice ($2,100) is 6 days overdue.",
+      "created_at_offset_seconds": -1209600,
+      "last_informative_observation_at_offset_seconds": -172800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.65,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "Client and owner of Grid Street Bikes"
+        }
+      ]
+    },
+    {
+      "id": "entity:a018000018",
+      "name": "Jonah Feldman",
+      "category": "Person",
+      "summary": "Partner at Cedar & Co. Law, a retainer client. Invoice ($2,200) is 12 days overdue. Monthly call scheduled later this week.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -172800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.6,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Retainer client \u2014 overdue invoice and upcoming monthly call"
+        }
+      ]
+    },
+    {
+      "id": "entity:a019000019",
+      "name": "Capacity Decision",
+      "category": "Decision",
+      "summary": "Key business decision: whether AnyCompany SOHO Studio can take on Harbor Point B&B as a new client given the existing 5 retainers, Grid Street project in delivery, and a 2-person team. Factors include Diego taking more retainer work, the design subcontractor's rate increase, and the 2-week design overlap.",
+      "created_at_offset_seconds": -7200,
+      "last_informative_observation_at_offset_seconds": -7200,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.85,
+      "edges": [
+        {
+          "relation": "object",
+          "target_name": "Harbor Point B&B Launch",
+          "direction": "outgoing",
+          "reason": "The decision is about whether to take on this new project"
+        },
+        {
+          "relation": "dependsOn",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "Existing project capacity affects whether Harbor Point is feasible"
+        }
+      ]
+    },
+    {
+      "id": "entity:a020000020",
+      "name": "Weekly Planning & Diego Sync",
+      "category": "Event",
+      "summary": "Monday morning planning meeting between Darla and Diego. Covers weekly priorities, client task assignments, and Diego's ramp-up progress.",
+      "created_at_offset_seconds": -604800,
+      "last_informative_observation_at_offset_seconds": -3600,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.6,
+      "edges": [
+        {
+          "relation": "participatesIn",
+          "target_name": "Darla Emiliano",
+          "direction": "incoming",
+          "reason": "Darla runs the weekly planning meeting"
+        },
+        {
+          "relation": "participatesIn",
+          "target_name": "Diego Ram\u00edrez",
+          "direction": "incoming",
+          "reason": "Diego attends to get his weekly tasks"
+        }
+      ]
+    },
+    {
+      "id": "entity:b001000001",
+      "name": "Small Business Marketing Summit",
+      "category": "Event",
+      "summary": "Annual regional conference for small business marketing professionals. Darla spoke on a panel about client retention strategies last year. Networking opportunity for new prospects.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -2592000,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.5,
+      "edges": [
+        {
+          "relation": "participatesIn",
+          "target_name": "Darla Emiliano",
+          "direction": "incoming",
+          "reason": "Darla spoke on a panel about client retention"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Local Business Chamber",
+          "direction": "outgoing",
+          "reason": "Co-hosted by the local chamber"
+        }
+      ]
+    },
+    {
+      "id": "entity:b002000002",
+      "name": "Local Business Chamber",
+      "category": "Organization",
+      "summary": "Regional business chamber that organizes networking events, small-business workshops, and speaker mornings. Recently invited Darla to speak on marketing for small businesses.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -172800,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.5,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Invited Darla to speak at a member morning"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Small Business Marketing Summit",
+          "direction": "outgoing",
+          "reason": "Co-hosts the annual summit"
+        }
+      ]
+    },
+    {
+      "id": "entity:b003000003",
+      "name": "Digital Marketing Trends Report",
+      "category": "Organization",
+      "summary": "Industry benchmarking publication that tracks social media engagement rates, email open rates, and ad spend ROI for small businesses. Darla references it when setting client expectations.",
+      "created_at_offset_seconds": -5184000,
+      "last_informative_observation_at_offset_seconds": -604800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.4,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Darla uses their benchmarks for client reporting"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Foundry Coffee Retainer",
+          "direction": "outgoing",
+          "reason": "Used to benchmark Foundry Coffee's newsletter performance"
+        }
+      ]
+    },
+    {
+      "id": "entity:b004000004",
+      "name": "Nimbus CRM",
+      "category": "Organization",
+      "summary": "CRM platform the studio considered adopting for pipeline tracking. Decided against it for now due to cost, but may revisit when client count grows past 8-10.",
+      "created_at_offset_seconds": -5184000,
+      "last_informative_observation_at_offset_seconds": -2592000,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.35,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Evaluated as a CRM option for the studio"
+        }
+      ]
+    },
+    {
+      "id": "entity:b005000005",
+      "name": "SocialDesk Suite",
+      "category": "Organization",
+      "summary": "Social media management platform used by the studio for scheduling Instagram and Facebook posts across all client accounts.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -86400,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.45,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Primary social scheduling tool for client content"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Bloom & Vine Florals",
+          "direction": "outgoing",
+          "reason": "Used for Bloom & Vine's Instagram scheduling"
+        }
+      ]
+    },
+    {
+      "id": "entity:b006000006",
+      "name": "Lena Okafor",
+      "category": "Person",
+      "summary": "Freelance photographer who occasionally shoots product and lifestyle photos for the studio's clients. Based locally. Available for the Harbor Point B&B brand shoot if needed.",
+      "created_at_offset_seconds": -5184000,
+      "last_informative_observation_at_offset_seconds": -1209600,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.4,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Collaborates on client photo shoots"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "Shot product photos for the brand project"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Marcus Lindqvist",
+          "direction": "outgoing",
+          "reason": "Works alongside Marcus on brand projects"
+        }
+      ]
+    },
+    {
+      "id": "entity:b007000007",
+      "name": "Carlos Mendes",
+      "category": "Person",
+      "summary": "Darla's business mentor and former employer at a mid-size marketing agency. They catch up monthly. Carlos referred Harbor Point B&B after meeting Sam at a chamber event.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -604800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.45,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Monthly mentorship catch-ups"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Sam Whitfield",
+          "direction": "outgoing",
+          "reason": "Met Sam at a chamber event and made the referral"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Local Business Chamber",
+          "direction": "outgoing",
+          "reason": "Active member of the chamber"
+        }
+      ]
+    },
+    {
+      "id": "entity:b008000008",
+      "name": "Reina Takahashi",
+      "category": "Person",
+      "summary": "Accountant who handles the studio's quarterly taxes and year-end filings. Advised Darla on setting aside tax reserves and structuring contractor payments.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -2592000,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.35,
+      "edges": [
+        {
+          "relation": "communicatedWith",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Handles quarterly tax filings and financial advice"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Studio's accountant"
+        }
+      ]
+    },
+    {
+      "id": "entity:b009000009",
+      "name": "Tom Nguyen",
+      "category": "Person",
+      "summary": "Owner of a local print shop. Handles all physical marketing materials \u2014 business cards, flyers, brochures \u2014 for several of the studio's clients.",
+      "created_at_offset_seconds": -5184000,
+      "last_informative_observation_at_offset_seconds": -1209600,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.3,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Print vendor for client materials"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Rivera Family Dental",
+          "direction": "outgoing",
+          "reason": "Prints Rivera Dental's patient brochures"
+        }
+      ]
+    },
+    {
+      "id": "entity:b010000010",
+      "name": "Rivera Family Dental",
+      "category": "Organization",
+      "summary": "Family dental practice owned by Dr. Ana Rivera. One of the studio's 5 retainer clients. $2,000/mo retainer covering newsletter, social media, and patient communication materials.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -3600,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.65,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Dr. Ana Rivera",
+          "direction": "outgoing",
+          "reason": "Dr. Rivera owns the practice"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Retainer client of the studio"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Dr. Neel Shah",
+          "direction": "outgoing",
+          "reason": "Dr. Rivera referred Dr. Shah"
+        }
+      ]
+    },
+    {
+      "id": "entity:b011000011",
+      "name": "Cedar & Co. Law Rebrand",
+      "category": "Project",
+      "summary": "Completed project from earlier this year. Full rebrand for Cedar & Co. Law including logo, website refresh, and marketing collateral. Strong relationship led to ongoing retainer.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -5184000,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.4,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Jonah Feldman",
+          "direction": "outgoing",
+          "reason": "Jonah was the main point of contact for the rebrand"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Marcus Lindqvist",
+          "direction": "outgoing",
+          "reason": "Marcus did the logo and visual identity design"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Darla led the strategy and client relationship"
+        }
+      ]
+    },
+    {
+      "id": "entity:b012000012",
+      "name": "Northside Yoga Brand Refresh",
+      "category": "Project",
+      "summary": "Completed mini-refresh for Northside Yoga about 3 months ago. Updated their social media templates, class schedule graphics, and promotional materials for a seasonal push.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -5184000,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.35,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Tess Okoro",
+          "direction": "outgoing",
+          "reason": "Tess commissioned the brand refresh"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Darla Emiliano",
+          "direction": "outgoing",
+          "reason": "Darla managed the project end to end"
+        }
+      ]
+    },
+    {
+      "id": "entity:b013000013",
+      "name": "Palette Pro",
+      "category": "Organization",
+      "summary": "Design tool used by Diego for quick social media graphics and simple templates. Complements the Design Suite for non-complex visual work.",
+      "created_at_offset_seconds": -604800,
+      "last_informative_observation_at_offset_seconds": -172800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.35,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Diego Ram\u00edrez",
+          "direction": "outgoing",
+          "reason": "Diego uses Palette Pro for quick social graphics"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Part of the studio's design toolkit"
+        }
+      ]
+    },
+    {
+      "id": "entity:b014000014",
+      "name": "InboxLoop",
+      "category": "Organization",
+      "summary": "Email marketing platform used for all client newsletters and email campaigns. Integrated with the client roster for segmented sends.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -86400,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.45,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Primary email marketing tool"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Foundry Coffee Retainer",
+          "direction": "outgoing",
+          "reason": "Used for Foundry Coffee's monthly newsletter"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Dr. Ana Rivera",
+          "direction": "outgoing",
+          "reason": "Used for Rivera Dental's patient newsletter"
+        }
+      ]
+    },
+    {
+      "id": "entity:b015000015",
+      "name": "Lumen Pediatrics",
+      "category": "Organization",
+      "summary": "New pediatrics practice looking for marketing help \u2014 brand identity and online visibility. Discovery prospect referred by Rivera Dental. Mornings preferred for calls.",
+      "created_at_offset_seconds": -90000,
+      "last_informative_observation_at_offset_seconds": -90000,
+      "source_type": "email",
+      "node_class": "entity",
+      "score": 0.6,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Dr. Neel Shah",
+          "direction": "outgoing",
+          "reason": "Dr. Shah owns the practice"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Rivera Family Dental",
+          "direction": "outgoing",
+          "reason": "Referred by Rivera Dental"
+        }
+      ]
+    },
+    {
+      "id": "entity:b016000016",
+      "name": "Grid Street Bikes",
+      "category": "Organization",
+      "summary": "Urban cycling shop and project client. Brand project currently in delivery ($4,200 project fee, 50% deposit $2,100). Deposit invoice is overdue by 6 days.",
+      "created_at_offset_seconds": -1209600,
+      "last_informative_observation_at_offset_seconds": -172800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.65,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Jake Torres",
+          "direction": "outgoing",
+          "reason": "Jake owns Grid Street Bikes"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Grid Street Bikes Brand Project",
+          "direction": "outgoing",
+          "reason": "The organization behind the brand project"
+        }
+      ]
+    },
+    {
+      "id": "entity:b017000017",
+      "name": "Cedar & Co. Law",
+      "category": "Organization",
+      "summary": "Law firm and retainer client. $2,200/mo retainer for legal marketing including content, social media, and newsletter. Invoice #2041 ($2,200) is 12 days overdue.",
+      "created_at_offset_seconds": -7776000,
+      "last_informative_observation_at_offset_seconds": -172800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.6,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Jonah Feldman",
+          "direction": "outgoing",
+          "reason": "Jonah is a partner at the firm"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Retainer client"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Cedar & Co. Law Rebrand",
+          "direction": "outgoing",
+          "reason": "Completed rebrand led to the ongoing retainer"
+        }
+      ]
+    },
+    {
+      "id": "entity:b018000018",
+      "name": "Northside Yoga",
+      "category": "Organization",
+      "summary": "Yoga studio and retainer client. $1,500/mo retainer covering social media and promotional materials. Weekly check-ins with Tess Okoro.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -10800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.55,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Tess Okoro",
+          "direction": "outgoing",
+          "reason": "Tess owns Northside Yoga"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Retainer client"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Northside Yoga Brand Refresh",
+          "direction": "outgoing",
+          "reason": "Recent brand refresh project"
+        }
+      ]
+    },
+    {
+      "id": "entity:b019000019",
+      "name": "Foundry Coffee Roasters",
+      "category": "Organization",
+      "summary": "Coffee roaster and retainer client. $2,000/mo retainer for social media management and monthly newsletter. Paid their retainer on time. Monthly recap requested.",
+      "created_at_offset_seconds": -2592000,
+      "last_informative_observation_at_offset_seconds": -14400,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.6,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Marcus Bell",
+          "direction": "outgoing",
+          "reason": "Marcus Bell is the contact there"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "AnyCompany SOHO Studio",
+          "direction": "outgoing",
+          "reason": "Retainer client"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Foundry Coffee Retainer",
+          "direction": "outgoing",
+          "reason": "The organization behind the retainer"
+        }
+      ]
+    },
+    {
+      "id": "entity:c001000001",
+      "name": "Services Rate Sheet",
+      "category": "DOCUMENT",
+      "summary": "AnyCompany SOHO Studio's client-facing pricing that Darla scopes proposals from. Brand identity project from $4,000; full brand + campaign launch from $7,500; monthly social + newsletter retainers $1,500-$2,200 depending on scope; 10% discount for a 12-month commitment. Add-ons billed at cost plus coordination: extra social channel, product/lifestyle photography (via Lena Okafor), and print production (via Tom Nguyen). This is the rate sheet referenced when pricing the Harbor Point B&B proposal, including the annual-commitment discount Sam asked about.",
+      "created_at_offset_seconds": -5184000,
+      "last_informative_observation_at_offset_seconds": -604800,
+      "source_type": "other",
+      "node_class": "entity",
+      "score": 0.6,
+      "edges": [
+        {
+          "relation": "relatedTo",
+          "target_name": "Darla Emiliano",
+          "direction": "incoming",
+          "reason": "Darla maintains the rate sheet and prices client proposals from it"
+        },
+        {
+          "relation": "relatedTo",
+          "target_name": "Harbor Point B&B Launch",
+          "direction": "outgoing",
+          "reason": "Pricing basis for the Harbor Point proposal, including the annual-commitment discount"
+        }
+      ]
+    }
+  ],
+  "memories": [
+    {
+      "id": "mem_soho_001",
+      "type": "fact",
+      "category": "profile",
+      "provenance": "explicit",
+      "confidence": 0.95,
+      "created_offset_days": -30,
+      "tags": [
+        "studio",
+        "business",
+        "clients"
+      ],
+      "text": "AnyCompany SOHO Studio is a 2-person marketing and brand consultancy. Darla Emiliano is the founder; Diego Ram\u00edrez is her first hire (part-time associate marketer). They serve 5 retainer clients (Bloom & Vine Florals $1,800/mo, Foundry Coffee Roasters $2,000/mo, Cedar & Co. Law $2,200/mo, Rivera Family Dental $2,000/mo, Northside Yoga $1,500/mo), have 1 project in delivery (Grid Street Bikes, $4,200 project fee), and 2 prospects (Harbor Point B&B, Lumen Pediatrics). Retainer revenue is about $9,500/mo; with active project work a typical month runs roughly $12,000-$14,000.",
+      "is_global_behavior": false
+    },
+    {
+      "id": "mem_soho_002",
+      "type": "fact",
+      "category": "people",
+      "provenance": "explicit",
+      "confidence": 0.9,
+      "created_offset_days": -14,
+      "tags": [
+        "subcontractors",
+        "design",
+        "copy"
+      ],
+      "text": "The studio uses two per-project subcontractors who are NOT on the Quick Plus account: Marcus Lindqvist (design) and Jordan (copywriter). Marcus recently sent a rate increase \u2014 brand projects from $2,000 to $2,400, hourly from $85 to $95. He included volume commitment options.",
+      "is_global_behavior": false
+    },
+    {
+      "id": "mem_soho_003",
+      "type": "fact",
+      "category": "preference",
+      "provenance": "explicit",
+      "confidence": 0.9,
+      "created_offset_days": -7,
+      "tags": [
+        "voice",
+        "brand",
+        "tone"
+      ],
+      "text": "Each client has a distinct brand voice, and Darla uses the Client Voice Brief agent to capture it before drafting client-facing content. Bloom & Vine is warm, personal, and floral; Foundry Coffee is casual and community-driven; Cedar & Co. is professional and authoritative; Rivera Dental is friendly and approachable; Grid Street Bikes is bold and urban.",
+      "is_global_behavior": false
+    },
+    {
+      "id": "mem_soho_004",
+      "type": "fact",
+      "category": "preference",
+      "provenance": "inferred",
+      "confidence": 0.85,
+      "created_offset_days": -5,
+      "tags": [
+        "invoicing",
+        "payments",
+        "reminders"
+      ],
+      "text": "Darla adapts her invoice-reminder tone by client relationship: warm and appreciative for long-term retainer clients, firmer for project deposits where work is already underway. Her reminders reference the invoice number, amount, and days overdue.",
+      "is_global_behavior": false
+    },
+    {
+      "id": "mem_soho_005",
+      "type": "fact",
+      "category": "preference",
+      "provenance": "explicit",
+      "confidence": 0.9,
+      "created_offset_days": -3,
+      "tags": [
+        "team",
+        "sharing",
+        "diego"
+      ],
+      "text": "Diego has access to the AnyCompany SOHO Client Work Space and the Client Voice Brief agent. Darla's practice is to share new reusable helpers with him so he can ramp faster. He's starting with Foundry Coffee and Bloom & Vine work.",
+      "is_global_behavior": false
+    },
+    {
+      "id": "ee23c7839ce9",
+      "type": "fact",
+      "category": "preference",
+      "provenance": "explicit",
+      "confidence": 0.77,
+      "created_offset_days": -73.8,
+      "tags": [
+        "demo",
+        "knowledge-graph",
+        "activity-feed"
+      ],
+      "text": "This is a demo workspace. The people, companies, and the mail and messaging entries in the knowledge graph and activity feed are fictitious sample data and do not correspond to any real mail or messaging account.",
+      "is_global_behavior": false
+    }
+  ]
+}
