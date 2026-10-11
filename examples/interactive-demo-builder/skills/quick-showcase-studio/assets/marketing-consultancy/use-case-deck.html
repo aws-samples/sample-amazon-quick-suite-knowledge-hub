@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AnyCompany SOHO Studio — Amazon Quick Showcase</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#141b30; --panel2:#1b2440; --ink:#eaf0ff; --muted:#9aa8c7;
+    --accent:#5b8cff; --accent2:#7c5cff; --line:#26314f; --chip:#1f2a49;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 20% -10%,#1a2b4d 0,transparent 60%),var(--bg);
+    background-color:var(--bg); color:var(--ink); line-height:1.5;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:40px 24px 64px}
+  header.hero{text-align:center; padding:24px 0 8px}
+  .eyebrow{color:var(--accent); font-weight:600; letter-spacing:.08em; text-transform:uppercase; font-size:12px}
+  h1{font-size:32px; margin:10px 0 8px; line-height:1.15}
+  .sub{color:var(--muted); max-width:680px; margin:0 auto; font-size:16px}
+  .persona{margin:18px auto 0; max-width:680px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:14px 18px; font-size:14px; color:var(--ink)}
+  .persona b{color:var(--accent)}
+  .filters{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:26px 0 22px}
+  .filter{background:var(--chip); color:var(--muted); border:1px solid var(--line); border-radius:999px;
+    padding:8px 14px; font-size:13px; cursor:pointer; transition:all .15s ease}
+  .filter:hover{color:var(--ink); border-color:var(--accent)}
+  .filter.active{background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+    border-radius:14px; padding:18px; transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease}
+  .card:hover{transform:translateY(-3px); border-color:var(--accent); box-shadow:0 10px 30px rgba(20,30,70,.45)}
+  .phase{display:inline-block; font-size:11px; color:var(--accent); background:rgba(91,140,255,.12);
+    border:1px solid rgba(91,140,255,.25); padding:3px 8px; border-radius:6px; margin-bottom:10px}
+  .card h3{margin:2px 0 6px; font-size:17px}
+  .card p{margin:0 0 10px; color:var(--muted); font-size:14px}
+  .value{font-size:13px; border-top:1px dashed var(--line); padding-top:10px}
+  .value b{color:var(--accent)}
+  .kg{margin-top:22px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px}
+  .kg h2{font-size:18px; margin:0 0 8px}
+  .kg p{color:var(--muted); font-size:14px; margin:0 0 10px}
+  .tags{display:flex; flex-wrap:wrap; gap:6px}
+  .tag{font-size:12px; background:var(--chip); border:1px solid var(--line); border-radius:6px; padding:4px 8px; color:var(--ink)}
+  footer{margin-top:28px; text-align:center; color:var(--muted); font-size:13px}
+  .count{color:var(--muted); text-align:center; font-size:13px; margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">Amazon Quick Showcase</div>
+    <h1>A day in the life at AnyCompany SOHO Studio</h1>
+    <p class="sub">A story-driven demo of how a two-person marketing &amp; brand consultancy runs the whole
+    business from one connected workspace — triage the morning, automate the busywork, scale with a teammate,
+    and turn connected context into client-ready work.</p>
+    <div class="persona">
+      <b>You play Darla Emiliano</b>, founder of AnyCompany SOHO Studio. You recently made your first hire,
+      <b>Diego Ramírez</b>. Together you serve five retainer clients, have one project in delivery, and just
+      landed a new one. It's Monday morning — walk the Activity Feed and the day tells itself.
+    </div>
+  </header>
+
+  <nav class="filters" id="filters"></nav>
+  <div class="count" id="count"></div>
+  <main class="grid" id="grid"></main>
+
+  <section class="kg">
+    <h2>The Knowledge Graph is the engine</h2>
+    <p>Every deliverable in the demo is assembled from a connected map of Darla's world — no template, no
+    re-briefing. The Harbor Point proposal pulls the client's own words, the studio's rate sheet, team
+    availability, and a subcontractor's rates from separate conversations, all at once.</p>
+    <div class="tags">
+      <span class="tag">Darla &amp; Diego</span>
+      <span class="tag">Bloom &amp; Vine Florals</span>
+      <span class="tag">Foundry Coffee Roasters</span>
+      <span class="tag">Cedar &amp; Co. Law</span>
+      <span class="tag">Rivera Family Dental</span>
+      <span class="tag">Northside Yoga</span>
+      <span class="tag">Grid Street Bikes</span>
+      <span class="tag">Harbor Point B&amp;B</span>
+      <span class="tag">Services Rate Sheet</span>
+      <span class="tag">Subcontractors: Marcus &amp; Jordan</span>
+    </div>
+  </section>
+
+  <footer>A use-case story for the AnyCompany SOHO Studio showcase. Walk the acts in order for the full narrative.</footer>
+</div>
+
+<script>
+  const ACTS = [
+    {phase:"Opening", name:"Connect her world",
+     desc:"Darla connected her email, calendar, and team channel in a couple of minutes — and a few folders on her computer. Everything that follows is the payoff of that quick setup.",
+     value:"Connect once, in minutes — no data migration, no files to hand over."},
+    {phase:"Act 1", name:"Morning triage",
+     desc:"The feed opens on a busy Monday: two overdue invoices, a new-client reply, a rush social post. Darla asks Quick to draft both payment reminders — warm for the long-term retainer, firmer for the project deposit.",
+     value:"The task owners hate most — chasing money — done in seconds, tuned per relationship."},
+    {phase:"Act 2", name:"Automate it",
+     desc:"Those reminders shouldn't need asking every time. Darla sets up a recurring helper that checks overdue invoices twice a week and drafts the reminders on its own.",
+     value:"Build a helper once; it runs on a schedule in the background."},
+    {phase:"Act 3", name:"Scale the team",
+     desc:"A micro-business scales two ways: agents that automate recurring work, and people. Darla shares agents, spaces, and apps with Diego in one click — he starts using them with no setup.",
+     value:"Grow capacity without growing headcount — and share everything you build."},
+    {phase:"Act 4", name:"Client dashboard app",
+     desc:"Darla built a client dashboard with a single prompt — revenue by client, invoicing status, and a client table. Diego sees the same live view, so Monday syncs start from one picture.",
+     value:"An app in one prompt, live on top of the tools you already use."},
+    {phase:"Act 5", name:"Client-ready deliverables",
+     desc:"Harbor Point said yes. Quick writes a full proposal — scope, six-week timeline, pricing with the annual-commitment discount — from connected context. Then the Knowledge Graph reveal shows where every fact came from.",
+     value:"Polished, send-ready work assembled from your full context, not a template."},
+    {phase:"Closing", name:"Take Quick with you",
+     desc:"The day started at Darla's desk and ends in her pocket — same account, same connections, same memory on her phone. She can ask 'did the proposal get a reply yet?' on the go and get the same answer.",
+     value:"Connect once, and it works everywhere the work goes."}
+  ];
+
+  const phases = ["All", ...ACTS.map(a => a.phase)];
+  let active = "All";
+  const filtersEl = document.getElementById("filters");
+  const gridEl = document.getElementById("grid");
+  const countEl = document.getElementById("count");
+
+  function render(){
+    filtersEl.replaceChildren();
+    phases.forEach(p => {
+      const b = document.createElement("button");
+      b.className = "filter" + (p === active ? " active" : "");
+      b.textContent = p;
+      b.onclick = () => { active = p; render(); };
+      filtersEl.appendChild(b);
+    });
+    const shown = ACTS.filter(a => active === "All" || a.phase === active);
+    countEl.textContent = active === "All"
+      ? shown.length + " beats — Opening through Closing"
+      : active;
+    gridEl.replaceChildren();
+    shown.forEach(a => {
+      const c = document.createElement("article");
+      c.className = "card";
+      const phaseEl = document.createElement("span");
+      phaseEl.className = "phase";
+      phaseEl.textContent = a.phase;
+      const nameEl = document.createElement("h3");
+      nameEl.textContent = a.name;
+      const descEl = document.createElement("p");
+      descEl.textContent = a.desc;
+      const valueEl = document.createElement("div");
+      valueEl.className = "value";
+      const label = document.createElement("b");
+      label.textContent = "Why it matters:";
+      valueEl.append(label, " " + a.value);
+      c.append(phaseEl, nameEl, descEl, valueEl);
+      gridEl.appendChild(c);
+    });
+  }
+  render();
+</script>
+</body>
+</html>
