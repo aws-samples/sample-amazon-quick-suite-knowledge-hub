@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="920" viewBox="0 0 1480 920" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <style>
+      .lane  { fill:#f7f9fc; stroke:#d4dde8; stroke-width:1.5; }
+      .lane-title { fill:#33475f; font-size:14px; font-weight:700; letter-spacing:1.5px; }
+      .aws   { fill:none; stroke:#9aa7bd; stroke-width:1.6; stroke-dasharray:3 4; }
+      .aws-title { fill:#8a98ab; font-size:12px; font-weight:bold; letter-spacing:1px; }
+      .box   { fill:#eef3fb; stroke:#4a73c0; stroke-width:1.5; }
+      .box-accent { fill:#4a73c0; }
+      .label { fill:#13233a; font-size:14px; font-weight:700; }
+      .sub   { fill:#48596f; font-size:11.5px; }
+      .muted { fill:#8a98ab; font-size:11.5px; }
+      .edge  { stroke:#5b6c84; stroke-width:2; fill:none; marker-end:url(#arrow); }
+      .edge-dash { stroke:#5b6c84; stroke-width:2; fill:none; stroke-dasharray:6 5; marker-end:url(#arrow); }
+      .elabel { fill:#5b6c84; font-size:11px; }
+      .title { fill:#13233a; font-size:22px; font-weight:bold; }
+      .subtitle { fill:#5a6b82; font-size:13px; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6c84"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1480" height="920" fill="#ffffff"/>
+  <text x="48" y="48" class="title">Amazon Quick Observability — Architecture</text>
+  <text x="48" y="72" class="subtitle">Amazon Quick telemetry &#8594; S3 data lake (Glue/Athena) &#8594; QuickSight dashboards and a single-tool MCP agent</text>
+
+  <!-- ===================== ACTORS (two users) ===================== -->
+  <!-- End user: interacts with Amazon Quick (produces the activity) -->
+  <circle cx="70" cy="236" r="22" fill="#eef3fb" stroke="#4a73c0" stroke-width="1.5"/>
+  <circle cx="70" cy="228" r="7.5" fill="#4a73c0"/>
+  <path d="M56 250 c0 -10 28 -10 28 0 z" fill="#4a73c0"/>
+  <text x="70" y="286" text-anchor="middle" class="label">End user</text>
+
+  <!-- Operator: consumes dashboards + the observability agent -->
+  <circle cx="70" cy="520" r="22" fill="#eef3fb" stroke="#4a73c0" stroke-width="1.5"/>
+  <circle cx="70" cy="512" r="7.5" fill="#4a73c0"/>
+  <path d="M56 534 c0 -10 28 -10 28 0 z" fill="#4a73c0"/>
+  <text x="70" y="570" text-anchor="middle" class="label">Operator</text>
+  <text x="70" y="587" text-anchor="middle" class="sub">(observability)</text>
+
+  <!-- ===================== AWS CLOUD BOUNDARY (your AWS account resources) ===================== -->
+  <!-- wraps INGESTION + DATA LAKE + AgentCore Gateway; NOT Amazon Quick (SaaS) or the human user -->
+  <rect class="aws" x="612" y="104" width="836" height="712" rx="16"/>
+  <text x="632" y="128" class="aws-title">AWS CLOUD (your account)</text>
+
+  <!-- ===================== LANES ===================== -->
+  <!-- lane A (Amazon Quick) x=190 w=360 | lane B (Ingestion) x=636 w=350 | lane C (Data Lake) x=1060 w=350 -->
+  <rect class="lane" x="190" y="150" width="360" height="650" rx="14"/>
+  <text x="214" y="178" class="lane-title">AMAZON QUICK</text>
+
+  <rect class="lane" x="636" y="150" width="350" height="470" rx="14"/>
+  <text x="660" y="178" class="lane-title">INGESTION</text>
+
+  <rect class="lane" x="1060" y="150" width="350" height="650" rx="14"/>
+  <text x="1084" y="178" class="lane-title">DATA LAKE</text>
+
+  <!-- ===================== AMAZON QUICK SURFACES (x=222 w=296); the lane header IS Amazon Quick ===================== -->
+  <rect class="box" x="222" y="300" width="296" height="118" rx="10"/>
+  <rect class="box-accent" x="222" y="300" width="6" height="118" rx="3"/>
+  <text x="244" y="330" class="label">QuickSight dashboards</text>
+  <text x="244" y="355" class="sub">Athena data source + SPICE datasets</text>
+  <text x="244" y="376" class="sub">usage metrics (5 sheets)</text>
+  <text x="244" y="397" class="sub">+ Q&amp;A Topic + Space</text>
+
+  <rect class="box" x="222" y="470" width="296" height="92" rx="10"/>
+  <rect class="box-accent" x="222" y="470" width="6" height="92" rx="3"/>
+  <text x="244" y="500" class="label">Quick agent (observability)</text>
+  <text x="244" y="525" class="sub">Observability MCP connector (in Quick)</text>
+  <text x="244" y="546" class="sub">answers questions about Quick usage</text>
+
+  <!-- ===================== INGESTION BOXES (x=660 w=302) ===================== -->
+  <rect class="box" x="660" y="206" width="302" height="66" rx="10"/>
+  <rect class="box-accent" x="660" y="206" width="6" height="66" rx="3"/>
+  <text x="682" y="233" class="label">CloudWatch Logs delivery</text>
+  <text x="682" y="254" class="sub">vended-log delivery sources</text>
+
+  <rect class="box" x="660" y="300" width="302" height="66" rx="10"/>
+  <rect class="box-accent" x="660" y="300" width="6" height="66" rx="3"/>
+  <text x="682" y="327" class="label">Amazon Data Firehose</text>
+  <text x="682" y="348" class="sub">delivery streams &#8594; GZIP JSON</text>
+
+  <rect class="box" x="660" y="394" width="302" height="66" rx="10"/>
+  <rect class="box-accent" x="660" y="394" width="6" height="66" rx="3"/>
+  <text x="682" y="421" class="label">CloudTrail poller (Lambda)</text>
+  <text x="682" y="442" class="sub">EventBridge rate(5 min), 15-min lookback</text>
+
+  <rect class="box" x="660" y="488" width="302" height="66" rx="10"/>
+  <rect class="box-accent" x="660" y="488" width="6" height="66" rx="3"/>
+  <text x="682" y="515" class="label">Metrics poller (Lambda)</text>
+  <text x="682" y="536" class="sub">AWS/QuickSight CloudWatch metrics</text>
+
+  <rect class="box" x="660" y="582" width="302" height="48" rx="10"/>
+  <rect class="box-accent" x="660" y="582" width="6" height="48" rx="3"/>
+  <text x="682" y="611" class="sub">Amazon EventBridge — rate(5 minutes)</text>
+
+  <!-- ===================== DATA LAKE BOXES (x=1084 w=302) ===================== -->
+  <rect class="box" x="1084" y="206" width="302" height="82" rx="10"/>
+  <rect class="box-accent" x="1084" y="206" width="6" height="82" rx="3"/>
+  <text x="1106" y="234" class="label">Amazon S3 data lake</text>
+  <text x="1106" y="255" class="sub">quick-observability bucket</text>
+  <text x="1106" y="274" class="sub">S3-managed encryption, GZIP</text>
+
+  <rect class="box" x="1084" y="320" width="302" height="82" rx="10"/>
+  <rect class="box-accent" x="1084" y="320" width="6" height="82" rx="3"/>
+  <text x="1106" y="348" class="label">AWS Glue Data Catalog</text>
+  <text x="1106" y="369" class="sub">database: quick_observability</text>
+  <text x="1106" y="388" class="sub">9 external tables (JSON SerDe)</text>
+
+  <rect class="box" x="1084" y="434" width="302" height="82" rx="10"/>
+  <rect class="box-accent" x="1084" y="434" width="6" height="82" rx="3"/>
+  <text x="1106" y="462" class="label">Amazon Athena</text>
+  <text x="1106" y="483" class="sub">workgroup: quick-observability</text>
+  <text x="1106" y="502" class="sub">results &#8594; s3://&#8230;/athena-results/</text>
+
+  <rect class="box" x="1084" y="548" width="302" height="108" rx="10"/>
+  <rect class="box-accent" x="1084" y="548" width="6" height="108" rx="3"/>
+  <text x="1106" y="576" class="label">Tables (9)</text>
+  <text x="1106" y="597" class="sub">chat_events, feedback_events,</text>
+  <text x="1106" y="616" class="sub">agent_hours, agent_metadata,</text>
+  <text x="1106" y="635" class="sub">index_usage, kb_file_sync, dlp_events,</text>
+  <text x="1106" y="654" class="sub">cloudtrail_events, metric_snapshots</text>
+
+  <!-- ===================== AGENTCORE GATEWAY (standalone, below ingestion, inside AWS boundary) ===================== -->
+  <rect class="box" x="660" y="664" width="302" height="110" rx="10"/>
+  <rect class="box-accent" x="660" y="664" width="6" height="110" rx="3"/>
+  <text x="682" y="692" class="label">AgentCore Gateway</text>
+  <text x="682" y="714" class="sub">MCP endpoint, CUSTOM_JWT (3LO)</text>
+  <text x="682" y="734" class="sub">&#8594; MCP Lambda: quick_observability</text>
+  <text x="682" y="753" class="sub">(NL&#8594;SQL), export_user_data (DSAR)</text>
+
+  <!-- ===================== ARROWS ===================== -->
+  <!-- end user -> Amazon Quick lane (produces activity) -->
+  <path class="edge-dash" d="M92 236 H190"/>
+  <text class="elabel" x="104" y="228">uses Quick</text>
+
+  <!-- operator -> dashboards and observability agent -->
+  <path class="edge-dash" d="M92 510 Q150 510 150 359 H222"/>
+  <text class="elabel" x="100" y="500">views</text>
+  <path class="edge-dash" d="M92 528 Q130 528 130 529 H222"/>
+  <text class="elabel" x="100" y="556">asks</text>
+
+  <!-- Amazon Quick (the lane itself) -> ingestion : telemetry, from lane right edge x=550 -->
+  <path class="edge" d="M550 239 H660"/>
+  <text class="elabel" x="566" y="231">vended logs</text>
+  <path class="edge" d="M550 300 H600 V427 H660"/>
+  <text class="elabel" x="566" y="383">CloudTrail</text>
+  <path class="edge" d="M550 320 H588 V521 H660"/>
+  <text class="elabel" x="566" y="471">metrics</text>
+
+  <!-- EventBridge -> pollers (schedule): Metrics directly above; CloudTrail via right gutter -->
+  <path class="edge-dash" d="M756 582 V554"/>
+  <path class="edge-dash" d="M962 606 H986 V427 H962"/>
+  <text class="elabel" x="772" y="576">schedule</text>
+
+  <!-- ingestion -> S3 (channel x=1020) -->
+  <path class="edge" d="M962 239 H1020 V236 H1084"/>
+  <text class="elabel" x="972" y="231">put objects</text>
+  <path class="edge" d="M962 333 H1020 V244 H1084"/>
+  <path class="edge" d="M962 427 H1020 V252 H1084"/>
+  <path class="edge" d="M962 521 H1020 V260 H1084"/>
+
+  <!-- lake internal: S3 -> Glue -> Athena -->
+  <path class="edge" d="M1235 288 V320"/>
+  <path class="edge" d="M1235 402 V434"/>
+
+  <!-- Athena -> QuickSight dashboards : SPICE import (exit right, down right gutter, left along bottom band well below all boxes, up left gutter, into dashboards box) -->
+  <path class="edge" d="M1386 474 H1430 V880 H180 V359 H222"/>
+  <text class="elabel" x="560" y="872">SPICE import &#8594; QuickSight dashboards</text>
+
+  <!-- Athena -> AgentCore Gateway : read-only SQL (channel x=1010) -->
+  <path class="edge" d="M1084 484 H1010 V718 H962"/>
+  <text class="elabel" x="1016" y="520">read-only SQL</text>
+
+  <!-- Quick agent <-> AgentCore Gateway : MCP (3LO) -->
+  <path class="edge-dash" d="M518 529 H610 V692 H660"/>
+  <text class="elabel" x="536" y="521">MCP + JWT (3LO)</text>
+</svg>

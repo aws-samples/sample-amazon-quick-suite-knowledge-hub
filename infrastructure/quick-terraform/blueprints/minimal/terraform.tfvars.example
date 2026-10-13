@@ -1,0 +1,12 @@
+# Blueprint: minimal - example variables
+# Account-only, non-IDC. Copy to terraform.tfvars and edit.
+
+aws_region         = "us-east-1"
+account_name       = "MyQuickAccount"
+notification_email = "admin@example.com"
+edition            = "ENTERPRISE"
+
+tags = {
+  Project   = "AmazonQuick"
+  ManagedBy = "Terraform"
+}

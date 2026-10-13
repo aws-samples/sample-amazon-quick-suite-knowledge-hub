@@ -1,0 +1,37 @@
+# Blueprint: locked-down - example variables
+# Secure-by-default. Deploying as-is gives: READER = deny-by-default (view only),
+# AUTHOR = author_no_share. Extend with reader_allow / extra_profiles as needed.
+
+aws_region         = "us-east-1"
+account_name       = "MyQuickAccount"
+notification_email = "admin@example.com"
+
+enable_idc        = true
+identity_store_id = "d-1234567890"
+admin_group_name  = "QUICK_ADMIN"
+
+# Exceptions carved back into the locked-down READER profile (left permitted).
+# Everything NOT listed here stays denied for readers.
+reader_allow = ["export_to_pdf"]
+
+# Add more postures. Available presets: reader_lockdown, no_data_exfiltration,
+# author_no_share, strict_pro. Or deny_by_default + allow, or raw capabilities.
+extra_profiles = {
+  NoExfilPro = {
+    preset = "no_data_exfiltration"
+  }
+  FullyLocked = {
+    deny_by_default = true
+    allow           = [] # deny everything the model allows denying
+  }
+}
+
+extra_role_assignments = {
+  AUTHOR_PRO = "NoExfilPro"
+}
+
+tags = {
+  Project   = "AmazonQuick"
+  ManagedBy = "Terraform"
+  Posture   = "locked-down"
+}

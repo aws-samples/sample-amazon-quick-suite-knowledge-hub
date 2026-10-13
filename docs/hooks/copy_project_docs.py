@@ -70,7 +70,8 @@ _staged: list[Path] = []
 # Optional friendly nav labels for folders whose auto-title reads awkwardly
 # (acronyms etc.). Anything not listed is auto-titled from its folder name.
 _LABEL_OVERRIDES = {
-    "multi-tenant-assets-deployment": "Quick Agent Assets Deployment",
+    "multi-tenant-assets-deployment": "Amazon Quick Assets Deployment",
+    "quick-legal-hold-agent": "Amazon Quick Legal Hold Agent",
     "observability-agent": "Observability",
     "compliance-assistant-mcp": "Compliance Assistant MCP",
     "genai-operations-hub": "GenAI Operations Hub",
@@ -89,6 +90,7 @@ _LABEL_OVERRIDES = {
     "rls-dataset-shaping": "Row-Level Security & Dataset Shaping",
     "2lo-servicenow-action-setup-guide": "ServiceNow (2LO)",
     "confluence-cloud-knowledge-only-setup-guide": "Confluence Cloud",
+    "ManagedServicesPractice": "Managed Services Practice",
 }
 
 # Common acronyms to upper-case when auto-titling.
@@ -405,15 +407,49 @@ def _discover_project(src: Path) -> Path | None:
 
 
 def _stage_project(child: Path, url: str, items: list, group: str = "") -> None:
-    """Discover, stage, register gallery metadata, and add a nav entry."""
+    """Discover, stage, register gallery metadata, and add a nav entry.
+
+    Handles three shapes:
+      * project README at `child/README.md` (or a single README one level down)
+        -> one nav entry + one gallery card.
+      * no top-level README but several children each carry a README (e.g. a
+        project split into platform variants like linux/ and windows/)
+        -> a nested nav group with one entry per variant, and one gallery card
+        per variant so none are dropped from the site.
+    """
     proj = _discover_project(child)
-    if proj is None:
+    if proj is not None:
+        _copy_project(proj, DOCS / url)
+        _staged.append(DOCS / url)
+        items.append({_title(child.name): f"{url}/index.md"})
+        if group:
+            _register_card(proj, child.name, url, group)
         return
-    _copy_project(proj, DOCS / url)
-    _staged.append(DOCS / url)
-    items.append({_title(child.name): f"{url}/index.md"})
-    if group:
-        _register_card(proj, child.name, url, group)
+
+    # Multi-variant project: no own README, but 2+ children each have one.
+    variants = sorted(
+        d
+        for d in child.iterdir()
+        if d.is_dir() and d.name not in _IGNORE_DIRS and (d / "README.md").is_file()
+    )
+    if len(variants) < 2:
+        return
+    subitems: list = []
+    for variant in variants:
+        vurl = f"{url}/{variant.name}"
+        _copy_project(variant, DOCS / vurl)
+        # Guide-style variants reference sibling top-level .md files from their
+        # README (e.g. windows/GSI-*.md). Copy those so the links resolve and
+        # the strict build does not warn on an unresolved relative link.
+        for sibling in sorted(variant.glob("*.md")):
+            if sibling.name != "README.md" and sibling.name not in _SKIP_MD:
+                shutil.copy2(sibling, DOCS / vurl / sibling.name)
+        _staged.append(DOCS / vurl)
+        subitems.append({_title(variant.name): f"{vurl}/index.md"})
+        if group:
+            _register_card(variant, variant.name, vurl, group)
+    if subitems:
+        items.append({_title(child.name): subitems})
 
 
 def _build_and_stage() -> list:

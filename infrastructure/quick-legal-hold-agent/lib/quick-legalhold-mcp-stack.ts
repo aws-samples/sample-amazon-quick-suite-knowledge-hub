@@ -9,6 +9,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as firehose from 'aws-cdk-lib/aws-kinesisfirehose';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as cr from 'aws-cdk-lib/custom-resources';
+import * as eventsources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as path from 'path';
 
 // Unique prefix for THIS standalone stack. Distinct from quick-legalhold-test-*
@@ -68,37 +69,87 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       ((this.node.tryGetContext('identityMode') as string) || (identityStoreId ? 'idc' : 'direct'));
 
     // ===============================================================
-    // 1. KMS customer-managed key (this stack's OWN key)
+    // Production hardening inputs (all optional; safe sample defaults).
     // ===============================================================
-    const cmk = new kms.Key(this, 'PreservationCmk', {
-      alias: `${PREFIX}cmk`,
-      description: 'TEST CMK for the standalone quick-legalhold-mcp WORM bucket + Firehose.',
-      enableKeyRotation: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-    cmk.addToResourcePolicy(
-      new iam.PolicyStatement({
-        sid: 'AllowAccountAdminManagement',
-        principals: [new iam.AccountRootPrincipal()],
-        actions: ['kms:*'],
-        resources: ['*'],
-      })
-    );
-    cmk.addToResourcePolicy(
-      new iam.PolicyStatement({
-        sid: 'AllowLogDeliveryService',
-        principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
-        actions: ['kms:GenerateDataKey', 'kms:Decrypt'],
-        resources: ['*'],
-        conditions: {
-          StringLike: { 'kms:EncryptionContext:SourceArn': `arn:aws:logs:${region}:${account}:*` },
-        },
-      })
-    );
+    // KMS: bring-your-own key wins; else create a customer-managed CMK (the
+    // default and recommended posture for evidence). An AWS-managed/SSE-S3
+    // posture is intentionally NOT offered here for the evidence bucket.
+    //   cdk deploy -c kmsKeyArn=arn:aws:kms:...:key/....
+    const byoKmsKeyArn = (this.node.tryGetContext('kmsKeyArn') as string) || '';
+
+    // S3 Object Lock on the WORM evidence bucket. Default GOVERNANCE is the
+    // SAFE sample default (admins with s3:BypassGovernanceRetention can still
+    // clean up a trial). For real legal hold set COMPLIANCE, which NO ONE
+    // (not even root) can shorten or bypass until retention expires:
+    //   cdk deploy -c objectLockMode=COMPLIANCE -c objectLockDays=2555
+    const objectLockMode =
+      ((this.node.tryGetContext('objectLockMode') as string) || 'GOVERNANCE').toUpperCase();
+    const objectLockDays = Number(this.node.tryGetContext('objectLockDays') ?? 1);
+
+    // PII redaction (opt-in, OFF by default to preserve evidence fidelity /
+    // avoid spoliation of the original). When on, an S3-triggered Lambda runs
+    // Amazon Comprehend DetectPiiEntities over each delivered WORM object and
+    // writes a SEPARATE redacted copy to a reviewer-readable bucket; the
+    // original in the WORM bucket is never modified.
+    //   cdk deploy -c redactPii=true
+    const redactPii =
+      ((this.node.tryGetContext('redactPii') as string) || 'false').toLowerCase() === 'true';
+    const comprehendLanguage =
+      (this.node.tryGetContext('comprehendLanguage') as string) || 'en';
+
+    // Break-glass role: the ONLY principal allowed to read the original
+    // (un-redacted) WORM evidence. Pass an IAM role ARN; when set, a bucket
+    // policy denies read to everyone except this role (and the account root
+    // for administration). Leave empty to skip the deny (sample default).
+    //   cdk deploy -c breakGlassRoleArn=arn:aws:iam::...:role/legal-ediscovery
+    const breakGlassRoleArn = (this.node.tryGetContext('breakGlassRoleArn') as string) || '';
+
+    // Create the synthetic 3LO test user? Default false — a real deployment
+    // uses real identities. Enable for evaluation only:
+    //   cdk deploy -c createTestUser=true -c testUserPassword=...
+    const createTestUser =
+      ((this.node.tryGetContext('createTestUser') as string) || 'false').toLowerCase() === 'true';
 
     // ===============================================================
-    // 2. S3 WORM bucket (own): Object Lock GOVERNANCE, versioned, SSE-KMS,
-    //    public access blocked, removable for TEST.
+    // 1. KMS key: bring-your-own, else create a customer-managed CMK.
+    // ===============================================================
+    let cmk: kms.IKey;
+    if (byoKmsKeyArn) {
+      cmk = kms.Key.fromKeyArn(this, 'PreservationCmk', byoKmsKeyArn);
+    } else {
+      const createdCmk = new kms.Key(this, 'PreservationCmk', {
+        alias: `${PREFIX}cmk`,
+        description: 'Customer-managed CMK for the quick-legalhold-mcp WORM bucket, DynamoDB, and Firehose.',
+        enableKeyRotation: true,
+        // RETAIN: destroying the key would make the retained, Object-Locked
+        // WORM evidence permanently unreadable. The evidence outlives the stack.
+        removalPolicy: cdk.RemovalPolicy.RETAIN,
+      });
+      createdCmk.addToResourcePolicy(
+        new iam.PolicyStatement({
+          sid: 'AllowAccountAdminManagement',
+          principals: [new iam.AccountRootPrincipal()],
+          actions: ['kms:*'],
+          resources: ['*'],
+        })
+      );
+      createdCmk.addToResourcePolicy(
+        new iam.PolicyStatement({
+          sid: 'AllowLogDeliveryService',
+          principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
+          actions: ['kms:GenerateDataKey', 'kms:Decrypt'],
+          resources: ['*'],
+          conditions: {
+            StringLike: { 'kms:EncryptionContext:SourceArn': `arn:aws:logs:${region}:${account}:*` },
+          },
+        })
+      );
+      cmk = createdCmk;
+    }
+
+    // ===============================================================
+    // 2. S3 WORM bucket (own): Object Lock (mode/retention parameterized),
+    //    versioned, SSE-KMS, public access blocked.
     // ===============================================================
     // Server access log bucket for the WORM bucket (audit trail of who read /
     // wrote the preserved evidence). SSE-S3 (S3 log delivery cannot use SSE-KMS).
@@ -111,10 +162,25 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // Managed CloudWatch log group per Lambda: explicit retention (instead of
+    // the never-expiring default group CDK would otherwise create) and cleaned
+    // up with the stack.
+    const fnLogGroup = (fnName: string) =>
+      new logs.LogGroup(this, `${fnName}LogGroup`, {
+        logGroupName: `/aws/lambda/${PREFIX}${fnName}`,
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      });
+
+    const objectLockRetention =
+      objectLockMode === 'COMPLIANCE'
+        ? s3.ObjectLockRetention.compliance(cdk.Duration.days(objectLockDays))
+        : s3.ObjectLockRetention.governance(cdk.Duration.days(objectLockDays));
+
     const wormBucket = new s3.Bucket(this, 'WormBucket', {
       bucketName: `${PREFIX}worm-${account}`,
       objectLockEnabled: true,
-      objectLockDefaultRetention: s3.ObjectLockRetention.governance(cdk.Duration.days(1)),
+      objectLockDefaultRetention: objectLockRetention,
       versioned: true,
       encryption: s3.BucketEncryption.KMS,
       encryptionKey: cmk,
@@ -129,6 +195,80 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // Break-glass access control on the ORIGINAL evidence: when a break-glass
+    // role ARN is supplied, deny read of the un-redacted WORM objects to every
+    // principal EXCEPT that role and the account root (for administration).
+    // e-discovery production of originals goes through the break-glass role.
+    if (breakGlassRoleArn) {
+      wormBucket.addToResourcePolicy(
+        new iam.PolicyStatement({
+          sid: 'DenyReadExceptBreakGlass',
+          effect: iam.Effect.DENY,
+          principals: [new iam.AnyPrincipal()],
+          actions: ['s3:GetObject', 's3:GetObjectVersion'],
+          resources: [wormBucket.arnForObjects('*')],
+          conditions: {
+            StringNotLike: {
+              'aws:PrincipalArn': [
+                breakGlassRoleArn,
+                `arn:aws:iam::${account}:root`,
+              ],
+            },
+          },
+        })
+      );
+    }
+
+    // ===============================================================
+    // 2b. Redacted-copy bucket (reviewer-readable) — only when redactPii=true.
+    //     An S3-triggered Lambda runs Amazon Comprehend over each new WORM
+    //     object and writes a PII-masked copy here. This bucket is NOT
+    //     Object-Locked (redacted copies are derived, reproducible artifacts);
+    //     the authoritative original stays immutable in the WORM bucket.
+    // ===============================================================
+    let redactedBucket: s3.Bucket | undefined;
+    if (redactPii) {
+      redactedBucket = new s3.Bucket(this, 'RedactedBucket', {
+        bucketName: `${PREFIX}redacted-${account}`,
+        versioned: true,
+        encryption: s3.BucketEncryption.KMS,
+        encryptionKey: cmk,
+        bucketKeyEnabled: true,
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+        enforceSSL: true,
+        removalPolicy: cdk.RemovalPolicy.RETAIN,
+      });
+
+      const redactFn = new lambda.Function(this, 'RedactFn', {
+        functionName: `${PREFIX}redact`,
+        runtime: lambda.Runtime.PYTHON_3_12,
+        handler: 'handler.handler',
+        code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda', 'redact')),
+        timeout: cdk.Duration.minutes(5),
+        memorySize: 512,
+        logGroup: fnLogGroup('redact'),
+        environment: {
+          REDACTED_BUCKET: redactedBucket.bucketName,
+          COMPREHEND_LANGUAGE: comprehendLanguage,
+        },
+      });
+      wormBucket.grantRead(redactFn);
+      redactedBucket.grantWrite(redactFn);
+      cmk.grantEncryptDecrypt(redactFn);
+      redactFn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['comprehend:DetectPiiEntities'],
+          resources: ['*'], // Comprehend DetectPiiEntities is not resource-scopable
+        })
+      );
+      // Trigger the redactor on every new object delivered to the WORM bucket.
+      redactFn.addEventSource(
+        new eventsources.S3EventSource(wormBucket, {
+          events: [s3.EventType.OBJECT_CREATED],
+          filters: [{ prefix: 'chat-logs/' }],
+        })
+      );
+    }
     // ===============================================================
     // 3. DynamoDB held-user table (this stack's OWN table)
     // ===============================================================
@@ -148,16 +288,6 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
     // ===============================================================
     // 4. Filter Lambda + Firehose delivery stream (own) -> WORM bucket
     // ===============================================================
-    // Managed CloudWatch log group per Lambda: explicit retention (instead of
-    // the never-expiring default group CDK would otherwise create) and cleaned
-    // up with the stack.
-    const fnLogGroup = (fnName: string) =>
-      new logs.LogGroup(this, `${fnName}LogGroup`, {
-        logGroupName: `/aws/lambda/${PREFIX}${fnName}`,
-        retention: logs.RetentionDays.ONE_MONTH,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-      });
-
     const filterFn = new lambda.Function(this, 'FilterFn', {
       functionName: `${PREFIX}filter`,
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -233,8 +363,8 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
 
     // ===============================================================
     // 5b. CHAT_LOGS -> our Firehose vended-log delivery wiring (ADOPT-not-OWN).
-    //   The shared QuickSuite CHAT_LOGS delivery source is account-wide infra
-    //   that also feeds /aws/quicksuite/chat and the observability S3 bucket.
+    //   The shared Quick CHAT_LOGS delivery source is account-wide infra
+    //   that also feeds /aws/quick/chat and the observability S3 bucket.
     //   A Provider-backed custom resource idempotently ensures our own
     //   delivery-destination + a delivery binding source->our-destination, and
     //   on stack delete removes ONLY our delivery + destination (never the
@@ -264,11 +394,35 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
           'logs:DescribeDeliveries',
           'logs:PutDeliverySource',
           'logs:PutDeliveryDestination',
+          'logs:PutDeliveryDestinationPolicy',
           'logs:CreateDelivery',
+          'logs:CreateLogDelivery',
           'logs:DeleteDelivery',
           'logs:DeleteDeliveryDestination',
         ],
         resources: ['*'], // these Describe/Put/Create/Delete-delivery* actions are not resource-scopable
+      })
+    );
+    // Vended-log delivery to a Firehose destination tags the stream
+    // (LogDeliveryEnabled=true) and uses the AWSServiceRoleForLogDelivery
+    // service-linked role, so CreateDelivery needs these Firehose + SLR perms.
+    wiringFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'firehose:TagDeliveryStream',
+          'firehose:DescribeDeliveryStream',
+          'firehose:ListTagsForDeliveryStream',
+        ],
+        resources: ['*'],
+      })
+    );
+    wiringFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['iam:CreateServiceLinkedRole'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: { 'iam:AWSServiceName': 'delivery.logs.amazonaws.com' },
+        },
       })
     );
     wiringFn.addToRolePolicy(
@@ -349,6 +503,10 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
     const testUsername = 'legal-admin-test';
     const testEmail = 'legal-admin-test@example.com';
 
+    // The synthetic test user is created ONLY when createTestUser=true (default
+    // false). A real deployment authenticates real identities via the IdP and
+    // never provisions this sample login.
+    if (createTestUser) {
     // Create the user (idempotent physical id; deleted on stack teardown).
     const testUserCr = new cr.AwsCustomResource(this, 'CreateTestUser', {
       onCreate: {
@@ -414,6 +572,7 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       installLatestAwsSdk: false,
     });
     setPw.node.addDependency(testUserCr);
+    }
 
     // The 3LO app-client secret is generated by Cognito and is NOT exposed as a
     // native CloudFormation attribute. Fetch it via describeUserPoolClient so it
@@ -458,9 +617,16 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
         USERS_TABLE: usersTable.tableName,
         IDENTITY_MODE: identityMode,
         IDENTITY_STORE_ID: identityStoreId,
+        // Set only when PII redaction is enabled; the retrieval tools serve
+        // documents from the redacted bucket, never the WORM original.
+        REDACTED_BUCKET: redactedBucket ? redactedBucket.bucketName : '',
       },
     });
     usersTable.grantReadWriteData(mcpFn);
+    if (redactedBucket) {
+      redactedBucket.grantRead(mcpFn);
+      cmk.grantDecrypt(mcpFn);
+    }
     // Read-only IAM Identity Center resolution, attached ONLY in idc mode.
     // In direct mode no IDC/SSO permissions are granted at all (least privilege).
     // The identitystore List*/Describe* calls are not resource-scopable, but we
@@ -603,6 +769,30 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
         Description: 'List all current legal-hold items.',
         InputSchema: { Type: 'object', Properties: {}, Required: [] },
       },
+      {
+        Name: 'list_held_documents',
+        Description: 'List the preserved chat-log documents captured for a held user or group (redacted copies, reviewer-safe). Resolves the supplied name / email / user_arn / group name against the legal-hold records (the same identity resolution used when the hold was placed) before listing, so a plain name works. Returns S3 keys + timestamps and the resolved identities. Requires PII redaction enabled; the un-redacted original is break-glass only.',
+        InputSchema: {
+          Type: 'object',
+          Properties: {
+            user: stringProp('A user to resolve: display name, email, username, or full user_arn.'),
+            group_name: stringProp('Optional: a group name instead of a user (lists all held members of the group).'),
+            limit: stringProp('Optional max number of documents to return (default 50).'),
+          },
+          Required: [],
+        },
+      },
+      {
+        Name: 'get_held_document',
+        Description: 'Retrieve one preserved chat-log document for a held user as REDACTED (PII-masked) content, plus a short-lived pre-signed URL to download it. Never returns the un-redacted original (that is break-glass only).',
+        InputSchema: {
+          Type: 'object',
+          Properties: {
+            key: stringProp('The S3 object key of the redacted document (from list_held_documents).'),
+          },
+          Required: ['key'],
+        },
+      },
     ];
 
     const target = new cdk.CfnResource(this, 'McpGatewayTarget', {
@@ -639,6 +829,13 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'CmkArn', { value: cmk.keyArn });
     new cdk.CfnOutput(this, 'UsersTableName', { value: usersTable.tableName });
+    new cdk.CfnOutput(this, 'ObjectLockMode', { value: `${objectLockMode} (${objectLockDays} days)` });
+    if (redactedBucket) {
+      new cdk.CfnOutput(this, 'RedactedBucketName', { value: redactedBucket.bucketName });
+    }
+    if (breakGlassRoleArn) {
+      new cdk.CfnOutput(this, 'BreakGlassRoleArn', { value: breakGlassRoleArn });
+    }
 
     // Cognito outputs
     new cdk.CfnOutput(this, 'CognitoUserPoolId', { value: userPool.userPoolId });
@@ -660,11 +857,13 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
 
     // --- TEST-ONLY synthetic user connection details (surfaced directly) ---
     // These are sample credentials for evaluation only. Never use them for real
-    // identities. Remove the test user before any production use.
-    new cdk.CfnOutput(this, 'ThreeLoTestUsername', { value: testUsername });
-    new cdk.CfnOutput(this, 'ThreeLoTestUserPassword', {
-      description: 'TEST-ONLY: permanent password for the synthetic 3LO test user.',
-      value: testUserPassword,
-    });
+    // identities. Only emitted when createTestUser=true.
+    if (createTestUser) {
+      new cdk.CfnOutput(this, 'ThreeLoTestUsername', { value: testUsername });
+      new cdk.CfnOutput(this, 'ThreeLoTestUserPassword', {
+        description: 'TEST-ONLY: permanent password for the synthetic 3LO test user.',
+        value: testUserPassword,
+      });
+    }
   }
 }

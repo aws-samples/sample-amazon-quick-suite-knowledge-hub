@@ -19,4 +19,4 @@ new QuickLegalholdMcpStack(app, 'QuickLegalholdMcpStack', {
 });
 
 cdk.Tags.of(app).add('Project', 'quick-legal-hold-agent');
-cdk.Tags.of(app).add('Env', 'test');
+cdk.Tags.of(app).add('Env', (app.node.tryGetContext('envTag') as string) || 'test');

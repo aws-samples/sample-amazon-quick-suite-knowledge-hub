@@ -1,4 +1,4 @@
-# Quick Agent Assets Deployment
+# Amazon Quick Assets Deployment
 
 Deploy and migrate **Amazon Quick** resources — Chat Agents, Action Connectors,
 Knowledge Bases, Spaces, and Flows — between AWS accounts through a
@@ -77,7 +77,7 @@ idempotent work that should be automated.
 ![Architecture](images/architecture.png)
 
 | Component | Account | Responsibility |
-|-----------|---------|----------------|
+| --- | --- | --- |
 | **AgentCore Runtime** (MCP server) | Central (Runner) | Hosts `server.py`; assumes into source & target; orchestrates the migration. Runs in VPC network mode with a Cognito JWT authorizer. |
 | **Amazon Cognito** | Central (Runner) | User pool + resource server + app client. Issues the OAuth2 JWT (scope `invoke`) that callers present to AgentCore. |
 | **Runner execution role** | Central (Runner) | AgentCore's execution role: Bedrock InvokeModel, CloudWatch Logs, X-Ray, and `sts:AssumeRole` into the source & target roles. |
@@ -134,7 +134,7 @@ idempotent work that should be automated.
 
 ## Repository layout
 
-```
+```text
 quick-space-migrator-mcp/
 ├── src/                              # The MCP server (flat modules, flattened into the bundle root)
 │   ├── server.py                     #   MCP entrypoint: tools + do_migrate_resources dispatcher + preview + restore
@@ -247,7 +247,7 @@ The runtime needs only two environment variables (plain-string role ARNs, not
 secrets):
 
 | Variable | Description |
-|----------|-------------|
+| --- | --- |
 | `SOURCE_ROLE_ARN` | `quick-space-migrator-role` ARN in the source account |
 | `TARGET_ROLE_ARN` | `quick-space-migrator-role` ARN in the target account |
 
@@ -259,7 +259,7 @@ passed as a **tool input** at invocation time.
 ## MCP tools
 
 | Tool | Type | Description |
-|------|------|-------------|
+| --- | --- | --- |
 | `preview_migration` | read-only | Dry run: inventory the agents, connectors, knowledge bases, spaces, and flows that would be migrated, scan the target account, and return a source→target mapping (which resources already exist as CREATE vs UPDATE). |
 | `migrate_resources` | read-write | Migrate the selected resources of one type into the target and copy permissions. Upsert semantics with a pre-update backup. |
 | `list_backups` | read-only | List backed-up/snapshotted assets in the backup bucket (optionally filtered by name/id substring), grouped by asset with their versions. |
@@ -273,7 +273,7 @@ Both migration tools share the same selection model: `resource_type`
 ### `migrate_resources` inputs
 
 | Input | Default | Description |
-|-------|---------|-------------|
+| --- | --- | --- |
 | `source_account_id` | — | 12-digit source AWS account ID |
 | `target_account_id` | — | 12-digit target AWS account ID |
 | `resource_type` | — | `agent`, `connector`, `knowledge_base`, `space`, or `flow` |
@@ -289,7 +289,7 @@ Both migration tools share the same selection model: `resource_type`
 ### `preview_migration` inputs
 
 | Input | Default | Description |
-|-------|---------|-------------|
+| --- | --- | --- |
 | `source_account_id` | — | Source AWS account ID |
 | `target_account_id` | `""` | Target AWS account ID — when set, the target is scanned and each source resource is mapped to CREATE (absent) or UPDATE (already present) |
 | `resource_type` | `"all"` | `agent`, `connector`, `knowledge_base`, `space`, `flow`, or `all` (inventory every type) |

@@ -163,7 +163,7 @@ wheels = [
 ]
 
 [[package]]
-name = "quicksuite-observability-agent-mcp"
+name = "quick-observability-agent-mcp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

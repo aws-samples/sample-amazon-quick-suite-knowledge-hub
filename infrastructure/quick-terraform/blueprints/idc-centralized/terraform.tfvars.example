@@ -1,0 +1,39 @@
+# Blueprint: idc-centralized - example variables
+# IAM Identity Center + account + service role + custom-permission governance.
+# Get identity_store_id with: aws sso-admin list-instances --region <idc-region>
+
+aws_region         = "us-east-1"
+account_name       = "MyQuickAccount"
+notification_email = "admin@example.com"
+
+identity_store_id  = "d-1234567890"
+admin_group_name   = "QUICK_ADMIN"
+create_admin_group = true
+
+enable_kms = true
+
+enable_custom_permissions = true
+
+# Capabilities governance per profile. Use deny_by_default + allow, a named preset,
+# or a raw capabilities map. Presets: reader_lockdown, no_data_exfiltration,
+# author_no_share, strict_pro.
+custom_permission_profiles = {
+  ReadersLockdown = {
+    preset = "reader_lockdown"
+  }
+  RestrictedAuthorPro = {
+    deny_by_default = true
+    allow           = ["create_and_update_datasets", "create_spice_dataset"]
+  }
+}
+
+# Bind a profile to a QuickSight role.
+custom_permission_role_assignments = {
+  READER = "ReadersLockdown"
+  AUTHOR = "RestrictedAuthorPro"
+}
+
+tags = {
+  Project   = "AmazonQuick"
+  ManagedBy = "Terraform"
+}

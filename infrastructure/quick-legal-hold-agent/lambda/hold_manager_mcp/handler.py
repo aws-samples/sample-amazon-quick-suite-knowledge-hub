@@ -23,6 +23,7 @@ import os
 
 import boto3
 from boto3.dynamodb.conditions import Attr
+from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError
 
 USERS_TABLE = os.environ["USERS_TABLE"]
@@ -584,6 +585,195 @@ def tool_list_holds(args) -> dict:
     return {"holds": items, "count": len(items)}
 
 
+# ---------------------------------------------------------------------------
+# Held-document retrieval (redacted copies only; original is break-glass).
+# ---------------------------------------------------------------------------
+REDACTED_BUCKET = os.environ.get("REDACTED_BUCKET", "")
+# SSE-KMS objects require SigV4 pre-signed URLs (SigV2 fails with
+# "Requests specifying Server Side Encryption with AWS KMS managed keys
+# require AWS Signature Version 4"). Pin SigV4 + the regional endpoint.
+_s3 = boto3.client(
+    "s3",
+    config=BotoConfig(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+)
+
+
+def _s3_safe_token(token: str, fallback: str) -> str:
+    """Mirror the filter Lambda's _s3_safe so retrieval computes the SAME
+    folder names that capture used."""
+    import re as _re
+
+    safe = _re.sub(r"[^A-Za-z0-9_.-]", "-", (token or "").strip()).strip("-")
+    return safe or fallback
+
+
+def _usr_token(item: dict) -> str:
+    """The <usr> S3 segment the filter Lambda wrote for this hold item:
+    idc_user_name -> subject_key -> trailing token of user_arn."""
+    raw = (
+        item.get("idc_user_name")
+        or item.get("subject_key")
+        or (item.get("user_arn") or "").rstrip("/").split("/")[-1]
+    )
+    return _s3_safe_token(raw, "user").lower()
+
+
+def _grp_token(item: dict) -> str:
+    grp_raw = item.get("group_name")
+    return _s3_safe_token(grp_raw, "_direct").lower() if grp_raw else "_direct"
+
+
+def _scan_holds() -> list:
+    items = []
+    resp = _table.scan()
+    items.extend(resp.get("Items", []))
+    while "LastEvaluatedKey" in resp:
+        resp = _table.scan(ExclusiveStartKey=resp["LastEvaluatedKey"])
+        items.extend(resp.get("Items", []))
+    return items
+
+
+def _match_hold_items(query: str, target_type: str, account: str) -> list:
+    """Resolve an admin's free-text input (name, email, user_arn, or group
+    name) to the hold records it refers to — the SAME identity resolution used
+    when the hold was placed. Strategy:
+      1. Match against existing hold records on user_arn / display / target_name
+         / idc_user_name / subject_key (for users) or group_name (for groups).
+         Hold records were already identity-resolved at place_hold time, so this
+         is the authoritative source for who is actually held.
+      2. If nothing matches and we're in IDC mode, fall back to resolve_users()
+         to resolve the name via Identity Center, then match those ARNs against
+         the hold table.
+    Returns the list of matching hold items (dicts)."""
+    q = (query or "").strip()
+    ql = q.lower()
+    holds = _scan_holds()
+
+    def _is_match(item: dict) -> bool:
+        if target_type == "group":
+            return (item.get("group_name") or "").lower() == ql
+        # user: match any identifier we might have been given
+        candidates = [
+            item.get("user_arn"),
+            item.get("display"),
+            item.get("target_name"),
+            item.get("idc_user_name"),
+            item.get("subject_key"),
+        ]
+        cand_l = [str(c).lower() for c in candidates if c]
+        if ql in cand_l:
+            return True
+        # also accept the trailing token of a supplied ARN vs stored tokens
+        tail = ql.rstrip("/").split("/")[-1]
+        return any(tail == c.rstrip("/").split("/")[-1] for c in cand_l)
+
+    matches = [h for h in holds if _is_match(h)]
+    if matches:
+        return matches
+
+    # Fallback: resolve via Identity Center (idc mode), then re-match by ARN.
+    if target_type == "user" and IDENTITY_MODE == "idc" and IDENTITY_STORE_ID:
+        try:
+            resolved = resolve_users("user", q, account)
+        except ResolutionError:
+            return []
+        arns = {r["user_arn"] for r in resolved}
+        return [h for h in holds if h.get("user_arn") in arns]
+    return []
+
+
+def tool_list_held_documents(args, account) -> dict:
+    if not REDACTED_BUCKET:
+        return {
+            "error": "PII redaction is not enabled on this deployment, so there "
+            "are no reviewer-readable documents. Enable -c redactPii=true, or "
+            "retrieve originals through the break-glass role."
+        }
+    # Accept either a user identifier or a group name.
+    query = (
+        args.get("user_arn") or args.get("user") or args.get("group_name") or ""
+    ).strip()
+    target_type = "group" if args.get("group_name") else "user"
+    if not query:
+        return {"error": "provide user_arn/user or group_name"}
+    try:
+        limit = int(args.get("limit", 50))
+    except (TypeError, ValueError):
+        limit = 50
+
+    matched = _match_hold_items(query, target_type, account)
+    if not matched:
+        return {
+            "query": query,
+            "resolved": [],
+            "count": 0,
+            "documents": [],
+            "message": (
+                f"No active or past legal hold matched {query!r}. Place a hold "
+                "first, or check the name/group (use list_holds to see held users)."
+            ),
+        }
+
+    # Build the set of (grp, usr) folder pairs these holds wrote to.
+    wanted = {(_grp_token(h), _usr_token(h)) for h in matched}
+    resolved_ids = sorted({h.get("user_arn") for h in matched if h.get("user_arn")})
+
+    docs = []
+    paginator = _s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=REDACTED_BUCKET, Prefix="chat-logs/"):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            segs = key.split("/")  # chat-logs/<grp>/<usr>/YYYY/MM/DD/file
+            if len(segs) >= 3 and (segs[1].lower(), segs[2].lower()) in wanted:
+                docs.append(
+                    {
+                        "key": key,
+                        "size": obj.get("Size"),
+                        "last_modified": str(obj.get("LastModified")),
+                    }
+                )
+                if len(docs) >= limit:
+                    break
+        if len(docs) >= limit:
+            break
+    return {
+        "query": query,
+        "resolved": resolved_ids,
+        "count": len(docs),
+        "documents": docs,
+    }
+
+
+def tool_get_held_document(args) -> dict:
+    if not REDACTED_BUCKET:
+        return {
+            "error": "PII redaction is not enabled on this deployment; "
+            "originals are available only through the break-glass role."
+        }
+    key = (args.get("key") or "").strip()
+    if not key:
+        return {"error": "key is required"}
+    try:
+        body = _s3.get_object(Bucket=REDACTED_BUCKET, Key=key)["Body"].read()
+        content = body.decode("utf-8", "ignore")
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"could not read redacted document: {exc}"}
+    # Short-lived pre-signed URL for download of the redacted copy.
+    try:
+        url = _s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": REDACTED_BUCKET, "Key": key},
+            ExpiresIn=900,
+        )
+    except Exception:  # noqa: BLE001
+        url = None
+    # Cap inline content so a huge object doesn't overflow the tool response.
+    inline = (
+        content if len(content) <= 50_000 else content[:50_000] + "\n...[truncated]"
+    )
+    return {"key": key, "redacted_content": inline, "download_url": url}
+
+
 def _dump_context(context, event):
     """Diagnostic: log the shape of the invocation context so we can discover
     exactly where the Gateway carries the caller's JWT claims. Redacts long
@@ -654,6 +844,10 @@ def handler(event, context):
         return tool_release_hold(args, account, claims)
     if tool == "list_holds":
         return tool_list_holds(args)
+    if tool == "list_held_documents":
+        return tool_list_held_documents(args, account)
+    if tool == "get_held_document":
+        return tool_get_held_document(args)
 
     return {
         "error": f"unknown tool: {tool!r}",
@@ -663,5 +857,7 @@ def handler(event, context):
             "place_hold",
             "release_hold",
             "list_holds",
+            "list_held_documents",
+            "get_held_document",
         ],
     }

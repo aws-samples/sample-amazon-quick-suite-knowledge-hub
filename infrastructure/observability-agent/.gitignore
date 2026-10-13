@@ -1,0 +1,9 @@
+# Generated deployment outputs (embed a real account id, Cognito pool ids,
+# client secret, gateway url, and the demo user password). Never commit.
+deploy-outputs.json
+
+# CDK synth output and Python/uv caches
+cdk.out/
+.venv/
+.ruff_cache/
+__pycache__/

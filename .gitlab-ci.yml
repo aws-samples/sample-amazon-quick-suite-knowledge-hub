@@ -1,5 +1,3 @@
-image: python:latest
-
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
@@ -7,20 +5,85 @@ cache:
   paths:
     - .cache/pip
 
-before_script:
-  - python -V
-  - pip install uv
-  - uv sync
-
 stages:
+  - validate
   - deploy
 
+# ---- Python quality: ruff lint + format check -----------------------------
+lint:
+  stage: validate
+  image: python:3.11
+  before_script:
+    - python -V
+    - pip install uv
+    - uv sync --dev
+  script:
+    - echo "🔍 ruff check"
+    - uv run ruff check .
+    - echo "📝 ruff format --check"
+    - uv run ruff format --check .
+
+# ---- Python security scan: bandit (non-gating) -----------------------------
+security:
+  stage: validate
+  image: python:3.11
+  before_script:
+    - python -V
+    - pip install uv
+    - uv sync --dev
+  script:
+    - echo "🔒 bandit"
+    - uv run bandit -q -r . -c pyproject.toml || true
+  allow_failure: true
+
+# ---- Markdown lint (changed files only) ------------------------------------
+markdown:
+  stage: validate
+  image: node:20
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git >/dev/null
+    - npm install -g markdownlint-cli2
+  script:
+    - |
+      if [ -n "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" ]; then
+        BASE="origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+        git fetch -q origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+      else
+        BASE="HEAD~1"
+      fi
+      echo "📄 markdownlint changed .md vs $BASE"
+      CHANGED=$(git diff --name-only --diff-filter=d "$BASE"...HEAD -- '*.md' | grep -vE '^(node_modules|\.venv|public|site)/' || true)
+      if [ -z "$CHANGED" ]; then
+        echo "No changed markdown files — skipping."
+      else
+        echo "$CHANGED"
+        markdownlint-cli2 $CHANGED
+      fi
+
+# ---- Docs: strict MkDocs build ---------------------------------------------
+docs-build:
+  stage: validate
+  image: python:3.11
+  before_script:
+    - python -V
+    - pip install uv
+    - uv sync --dev
+  script:
+    - echo "📚 mkdocs build --strict"
+    - uv run mkdocs build --strict
+
+# ---- Deploy: publish MkDocs site to GitLab Pages (main only) ---------------
 pages:
   stage: deploy
+  image: python:3.11
+  before_script:
+    - python -V
+    - pip install uv
+    - uv sync --dev
   script:
     - uv run mkdocs build --clean --verbose --site-dir public
   artifacts:
     paths:
-    - public
+      - public
   rules:
     - if: $CI_COMMIT_BRANCH == "main"

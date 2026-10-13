@@ -1,0 +1,23 @@
+{
+  "quick-observability-mcp": {
+    "DataLakeBucket": "quick-observability-182596642029-us-east-1",
+    "GatewayUrl": "https://quick-observability-mcp-gateway-xjkcqjei3w.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    "FunctionArn": "arn:aws:lambda:us-east-1:182596642029:function:quick-observability-mcp-QuickObservabilityFunction-8UcGWFab2nwj",
+    "GlueDatabase": "quick_observability",
+    "FirehoseStreamNames": "quick-obs-chat-events, quick-obs-feedback-events, quick-obs-agent-hours, quick-obs-agent-metadata, quick-obs-index-usage, quick-obs-kb-file-sync, quick-obs-dlp-events",
+    "CognitoAuthorizeUrl": "https://quick-observability-mcp-642029-f3ecd2.auth.us-east-1.amazoncognito.com/oauth2/authorize",
+    "QuickSightDataSourceId": "quick-observability-athena",
+    "OAuthScopes": "openid email profile quick-observability-mcp-pool/invoke",
+    "QuickRedirectUri": "https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback",
+    "ObservabilityPassword": "AmazonQuick1@",
+    "UserPoolId": "us-east-1_XVKytTfx4",
+    "CognitoTokenUrl": "https://quick-observability-mcp-642029-f3ecd2.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "AthenaWorkGroup": "quick-observability",
+    "ClientSecret": "423l04g430gth17lhah9p4v5l6i6nllf87096mfl2505lkk6j19",
+    "ChatLogGroup": "/aws/quick/chat",
+    "ClientId": "71td5gpmmt5cree6pj28s2eqp9",
+    "AgentHoursLogGroup": "/aws/quick/agent-hours",
+    "FeedbackLogGroup": "/aws/quick/feedback",
+    "ObservabilityUsername": "observability_user"
+  }
+}

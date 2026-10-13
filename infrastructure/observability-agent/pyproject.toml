@@ -1,5 +1,5 @@
 [project]
-name = "quicksuite-observability-agent-mcp"
+name = "quick-observability-agent-mcp"
 version = "0.1.0"
 description = "Amazon CloudWatch Observability MCP Integration with Amazon Quick"
 requires-python = ">=3.12"

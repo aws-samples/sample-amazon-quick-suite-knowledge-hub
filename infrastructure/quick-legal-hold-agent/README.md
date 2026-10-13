@@ -1,4 +1,4 @@
-# Quick Legal Hold Agent
+# Amazon Quick Legal Hold Agent
 
 A deployable **legal-hold management agent for Amazon Quick**. From inside Amazon Quick
 chat, a Legal administrator can search identities, place and release legal holds on
@@ -33,65 +33,110 @@ own security and compliance requirements before using it with production data.
 
 ## Architecture
 
-![Quick Legal Hold Agent architecture. Data path (top): a user under legal hold's Amazon Quick prompts and AI outputs flow as CHAT_LOGS to Amazon CloudWatch vended logs, then to Amazon Data Firehose and a filter AWS Lambda function that keeps only active-hold users (matched by Amazon QuickSight ARN) and partitions by group and user, into an Amazon S3 Object Lock (WORM) bucket encrypted by an AWS KMS key for e-discovery retrieval. Control path (bottom): a Legal admin asks in Amazon Quick, which connects through an OAuth 2.0 and Amazon Cognito MCP connector to an Amazon Bedrock AgentCore Gateway exposing the search_identities, list_group_members, place_hold, release_hold, and list_holds tools, which directly invokes the Hold Manager AWS Lambda function that resolves users and expands groups through AWS IAM Identity Center and idempotently writes and releases holds in an Amazon DynamoDB held-user table. The filter function looks up user_arn in that same Amazon DynamoDB table.](images/quick_legal_hold_architecture.png)
-
-```
-Amazon Quick (Legal Hold agent, MCP connector)
-      |  1. per-user OAuth login (Cognito hosted UI, authorization_code / 3LO)
-      |  2. MCP JSON-RPC + Bearer JWT
-      v
-AgentCore Gateway (MCP, CUSTOM_JWT authorizer) --REQUEST interceptor--> injects caller identity
-      |  direct Lambda invoke (tool name in clientContext)
-      v
-Hold Manager Lambda --> DynamoDB holds table --> Firehose --> filter Lambda --> S3 WORM (Object Lock)
-      \_ (optional) IAM Identity Center: read-only resolve/expand users and groups
-```
+![Amazon Quick Legal Hold Agent architecture. Data path (top): a user under legal hold's Amazon Quick prompts and AI outputs flow as CHAT_LOGS to Amazon CloudWatch vended logs, then to Amazon Data Firehose and a filter AWS Lambda function that keeps only active-hold users (matched by Amazon QuickSight ARN) and partitions by group and user, into an Amazon S3 Object Lock (WORM) bucket encrypted by an AWS KMS key for e-discovery retrieval. Control path (bottom): a Legal admin asks in Amazon Quick, which connects through an OAuth 2.0 and Amazon Cognito MCP connector to an Amazon Bedrock AgentCore Gateway exposing the search_identities, list_group_members, place_hold, release_hold, and list_holds tools, which directly invokes the Hold Manager AWS Lambda function that resolves users and expands groups through AWS IAM Identity Center and idempotently writes and releases holds in an Amazon DynamoDB held-user table. The filter function looks up user_arn in that same Amazon DynamoDB table.](images/quick_legal_hold_architecture.png)
 
 - **Control path:** Amazon Quick -> Gateway -> Hold Manager Lambda -> DynamoDB.
-- **Data path:** chat logs -> Firehose -> filter (keep only active-hold users) -> WORM S3.
+- **Data path:** chat logs -> Firehose -> filter (keep only active-hold users) -> WORM S3 (original).
+- **Redaction path (optional):** new WORM object -> redact Lambda (Comprehend) -> redacted-copy bucket. The agent's `get_held_document` serves only the redacted copy; the original is reachable only via the break-glass role when configured.
 - Placing a hold via the agent immediately governs what the data path preserves.
 
 ## What gets created
 
 All resources share the prefix `quick-legalhold-mcp-`.
 
-**Control path (the agent)**
-- `quick-legalhold-mcp-hold-manager` AWS Lambda function - the five tools.
+### Control path (the agent)
+
+- `quick-legalhold-mcp-hold-manager` AWS Lambda function - the seven tools (identity search, hold place/release/list, and held-document list/get).
 - `quick-legalhold-mcp-interceptor` AWS Lambda function - REQUEST interceptor that injects caller identity.
 - `quick-legalhold-mcp-gateway-role` - Gateway execution role.
 - `AWS::BedrockAgentCore::Gateway` `quick-legalhold-mcp-gw` (MCP, CUSTOM_JWT) + Lambda target.
 
-**Preservation data path**
-- AWS Key Management Service (AWS KMS) customer managed key (alias `quick-legalhold-mcp-cmk`), key rotation enabled.
-- Amazon S3 WORM bucket `quick-legalhold-mcp-worm-<account>` - Object Lock (GOVERNANCE),
-  versioned, SSE-KMS, public access blocked.
-- Amazon DynamoDB table `quick-legalhold-mcp-users` (partition key `user_arn`, on-demand).
+### Preservation data path
+
+- AWS KMS key for the WORM bucket, DynamoDB, and Firehose - either a customer-managed CMK
+  the stack creates (rotation enabled, **retained** on delete) or a bring-your-own key
+  (`kmsKeyArn`).
+- Amazon S3 WORM bucket `quick-legalhold-mcp-worm-<account>` - Object Lock (mode and
+  retention are parameterized via `objectLockMode` / `objectLockDays`; GOVERNANCE/1-day
+  sample default, COMPLIANCE/years for production), versioned, SSE-KMS, public access blocked,
+  **retained** on delete.
+- Amazon S3 server-access-log bucket `quick-legalhold-mcp-worm-logs-<account>`.
+- Amazon DynamoDB table `quick-legalhold-mcp-users` (partition key `user_arn`, on-demand,
+  CMK-encrypted, point-in-time recovery on).
 - Amazon Data Firehose stream `quick-legalhold-mcp-stream-dp` -> WORM bucket, with filter
   AWS Lambda function `quick-legalhold-mcp-filter` (keeps only active-hold `user_arn`s).
 - A delivery-wiring custom resource that binds the chat-logs vended-log delivery to the stream.
 
-**Authentication (Amazon Cognito)**
+### PII-redaction path (only when `redactPii=true`)
+
+- `quick-legalhold-mcp-redact` AWS Lambda function - triggered by S3 `OBJECT_CREATED` on the
+  WORM bucket; runs Amazon Comprehend `DetectPiiEntities` over the chat text fields, masks the
+  detected spans, and writes a redacted copy. Fails closed (masks the whole field on error).
+- Amazon S3 redacted-copy bucket `quick-legalhold-mcp-redacted-<account>` (SSE-KMS, reviewer-
+  readable, not Object-Locked - the redacted copy is a derived artifact).
+
+### Authentication (Amazon Cognito)
+
 - User pool `quick-legalhold-mcp-pool` + hosted-UI domain + resource server `holds-api`
   (scope `invoke`).
 - App client `quick-legalhold-mcp-3lo` (authorization_code / 3LO; scopes
   `openid email profile holds-api/invoke`; confidential client with secret; callbacks =
   Quick's `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback` and
   `http://localhost:8765/callback`).
-- A sample end-user `legal-admin-test` whose password is stored in AWS Secrets Manager
-  (`quick-legalhold-mcp-3lo-testuser`) for evaluation only.
+- A sample end-user `legal-admin-test` - created only when `createTestUser=true`, with the
+  password supplied via the `TestUserPassword` NoEcho CloudFormation parameter, for
+  evaluation only.
 
 Authentication is **per-user (3LO) only**, so every hold is attributed to the individual
 logged-in Legal admin.
 
+> **Identity provider note:** This sample uses **Amazon Cognito as the OIDC identity provider** so it works out of the box. In a real deployment you should instead use **whichever identity provider your organization already uses** (for example AWS IAM Identity Center, Okta, Microsoft Entra ID / Azure AD, Ping, or any OIDC-compliant IdP). The AgentCore Gateway uses a `CUSTOM_JWT` authorizer, so point its OIDC discovery URL and allowed client/audience at your IdP, and configure the Quick MCP connector with that IdP's authorize/token URLs — Cognito is only the stand-in for this reference implementation.
+
 ## The agent's tools
 
 | Tool | Purpose | Required args |
-|---|---|---|
+| --- | --- | --- |
 | `search_identities` | Search AWS IAM Identity Center users and groups by substring (IDC mode) | `query` (optional) |
 | `list_group_members` | Expand an AWS IAM Identity Center group to its member users | `group_name` |
 | `place_hold` | Place an active hold on a user or (expanded) group; one item per `user_arn` | `type`, `name`, `matter_id` (+ optional `custodian`) |
 | `release_hold` | Set matching holds to `status=released` | `type`, `name` |
 | `list_holds` | List all current hold items | none |
+| `list_held_documents` | List the preserved (redacted) chat-log documents for a held user or group. Resolves the supplied name / email / `user_arn` / group against the hold records (and Identity Center in IDC mode) before listing. Requires `redactPii=true`. | `user` or `group_name` |
+| `get_held_document` | Return one preserved document as **redacted** content plus a short-lived pre-signed URL. Never returns the un-redacted original (break-glass only). | `key` |
+
+## Configuration options
+
+All options are passed as CDK context (`-c key=value`) at deploy time; every one has a safe
+sample default, so a bare deploy works. For a production posture, set the values marked below.
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `kmsKeyArn` | *(create a CMK)* | Bring your own KMS key for the WORM bucket, DynamoDB, and Firehose. If omitted, the stack creates a customer-managed CMK (rotation enabled). The created key is **retained** on stack delete so retained evidence stays readable. |
+| `objectLockMode` | `GOVERNANCE` | S3 Object Lock mode on the WORM evidence bucket. **Set `COMPLIANCE` for production** — COMPLIANCE cannot be shortened or bypassed by anyone (including root) until retention expires. GOVERNANCE is the safe sample default (an admin with `s3:BypassGovernanceRetention` can still clean up a trial). |
+| `objectLockDays` | `1` | Default retention days for the WORM bucket. **Set to your legal retention period (e.g. `2555` ≈ 7 years) for production.** |
+| `redactPii` | `false` | When `true`, an S3-triggered Lambda runs **Amazon Comprehend** `DetectPiiEntities` over each delivered WORM object and writes a **separate redacted copy** to a reviewer-readable bucket (`…-redacted-<account>`). The original in the WORM bucket is never modified. Off by default to preserve evidence fidelity (redacting the only copy can constitute spoliation). |
+| `comprehendLanguage` | `en` | Language code for Comprehend PII detection. |
+| `breakGlassRoleArn` | *(none)* | When set, a bucket policy **denies reading the un-redacted WORM evidence to every principal except this role** (and the account root). e-discovery production of originals goes through this role; day-to-day review uses the redacted copies. |
+| `createTestUser` | `false` | When `true`, creates a synthetic Cognito user (`legal-admin-test`) with the password from `testUserPassword`, for evaluation only. A real deployment authenticates real identities via the IdP and leaves this off. |
+| `testUserPassword` | *(empty)* | Permanent password for the synthetic test user (required only when `createTestUser=true`). Prefer the NoEcho CloudFormation parameter of the same name. |
+| `identityMode` / `identityStoreId` | `direct` | `idc` + an IAM Identity Center store id enables real (read-only) IDC user/group resolution; `direct` uses synthetic ARNs. |
+| `quickRedirectUri` | Quick's `us-east-1` callback | OAuth redirect URI registered on the Cognito 3LO client. |
+| `envTag` | `test` | Value of the `Env` resource tag. |
+
+Example production deploy:
+
+```bash
+cdk deploy \
+  -c kmsKeyArn=arn:aws:kms:us-east-1:111122223333:key/<id> \
+  -c objectLockMode=COMPLIANCE -c objectLockDays=2555 \
+  -c redactPii=true \
+  -c breakGlassRoleArn=arn:aws:iam::111122223333:role/legal-ediscovery
+```
+
+> **PII redaction and evidentiary integrity:** redaction never alters the original. The
+> authoritative record stays immutable in the WORM bucket (accessible only via the
+> break-glass role when one is set); the redacted copy is a derived artifact for reviewer /
+> agent access. The `get_held_document` tool serves only the redacted copy.
 
 ## Prerequisites
 
@@ -126,8 +171,7 @@ cd quick-legal-hold-agent
 There are no manual post-deploy steps for the backend; the stack creates all of its own
 infrastructure.
 
-<details>
-<summary>Manual equivalent</summary>
+### Manual equivalent
 
 ```bash
 npm install
@@ -136,7 +180,6 @@ npx cdk deploy --require-approval never
 # override Quick redirect URI:
 # npx cdk deploy -c quickRedirectUri=<uri> --require-approval never
 ```
-</details>
 
 ## Step 2 - Connect the agent to Amazon Quick
 
@@ -158,7 +201,7 @@ Run the helper to print exact, ready-to-paste values pulled live from your deplo
 It prints the following and writes `outputs/quick-connector.json`:
 
 | Field | Source |
-|---|---|
+| --- | --- |
 | MCP Gateway URL | `GatewayUrl` output |
 | Auth method | OAuth 2.0 - authorization code (3LO) |
 | Authorize URL | `ThreeLoAuthorizeUrl` output |
@@ -175,7 +218,7 @@ Outputs, or `aws cloudformation describe-stacks`). Every field the connector
 needs is an output — including the client secret (`ThreeLoClientSecret`):
 
 | Field | Stack output |
-|---|---|
+| --- | --- |
 | MCP Gateway URL | `GatewayUrl` |
 | Auth method | OAuth 2.0 - authorization code (3LO) |
 | Authorize URL | `ThreeLoAuthorizeUrl` |
@@ -277,6 +320,7 @@ aws quicksight create-agent \
 ```
 
 Notes:
+
 - `--agent-id` must match `[0-9a-zA-Z-_.+]+`; `--name` is 1-50 characters.
 - `--custom-prompt-input` is a tagged union: use `NewPrompt` (as above) for a fresh prompt,
   or `ExistingPrompt` to reference a saved model-profile prompt. `NewPrompt.CustomInstructions`
@@ -393,14 +437,16 @@ versions and everything is deletable. The script is safe to re-run.
 
 ## Repository layout
 
-```
+```text
 quick-legal-hold-agent/
 ├── bin/app.ts                              # CDK app entry
-├── lib/quick-legalhold-mcp-stack.ts        # Self-contained stack: KMS + S3 + DynamoDB + Firehose + filter
+├── lib/quick-legalhold-mcp-stack.ts        # Self-contained stack: KMS + S3 (WORM + redacted + logs)
+│                                           #   + DynamoDB + Firehose + filter + redact
 │                                           #   + Gateway (3LO) + interceptor + Cognito + sample user
 ├── lambda/
-│   ├── hold_manager_mcp/handler.py         # 5 tools; custodian from injected caller identity
+│   ├── hold_manager_mcp/handler.py         # 7 tools; custodian from injected caller identity
 │   ├── filter/handler.py                   # Firehose transform: keep only active-hold user_arns
+│   ├── redact/handler.py                   # S3-triggered: Comprehend PII masking -> redacted bucket
 │   ├── interceptor/handler.py              # REQUEST interceptor: decode JWT, inject _caller
 │   └── delivery_wiring/handler.py          # vended-log delivery binding (custom resource)
 ├── scripts/
