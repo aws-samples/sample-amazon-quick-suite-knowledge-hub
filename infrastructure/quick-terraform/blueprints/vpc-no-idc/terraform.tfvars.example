@@ -1,0 +1,24 @@
+# Blueprint: vpc-no-idc - example variables
+# VPC-isolated Amazon Quick with native QuickSight identity (no IDC).
+
+aws_region         = "us-east-1"
+account_name       = "MyQuickAccount"
+notification_email = "admin@example.com"
+
+enable_privatelink    = true
+enable_vpc_connection = true
+
+vpc_id             = "vpc-0123456789abcdef0"
+subnet_ids         = ["subnet-aaaa1111", "subnet-bbbb2222"]
+security_group_ids = ["sg-0123456789abcdef0"]
+
+# Region-specific Amazon Quick interface endpoint service name (for PrivateLink / Type 1).
+# e.g. "com.amazonaws.us-east-1.quicksight-api" - confirm the exact name for your region.
+privatelink_service_name = "com.amazonaws.us-east-1.quicksight-api"
+
+enable_kms = true
+
+tags = {
+  Project   = "AmazonQuick"
+  ManagedBy = "Terraform"
+}

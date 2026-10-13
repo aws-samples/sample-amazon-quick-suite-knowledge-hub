@@ -1,0 +1,72 @@
+# Blueprint: idc-vpc-governed - example variables
+# The full-featured topology. Every capability is a flag; turn off what you do not need.
+
+aws_region         = "us-east-1"
+account_name       = "MyQuickAccount"
+notification_email = "admin@example.com"
+edition            = "ENTERPRISE"
+
+# --- Identity Center ---
+enable_idc         = true
+identity_store_id  = "d-1234567890"
+admin_group_name   = "QUICK_ADMIN"
+create_admin_group = true
+
+# --- KMS ---
+enable_kms       = true
+kms_multi_region = false # set true when IDC home region != aws_region
+
+# --- VPC ---
+enable_privatelink       = true
+enable_vpc_connection    = true
+vpc_id                   = "vpc-0123456789abcdef0"
+subnet_ids               = ["subnet-aaaa1111", "subnet-bbbb2222"]
+security_group_ids       = ["sg-0123456789abcdef0"]
+privatelink_service_name = "com.amazonaws.us-east-1.quicksight-api"
+
+# --- Service role ---
+enable_service_role         = true
+service_role_s3_bucket_arns = ["arn:aws:s3:::my-quick-data-bucket"]
+
+# --- Custom permissions ---
+enable_custom_permissions = true
+custom_permission_profiles = {
+  ReadersLockdown = {
+    preset = "reader_lockdown"
+  }
+}
+custom_permission_role_assignments = {
+  READER = "ReadersLockdown"
+}
+custom_permissions_use_cloudformation = false
+
+# --- Account governance ---
+# Account-wide settings: default namespace + termination protection.
+enable_account_settings        = true
+termination_protection_enabled = true
+
+# IP / VPC access restrictions. Only the listed CIDRs/VPCs/endpoints may reach Quick.
+enable_ip_restriction  = true
+ip_restriction_enabled = true
+ip_restriction_rule_map = {
+  "203.0.113.0/24" = "Corp egress NAT"
+  "198.51.100.0/24" = "VPN pool"
+}
+vpc_id_restriction_rule_map          = {}
+vpc_endpoint_id_restriction_rule_map = {}
+
+# Bind IAM policies to QuickSight identities (users/groups) per namespace.
+iam_policy_assignments = {
+  AnalystBaseline = {
+    policy_arn = "arn:aws:iam::aws:policy/AWSQuicksightAthenaAccess"
+    status     = "ENABLED"
+    namespace  = "default"
+    groups     = ["QUICK_ADMIN"]
+    users      = []
+  }
+}
+
+tags = {
+  Project   = "AmazonQuick"
+  ManagedBy = "Terraform"
+}

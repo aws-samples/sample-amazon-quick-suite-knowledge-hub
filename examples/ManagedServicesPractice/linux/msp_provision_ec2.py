@@ -173,7 +173,7 @@ def provision_instance(spec):
     ]
 
     # User Data script to deploy JIT hook at first boot
-    user_data_script = f"""#!/bin/bash
+    user_data_script = f'''#!/bin/bash
 # Deploy JIT hook for command_not_found
 cat << 'HOOKEOF' > /etc/profile.d/jit_hook.sh
 #!/bin/bash
@@ -194,7 +194,7 @@ command_not_found_handle() {{
 }}
 HOOKEOF
 chmod 644 /etc/profile.d/jit_hook.sh
-"""
+'''
 
     try:
         response = ec2.run_instances(

@@ -2,7 +2,7 @@
 """Quick Observability MCP - CDK App"""
 
 import aws_cdk as cdk
-from cdk.quicksuite_observability_mcp_stack import QuickSuiteObservabilityMCPStack
+from cdk.quick_observability_mcp_stack import QuickObservabilityMCPStack
 
 app = cdk.App()
 
@@ -11,9 +11,9 @@ env = cdk.Environment(
     region=app.node.try_get_context("region") or "us-east-1",
 )
 
-QuickSuiteObservabilityMCPStack(
+QuickObservabilityMCPStack(
     app,
-    "quicksuite-observability-mcp",
+    "quick-observability-mcp",
     env=env,
     description="Quick Observability MCP with AgentCore Gateway",
 )

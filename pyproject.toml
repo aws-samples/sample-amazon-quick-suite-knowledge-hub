@@ -117,6 +117,19 @@ ignore = [
 "**/data-generators/*" = ["S311"]
 "**/generate_*.py" = ["S311"]
 "examples/genai-operations-hub/infrastructure/*" = ["S311", "S608"]
+# The observability MCP builds Athena SQL for its deep-analysis tools. Every
+# interpolated value is a validated identifier, an int epoch, or a string
+# literal escaped via _sql_escape (single-quote doubling); run_athena_query is
+# an admin-only read tool whose purpose is arbitrary SELECTs.
+"infrastructure/observability-agent/tools/quick_observability_lambda.py" = [
+    "S608",
+]
+# The user-summary dataset builds Athena custom SQL from a stack-controlled
+# constant database name (not user input); the per-file S608 ignore matches
+# the observability tools-lambda justification.
+"infrastructure/observability-agent/cdk/quicksight_datasets.py" = [
+    "S608",
+]
 # S105 flags constant *names* containing words like TOKEN/PASSWORD/token_use —
 # these are event-type/label strings, not credentials. F821 `context` is a
 # guarded `if "context" in locals()` probe ruff can't resolve. S311 builds a

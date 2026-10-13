@@ -1,6 +1,6 @@
 """
 CloudFormation custom-resource handler (Provider framework) that wires the
-account's QuickSuite CHAT_LOGS vended-log delivery source to OUR Firehose
+account's Quick CHAT_LOGS vended-log delivery source to OUR Firehose
 delivery-destination, idempotently, using an ADOPT-not-OWN model.
 
 ResourceProperties (from the stack):
@@ -55,7 +55,7 @@ def _find_chat_logs_source(account: str):
 def _enable_chat_logs_source(quicksight_resource_arn: str):
     """Enable Quick chat logging by creating the CHAT_LOGS delivery source.
     Only used when no source exists. Returns the created source name."""
-    name = "quicksuite-chat-logs-source"
+    name = "quick-chat-logs-source"
     logs.put_delivery_source(
         name=name,
         resourceArn=quicksight_resource_arn,
