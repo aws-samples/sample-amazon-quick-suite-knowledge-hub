@@ -246,28 +246,26 @@ class QuickSightDatasets(Construct):
     def _build_user_summary_dataset(
         self, *, account: str, glue_database: str, permissions
     ) -> quicksight.CfnDataSet:
-        # QuickSight custom SQL is a static dataset definition and cannot use
-        # bound parameters. glue_database is a fixed infrastructure identifier
-        # (not user input); validate it as a plain SQL identifier so no SQL
-        # syntax can be injected through the interpolation below.
+        # QuickSight custom SQL is a static definition and cannot bind
+        # parameters. glue_database is a fixed infrastructure identifier;
+        # validate it, then substitute it into a literal SQL template.
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", glue_database):
             raise ValueError(f"unsafe Glue database identifier: {glue_database!r}")
-        db = glue_database
-        sql = (
+        sql_template = (
             "WITH chat AS ("
             "  SELECT user_arn, COUNT(*) AS total_queries, "
             "         COUNT(DISTINCT conversation_id) AS total_conversations, "
             "         MAX(event_timestamp) AS last_active_epoch "
-            f"  FROM {db}.chat_events GROUP BY user_arn), "
+            "  FROM __DB__.chat_events GROUP BY user_arn), "
             "hours AS ("
             "  SELECT user_arn, SUM(usage_hours) AS agent_hours "
-            f"  FROM {db}.agent_hours GROUP BY user_arn), "
+            "  FROM __DB__.agent_hours GROUP BY user_arn), "
             "storage AS ("
             "  SELECT user_arn, "
             "         SUM(consumed_source_size) / 1073741824.0 AS consumed_source_gb, "
             "         SUM(consumed_index_size) / 1073741824.0 AS consumed_index_gb, "
             "         SUM(consumed_source_doc_count) AS documents "
-            f"  FROM {db}.index_usage GROUP BY user_arn) "
+            "  FROM __DB__.index_usage GROUP BY user_arn) "
             "SELECT COALESCE(chat.user_arn, hours.user_arn, storage.user_arn) AS user_arn, "
             "       COALESCE(chat.total_queries, 0) AS total_queries, "
             "       COALESCE(chat.total_conversations, 0) AS total_conversations, "
@@ -281,6 +279,7 @@ class QuickSightDatasets(Construct):
             "FULL OUTER JOIN storage "
             "  ON COALESCE(chat.user_arn, hours.user_arn) = storage.user_arn"
         )
+        sql = sql_template.replace("__DB__", glue_database)
         cols = [
             ("user_arn", "STRING"),
             ("total_queries", "INTEGER"),

@@ -117,16 +117,6 @@ ignore = [
 "**/data-generators/*" = ["S311"]
 "**/generate_*.py" = ["S311"]
 "examples/genai-operations-hub/infrastructure/*" = ["S311", "S608"]
-# Athena SQL is built with caller values bound as query parameters and only
-# validated identifiers interpolated; no user input reaches the SQL string.
-"infrastructure/observability-agent/tools/quick_observability_lambda.py" = [
-    "S608",
-]
-# Athena custom SQL is built from a validated, stack-controlled identifier,
-# not from user input.
-"infrastructure/observability-agent/cdk/quicksight_datasets.py" = [
-    "S608",
-]
 # S105 flags constant *names* containing words like TOKEN/PASSWORD/token_use —
 # these are event-type/label strings, not credentials. F821 `context` is a
 # guarded `if "context" in locals()` probe ruff can't resolve. S311 builds a

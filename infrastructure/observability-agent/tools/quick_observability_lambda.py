@@ -29,7 +29,6 @@ import datetime
 import json
 import logging
 import os
-import re
 
 import athena_client
 import boto3
@@ -43,17 +42,24 @@ DATA_BUCKET = os.environ.get("DATA_BUCKET", "")
 # Statements the single read-only tool is allowed to run.
 _ALLOWED_PREFIXES = ("select", "with", "show", "describe", "explain")
 
-# Tables exported for a DSAR, with the user-identifier column to filter on.
-# cloudtrail_events uses event_time; it has no user_arn, so match the audit
-# identity columns instead.
-_DSAR_TABLES = {
-    "chat_events": "user_arn",
-    "feedback_events": "user_arn",
-    "agent_hours": "user_arn",
-    "agent_metadata": "user_arn",
-    "index_usage": "user_arn",
-    "dlp_events": "user_arn",
+# Tables exported for a DSAR, mapped to a static query (literal SQL, bound
+# parameters). cloudtrail_events has no user_arn, so it matches the audit
+# identity columns and is queried separately below.
+_DSAR_QUERIES = {
+    "chat_events": "SELECT * FROM chat_events WHERE user_arn = ? OR user_arn LIKE ?",
+    "feedback_events": "SELECT * FROM feedback_events WHERE user_arn = ? OR user_arn LIKE ?",
+    "agent_hours": "SELECT * FROM agent_hours WHERE user_arn = ? OR user_arn LIKE ?",
+    "agent_metadata": "SELECT * FROM agent_metadata WHERE user_arn = ? OR user_arn LIKE ?",
+    "index_usage": "SELECT * FROM index_usage WHERE user_arn = ? OR user_arn LIKE ?",
+    "dlp_events": "SELECT * FROM dlp_events WHERE user_arn = ? OR user_arn LIKE ?",
 }
+
+_DSAR_AUDIT_QUERY = (
+    "SELECT * FROM cloudtrail_events "
+    "WHERE user_name LIKE ? "
+    "OR user_identity_arn LIKE ? "
+    "OR on_behalf_of_user_id LIKE ?"
+)
 
 
 def _is_read_only(sql: str) -> bool:
@@ -66,21 +72,6 @@ def _is_read_only(sql: str) -> bool:
         return False
     lowered = stripped.lower()
     return lowered.startswith(_ALLOWED_PREFIXES)
-
-
-_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-
-
-def _safe_ident(name: str) -> str:
-    """Return an identifier only if it is a plain [A-Za-z_][A-Za-z0-9_]* token.
-
-    Table and column names come from the fixed _DSAR_TABLES map, never from
-    request input; this validates that invariant and rejects anything that
-    could carry SQL syntax.
-    """
-    if not _IDENT_RE.match(name):
-        raise ValueError(f"unsafe SQL identifier: {name!r}")
-    return name
 
 
 def handler(event, context):
@@ -205,12 +196,9 @@ def _export_user_data_tool(parameters):
         "errors": {},
     }
 
-    for table, col in _DSAR_TABLES.items():
-        tbl = _safe_ident(table)
-        column = _safe_ident(col)
-        sql = f"SELECT * FROM {tbl} WHERE {column} = ? OR {column} LIKE ?"
+    for table, query in _DSAR_QUERIES.items():
         res = athena_client.run_query(
-            sql, max_rows=max_rows, params=[user_arn, f"%{token}"]
+            query, max_rows=max_rows, params=[user_arn, f"%{token}"]
         )
         if res.get("status") == "success":
             bundle["tables"][table] = res.get("rows", [])
@@ -218,17 +206,12 @@ def _export_user_data_tool(parameters):
             bundle["errors"][table] = res.get("error")
 
     # Audit trail (cloudtrail_events) — match the user's audit identity columns.
-    audit_sql = (
-        "SELECT * FROM cloudtrail_events "
-        "WHERE user_name LIKE ? "
-        "OR user_identity_arn LIKE ? "
-        "OR on_behalf_of_user_id LIKE ?"
-    )
     like_token = f"%{token}%"
     audit = athena_client.run_query(
-        audit_sql, max_rows=max_rows, params=[like_token, like_token, like_token]
+        _DSAR_AUDIT_QUERY,
+        max_rows=max_rows,
+        params=[like_token, like_token, like_token],
     )
-    audit = athena_client.run_query(audit_sql, max_rows=max_rows)
     if audit.get("status") == "success":
         bundle["tables"]["cloudtrail_events"] = audit.get("rows", [])
     else:
