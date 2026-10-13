@@ -117,16 +117,13 @@ ignore = [
 "**/data-generators/*" = ["S311"]
 "**/generate_*.py" = ["S311"]
 "examples/genai-operations-hub/infrastructure/*" = ["S311", "S608"]
-# The observability MCP builds Athena SQL for its deep-analysis tools. Every
-# interpolated value is a validated identifier, an int epoch, or a string
-# literal escaped via _sql_escape (single-quote doubling); run_athena_query is
-# an admin-only read tool whose purpose is arbitrary SELECTs.
+# Athena SQL is built with caller values bound as query parameters and only
+# validated identifiers interpolated; no user input reaches the SQL string.
 "infrastructure/observability-agent/tools/quick_observability_lambda.py" = [
     "S608",
 ]
-# The user-summary dataset builds Athena custom SQL from a stack-controlled
-# constant database name (not user input); the per-file S608 ignore matches
-# the observability tools-lambda justification.
+# Athena custom SQL is built from a validated, stack-controlled identifier,
+# not from user input.
 "infrastructure/observability-agent/cdk/quicksight_datasets.py" = [
     "S608",
 ]
@@ -156,7 +153,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.bandit]
-exclude_dirs = ["tests", "node_modules"]
+exclude_dirs = ["tests", "node_modules", ".venv", ".ruff_cache", "cdk.out", "site"]
 skips = ["B101"] # Skip assert_used test
 
 [tool.typos.files]

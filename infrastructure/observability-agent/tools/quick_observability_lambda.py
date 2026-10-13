@@ -29,6 +29,7 @@ import datetime
 import json
 import logging
 import os
+import re
 
 import athena_client
 import boto3
@@ -67,8 +68,19 @@ def _is_read_only(sql: str) -> bool:
     return lowered.startswith(_ALLOWED_PREFIXES)
 
 
-def _sql_escape(value: str) -> str:
-    return str(value).replace("'", "''")
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_ident(name: str) -> str:
+    """Return an identifier only if it is a plain [A-Za-z_][A-Za-z0-9_]* token.
+
+    Table and column names come from the fixed _DSAR_TABLES map, never from
+    request input; this validates that invariant and rejects anything that
+    could carry SQL syntax.
+    """
+    if not _IDENT_RE.match(name):
+        raise ValueError(f"unsafe SQL identifier: {name!r}")
+    return name
 
 
 def handler(event, context):
@@ -177,10 +189,8 @@ def _export_user_data_tool(parameters):
     except (TypeError, ValueError):
         max_rows = 10000
 
-    esc = _sql_escape(user_arn)
     # Match on the full ARN or its trailing user token (handles bare names).
     token = user_arn.rstrip("/").split("/")[-1]
-    esc_token = _sql_escape(token)
 
     bundle = {
         "user_arn": user_arn,
@@ -196,10 +206,12 @@ def _export_user_data_tool(parameters):
     }
 
     for table, col in _DSAR_TABLES.items():
-        sql = (
-            f"SELECT * FROM {table} WHERE {col} = '{esc}' OR {col} LIKE '%{esc_token}'"
+        tbl = _safe_ident(table)
+        column = _safe_ident(col)
+        sql = f"SELECT * FROM {tbl} WHERE {column} = ? OR {column} LIKE ?"
+        res = athena_client.run_query(
+            sql, max_rows=max_rows, params=[user_arn, f"%{token}"]
         )
-        res = athena_client.run_query(sql, max_rows=max_rows)
         if res.get("status") == "success":
             bundle["tables"][table] = res.get("rows", [])
         else:
@@ -208,9 +220,13 @@ def _export_user_data_tool(parameters):
     # Audit trail (cloudtrail_events) — match the user's audit identity columns.
     audit_sql = (
         "SELECT * FROM cloudtrail_events "
-        f"WHERE user_name LIKE '%{esc_token}%' "
-        f"OR user_identity_arn LIKE '%{esc_token}%' "
-        f"OR on_behalf_of_user_id LIKE '%{esc_token}%'"
+        "WHERE user_name LIKE ? "
+        "OR user_identity_arn LIKE ? "
+        "OR on_behalf_of_user_id LIKE ?"
+    )
+    like_token = f"%{token}%"
+    audit = athena_client.run_query(
+        audit_sql, max_rows=max_rows, params=[like_token, like_token, like_token]
     )
     audit = athena_client.run_query(audit_sql, max_rows=max_rows)
     if audit.get("status") == "success":

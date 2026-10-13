@@ -282,7 +282,7 @@ From your CDK deployment, you'll need:
 - `ClientSecret` - Cognito Client Secret
 - `CognitoTokenUrl` - OAuth2 token endpoint
 - `ObservabilityUsername` - dummy Cognito user (`observability_user`)
-- `ObservabilityPassword` - dummy Cognito password (demo credential)
+- the password you supplied at deploy time via `-c observabilityUserPassword=...` (or the `ObservabilityUserPassword` parameter)
 
 ### Step 1: Configure MCP Action
 
@@ -313,9 +313,9 @@ Fill in the MCP configuration:
    - **Token URL** → Paste your `CognitoTokenUrl`
    - **Scopes** → `OAuthScopes` output (`openid email profile <pool>/invoke`)
    - **Redirect URI** → `QuickRedirectUri` output (already registered on the client)
-   - **Sign-in when prompted** → `observability_user` / the `ObservabilityPassword` output (demo default `AmazonQuick1@`)
+   - **Sign-in when prompted** → `observability_user` / the password you supplied at deploy time (`-c observabilityUserPassword=...`)
 
-> **Demo credential:** `observability_user` / `AmazonQuick1@` is created automatically by the stack and exists only in the account where you deploy. Rotate it (or back it with Secrets Manager) before any non-evaluation use.
+> **Demo credential:** `observability_user` is created automatically by the stack; its password is the value you pass at deploy time via `-c observabilityUserPassword=...` (or the NoEcho `ObservabilityUserPassword` parameter) — it is never hardcoded. The user exists only in the account where you deploy.
 >
 > **Identity provider note:** This sample uses **Amazon Cognito as the OIDC identity provider** so it works out of the box. In a real deployment you should instead use **whichever identity provider your organization already uses** (for example AWS IAM Identity Center, Okta, Microsoft Entra ID / Azure AD, Ping, or any OIDC-compliant IdP). The AgentCore Gateway is configured with a `CUSTOM_JWT` authorizer, so point its discovery URL and allowed clients/audience at your IdP, and configure the Quick MCP connector with that IdP's authorize/token URLs — Cognito is only the stand-in for this reference implementation.
 
@@ -515,7 +515,7 @@ This will delete:
 - **Encryption**: All data in transit is encrypted using TLS
 - **Logging**: CloudWatch Logs are retained for 30-90 days (configurable)
 - **Authentication**: Per-user 3LO OAuth (authorization-code) via the Cognito hosted UI; the Gateway validates the resulting user JWT (`CUSTOM_JWT`). Cognito is the sample OIDC provider — swap in your own OIDC IdP for real use (see the identity-provider note above).
-- **Demo credential**: `observability_user` / `AmazonQuick1@` is a hardcoded demo login created by the stack; rotate it or back it with Secrets Manager before non-evaluation use
+- **Demo credential**: `observability_user` is a demo login created by the stack; its password is supplied at deploy time via `-c observabilityUserPassword=...` (NoEcho parameter, never hardcoded)
 - **Rotation**: Consider rotating the Cognito user password and OAuth credentials periodically
 
 ## 📚 Additional Resources

@@ -27,14 +27,22 @@ def _wait(seconds: float) -> None:
     _IDLE.wait(timeout=seconds)
 
 
-def run_query(sql: str, max_rows: int = 1000) -> dict:
-    """Execute `sql` and return {status, columns, rows} or {status, error}."""
+def run_query(sql: str, max_rows: int = 1000, params: list[str] | None = None) -> dict:
+    """Execute `sql` and return {status, columns, rows} or {status, error}.
+
+    When `params` is given, `sql` must use positional `?` placeholders and the
+    values are bound via Athena ExecutionParameters (server-side parameterized
+    query), so caller-supplied values are never interpolated into the SQL.
+    """
     try:
-        start = _athena.start_query_execution(
-            QueryString=sql,
-            QueryExecutionContext={"Database": ATHENA_DATABASE},
-            WorkGroup=ATHENA_WORKGROUP,
-        )
+        start_kwargs = {
+            "QueryString": sql,
+            "QueryExecutionContext": {"Database": ATHENA_DATABASE},
+            "WorkGroup": ATHENA_WORKGROUP,
+        }
+        if params:
+            start_kwargs["ExecutionParameters"] = [str(p) for p in params]
+        start = _athena.start_query_execution(**start_kwargs)
         qid = start["QueryExecutionId"]
 
         waited = 0.0

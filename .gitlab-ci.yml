@@ -1,4 +1,3 @@
-
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
@@ -24,7 +23,7 @@ lint:
     - echo "📝 ruff format --check"
     - uv run ruff format --check .
 
-# ---- Python security scan: bandit (non-gating, mirrors GitHub) -------------
+# ---- Python security scan: bandit (non-gating) -----------------------------
 security:
   stage: validate
   image: python:3.11
@@ -37,10 +36,7 @@ security:
     - uv run bandit -q -r . -c pyproject.toml || true
   allow_failure: true
 
-# ---- Markdown lint (changed files only, matching GitHub's quality-check) ---
-# GitHub lints only changed .md files; repo-wide linting would fail on
-# pre-existing files (e.g. intentional inline-HTML badges in the root README).
-# We diff against the target/previous commit and lint just the changed markdown.
+# ---- Markdown lint (changed files only) ------------------------------------
 markdown:
   stage: validate
   image: node:20
@@ -64,7 +60,7 @@ markdown:
         markdownlint-cli2 $CHANGED
       fi
 
-# ---- Docs: strict MkDocs build (fails on warnings, like GitHub) ------------
+# ---- Docs: strict MkDocs build ---------------------------------------------
 docs-build:
   stage: validate
   image: python:3.11

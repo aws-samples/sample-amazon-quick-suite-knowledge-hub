@@ -648,16 +648,25 @@ def handler(event, context):
             enable_token_revocation=True,
         )
 
-        # ----------------------------------------------------------------
-        # Dummy Cognito user for the MCP client to authenticate as.
-        #
-        # DEMO ONLY: the username and password below are hardcoded so this
-        # public sample works out of the box in the account where it is
-        # deployed. Rotate or replace with a Secrets Manager-backed value
-        # before using beyond evaluation.
-        # ----------------------------------------------------------------
+        # Demo Cognito user for the MCP client. Password is supplied at deploy
+        # time via `-c observabilityUserPassword=...` or the NoEcho parameter.
         observability_username = "observability_user"
-        observability_password = "AmazonQuick1@"  # noqa: S105 - demo credential
+        observability_password_param = CfnParameter(
+            self,
+            "ObservabilityUserPassword",
+            type="String",
+            no_echo=True,
+            default="",
+            description=(
+                "Permanent password for the demo Cognito MCP user "
+                "(>=12 chars, upper/lower/number/symbol). Supplied at deploy "
+                "time; not hardcoded."
+            ),
+        )
+        observability_password = (
+            self.node.try_get_context("observabilityUserPassword")
+            or observability_password_param.value_as_string
+        )
 
         dummy_user = cognito.CfnUserPoolUser(
             self,
@@ -979,9 +988,9 @@ def handler(event, context):
 
         CfnOutput(
             self,
-            "ObservabilityPassword",
-            value=observability_password,
-            description="Dummy Cognito password for user-based MCP auth (demo only; rotate for real use)",
+            "ObservabilityPasswordNote",
+            value="Supplied at deploy time via -c observabilityUserPassword / ObservabilityUserPassword parameter",
+            description="How the demo Cognito user password is set (value is not echoed)",
         )
 
         CfnOutput(
