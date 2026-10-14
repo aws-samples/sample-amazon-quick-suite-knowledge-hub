@@ -83,6 +83,7 @@ _LABEL_OVERRIDES = {
     "powerpoint-creator-mcp": "PowerPoint Creator MCP",
     "testing-mcp-oauth-flow": "Testing MCP OAuth Flow",
     "sharepoint-list-to-quicksight-dataset": "Export SharePoint Lists to Quick Sight",
+    "servicenow-table-sync": "Sync ServiceNow Tables to Amazon Quick Sight Using OAuth",
     "salesforce-chat-embed": "Embed Quick Chat Agent in Salesforce",
     "quick-chat-agent-embedding-demo": "Quick Chat Agent Embedding Demo",
     "document-generation-mcp-agentcore-runtime": "Document Generation MCP (AgentCore Runtime)",

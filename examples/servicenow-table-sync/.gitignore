@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+
+# Node / CDK
+node_modules/
+cdk.out/
+coverage/
+*.d.ts
+lib/**/*.js
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
