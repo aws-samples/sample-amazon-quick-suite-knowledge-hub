@@ -1,0 +1,18 @@
+# Keep the Lambda image build context small and its CDK asset hash stable.
+# DockerImageCode.fromImageAsset(backend/) hashes this directory; excluding the
+# local venv and caches keeps `make check`/`make test` runs from changing the
+# hash and forcing needless image rebuilds. The Dockerfile only needs
+# pyproject.toml, uv.lock, and src/.
+.venv/
+**/__pycache__/
+**/*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+tests/
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/
+.DS_Store
