@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Amazon Quick Knowledge Hub
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get changed Node.js files
         id: changed-files
