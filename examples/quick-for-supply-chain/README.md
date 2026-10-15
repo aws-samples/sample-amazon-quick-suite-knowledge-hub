@@ -1,4 +1,4 @@
-# Amazon Quick for Supply Chain
+# Quick for Supply Chain
 
 > Conversational supply chain intelligence on Amazon Bedrock AgentCore and Amazon Quick, using a supervisor/orchestrator pattern over MCP tools.
 
