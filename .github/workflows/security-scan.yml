@@ -41,7 +41,7 @@ jobs:
 
       - name: Set up Python for security scanning
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
