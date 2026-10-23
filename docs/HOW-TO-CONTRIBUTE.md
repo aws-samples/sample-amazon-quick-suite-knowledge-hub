@@ -37,7 +37,7 @@ and adds it to the left navigation — there is no `mkdocs.yml` nav to edit.
 
 | Section folder             | Use it for                                    |
 | -------------------------- | --------------------------------------------- |
-| `integration/`             | Connecting third-party services, MCP servers  |
+| `integration/`             | Connecting third-party services, MCP servers, data sources |
 | `infrastructure/`          | Terraform / CDK templates, observability, RLS |
 | `examples/`                | Complete, deployable end-to-end use cases     |
 | `amazon-quick-on-desktop/` | Desktop app setup                             |
