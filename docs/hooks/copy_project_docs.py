@@ -50,6 +50,7 @@ INTEGRATION = {
         ("MCP", "actions/MCP", "mcp"),
         ("Actions", "actions", "actions"),
         ("Knowledge Base", "knowledge-base", "knowledge-base"),
+        ("Data Sources", "data-sources", "data-sources"),
     ],
 }
 # Standalone single-project sections (project folder == section).
@@ -91,6 +92,7 @@ _LABEL_OVERRIDES = {
     "rls-dataset-shaping": "Row-Level Security & Dataset Shaping",
     "2lo-servicenow-action-setup-guide": "ServiceNow (2LO)",
     "confluence-cloud-knowledge-only-setup-guide": "Confluence Cloud",
+    "databricks-unity-catalog-3lo-setup-guide": "Databricks Unity Catalog (3LO)",
     "ManagedServicesPractice": "Managed Services Practice",
 }
 
@@ -180,6 +182,7 @@ def _derive_tags(fm: dict, title: str) -> list[str]:
     hay = f"{title} {fm.get('description', '')}".lower()
     for kw, label in (
         ("mcp", "MCP"),
+        ("databricks", "Databricks"),
         ("agentcore", "AgentCore"),
         ("embed", "Embed"),
         ("terraform", "Terraform"),
@@ -253,6 +256,12 @@ _CATEGORY_ORDER = [
         "Slack, Jira, Salesforce, ServiceNow, SharePoint, and more.",
     ),
     (
+        "integration-data-sources",
+        "Data sources",
+        "Connect Quick to data platforms with per-user identity enforcement: "
+        "Databricks Unity Catalog with OAuth 3LO and trusted identity propagation.",
+    ),
+    (
         "integration-mcp",
         "MCP servers",
         "Deployable Model Context Protocol servers you can connect to Quick, "
@@ -289,7 +298,10 @@ def _first_url_for_group(group: str) -> str:
 def _render_stats() -> str:
     total = len(_CARDS)
     integrations = sum(
-        1 for c in _CARDS if c["group"] in ("integration-actions", "integration-mcp")
+        1
+        for c in _CARDS
+        if c["group"]
+        in ("integration-actions", "integration-mcp", "integration-data-sources")
     )
     mcp = sum(1 for c in _CARDS if c["group"] == "integration-mcp")
     use_cases = sum(1 for c in _CARDS if c["group"] == "examples")
@@ -494,7 +506,10 @@ def _build_and_stage() -> list:
                     continue
                 # MCP servers get their own gallery bucket; everything else
                 # under integration/ is an action/KB integration.
-                cgroup = "integration-mcp" if urlsub == "mcp" else "integration-actions"
+                cgroup = {
+                    "mcp": "integration-mcp",
+                    "data-sources": "integration-data-sources",
+                }.get(urlsub, "integration-actions")
                 _stage_project(
                     child,
                     f"{INTEGRATION['url']}/{urlsub}/{child.name}",

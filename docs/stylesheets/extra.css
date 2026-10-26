@@ -124,6 +124,54 @@
   background-color: rgba(214, 0, 186, 0.1);
 }
 
+/* Callout banners: tint the whole admonition body, not only the title,
+   so notes and warnings stand out from the surrounding steps. */
+.md-typeset .admonition.note,
+.md-typeset .admonition.info {
+  background-color: rgba(104, 66, 255, 0.05);
+}
+.md-typeset .admonition.warning {
+  background-color: rgba(255, 145, 0, 0.07);
+}
+.md-typeset .admonition.danger {
+  background-color: rgba(255, 23, 68, 0.06);
+}
+.md-typeset .admonition > p:last-child,
+.md-typeset .admonition > ul:last-child {
+  margin-bottom: 0.6em;
+}
+
+/* Compact layout for step-by-step setup guides (wrap content in
+   <div class="qh-compact" markdown>): tighter line height and smaller gaps
+   between paragraphs, code blocks and screenshots. */
+.md-typeset .qh-compact {
+  line-height: 1.5;
+}
+.md-typeset .qh-compact p,
+.md-typeset .qh-compact ul,
+.md-typeset .qh-compact ol {
+  margin-top: 0.35em;
+  margin-bottom: 0.35em;
+}
+.md-typeset .qh-compact li {
+  margin-bottom: 0.15em;
+}
+.md-typeset .qh-compact .highlight,
+.md-typeset .qh-compact pre {
+  margin-top: 0.2em;
+  margin-bottom: 0.6em;
+}
+.md-typeset .qh-compact .admonition {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+.md-typeset .qh-compact h2 {
+  margin-top: 1.6em;
+}
+.md-typeset .qh-compact img {
+  margin: 0.4em 0 0.6em;
+}
+
 /* Tables: header row uses a soft brand tint */
 .md-typeset table:not([class]) th {
   background: linear-gradient(
