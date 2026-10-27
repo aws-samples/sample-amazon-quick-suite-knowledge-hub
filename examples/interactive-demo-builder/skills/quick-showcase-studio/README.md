@@ -6,29 +6,19 @@ origin: original
 
 # Amazon Quick Showcase Studio
 
+> [!CAUTION]
+> **This skill is destructive by design. Loading or creating a showcase wipes the signed-in user's data before importing: it deletes the user's Knowledge Graph and memories, clears its Activity Feed, and deletes your other conversations. Run it only while signed in as a dedicated demo user, never in your work or personal account.**
+>
+> - Treat everything cleared as permanent. Amazon Quick documents no restore for the Knowledge Graph or memories.
+> - ✅ Use a dedicated Amazon Quick demo user, or a throwaway account, set up only for demos.
+> - ⛔ Do **not** connect your real connectors or knowledge bases (mail, chat, drives, data sources) to it.
+> - On the first run, the skill shows how many Knowledge Graph entities, memories, feed items, and other conversations it will delete and asks you to confirm. Every run, nothing is removed until you select **Proceed** and then type `DELETE`.
+
 Loads or creates Amazon Quick showcases: sample workspaces with a populated Knowledge Graph, an Activity Feed with a day plan, memories, and a presenter demo script.
 
 ## Overview
 
-A showcase is a ready-to-present demo environment built from one scenario JSON file. Load mode imports the bundled built-in example (a marketing consultancy scenario, no setup) or a showcase you saved earlier. Create mode authors a new showcase for a named customer or an industry, builds a use-case story deck (PPTX and HTML) from it, saves it as its own folder in a Quick-Showcases space in your account, and imports it for preview. It is for anyone who presents Amazon Quick and wants a believable, repeatable demo without seeding data by hand.
-
-> [!CAUTION]
-> ## 🛑 STOP — READ THIS FIRST
->
-> **DESTRUCTIVE: this clears the account before importing.** Loading or creating a showcase will:
->
-> - 🗑️ **Delete** this account's Knowledge Graph and memories
-> - 🧹 **Clear** its Activity Feed
-> - 💬 **Delete** your other conversations
->
-> **Treat everything cleared as permanent.**
->
-> ### ⚠️ Do this before you run anything
->
-> - ✅ **Use a dedicated Amazon Quick demo environment** — a separate "demo" Amazon Quick user, or a throwaway Amazon Quick account, set up only for demos. Never run this in your personal or work Amazon Quick account.
-> - ⛔ **Do NOT connect your real connectors or knowledge bases** (mail, chat, drives, data sources, etc.) to that demo environment. The showcase content is fictitious and the cleanup is indiscriminate, so anything connected is at risk.
->
-> Nothing is removed until you select **Proceed** and then type **`DELETE`** at the confirmation prompt.
+A showcase is a ready-to-present demo environment built from one scenario JSON file. Load mode imports the bundled built-in example (a marketing consultancy scenario, no setup) or a showcase you saved earlier. Create mode authors a new showcase for a named customer or an industry, builds a use-case story deck (PPTX and HTML) from it, saves it as its own folder in a Quick-Showcases space, and imports it for preview. It is for anyone who presents Amazon Quick and wants a believable, repeatable demo without seeding data by hand.
 
 ## Pre-requisites
 
@@ -46,7 +36,7 @@ Works on any plan, including Free, and uses only Quick's built-in capabilities (
 
 That is it. The Spaces, Presentations, and HTML Design capabilities are built in and on by default, so there is no connector to set up.
 
-More help: Adding and managing skills (https://docs.aws.amazon.com/quick/latest/userguide/skills-desktop.html)
+More help: [Adding and managing skills](https://docs.aws.amazon.com/quick/latest/userguide/skills-desktop.html)
 
 ## Getting started
 
@@ -63,7 +53,7 @@ The skill only drafts and prepares demo material; it never sends messages, share
 
 ## Directory structure
 
-```
+```text
 quick-showcase-studio/
   SKILL.md
   README.md

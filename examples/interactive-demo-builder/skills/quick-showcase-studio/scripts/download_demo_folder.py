@@ -206,6 +206,12 @@ def download_demo_folder(space_name, folder_name, space_id=None, folder_id=None)
         for d in docs:
             name = d["resourceName"]
             ctype = (d.get("documentDetails", {}).get("contentType") or "").lower()
+            # A file name from the space must never resolve outside attached_files
+            # (a name like "../x" or an absolute path would escape the folder), so
+            # accept plain file names only.
+            if not name or name in (".", "..") or os.path.basename(name) != name:
+                print(f"  SKIP   {name!r} -> not a plain file name")
+                continue
             out = read_quick_suite_file(space_name=space_name, document_name=name)
             dest = os.path.join(dest_dir, name)
 

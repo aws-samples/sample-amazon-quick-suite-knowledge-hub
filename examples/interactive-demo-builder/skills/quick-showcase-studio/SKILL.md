@@ -2,7 +2,7 @@
 name: quick-showcase-studio
 display_name: Amazon Quick Showcase Studio
 icon: "🎬"
-description: "Loads or creates an Amazon Quick showcase: a sample workspace with a populated Knowledge Graph, an Activity Feed with a day plan, memories, and a presenter demo script, using either the bundled built-in example or a new showcase tailored to a customer or industry and saved to a space for reuse. DESTRUCTIVE: after a typed confirmation it deletes the current account's Knowledge Graph, Activity Feed, memories, and other conversations before importing, so run it only in a dedicated demo account. Use when the user says 'quick showcase studio', 'load a showcase', 'load the example demo', 'load a demo', 'switch demo', 'create a showcase', 'build a demo for a customer', 'make a demo', or any request to set up, switch, or author an Amazon Quick demo workspace."
+description: "Loads or creates an Amazon Quick showcase: a sample workspace with a populated Knowledge Graph, an Activity Feed with a day plan, memories, and a presenter demo script, using either the bundled built-in example or a new showcase tailored to a customer or industry and saved to a space for reuse. DESTRUCTIVE: after a typed confirmation it deletes the current account's Knowledge Graph, Activity Feed, memories, and other conversations before importing, so run it only in a dedicated demo account. Use when the user says 'quick showcase studio', 'load a showcase', 'load the example demo', 'load a demo', 'create a showcase', 'build a demo for a customer', 'make a demo', or any request to set up or author an Amazon Quick demo workspace."
 created_date: "2026-09-25"
 last_updated: "2026-10-02"
 license: "MIT-0"
@@ -74,6 +74,10 @@ The load-mode choice of what to import. `built-in` means the Built-in Example. `
 The second gate before deletion. The user's reply counts only if it equals `DELETE` after trimming surrounding spaces, ignoring case. Any other reply, including "yes", "ok", or "proceed", cancels the run.
 </Definition - Typed Confirmation>
 
+<Definition - First-Run Marker>
+A single Knowledge Graph entity that records that this skill has already run on the current account. Its name is exactly `Quick Showcase Studio Config` and it is added with category `QuickShowcaseStudioConfig`; its only job is to exist. The marker is always identified by its exact **name**, never by its category: the Knowledge Graph normalizes a custom category into one of its own ontology types (observed: the marker was stored as `DefinedTerm`, not `QuickShowcaseStudioConfig`), so the category cannot be relied on, but the name is preserved verbatim. Detection is always done by **enumerating** the graph with a plain `kg_search(limit=100)` listing and checking for an entity with this exact name - never with a semantic `kg_search(query=...)` search, which ranks by relevance and returns unrelated entities at high scores (observed: a query for this marker's name returned `Palette Pro` at score 1.0), so it cannot be trusted to surface the marker or confirm its absence. `cleanup_all.py` excludes any entity with this name from the wipe, so the marker survives every cleanup. A run is a **first run** when no entity with this name exists, and a **repeat run** when one does. The marker lives in the signed-in user's Knowledge Graph, so it is per-account by nature. It is written once, after the first confirmed run, and is never treated as showcase data or included in deletion counts.
+</Definition - First-Run Marker>
+
 <Definition - Cleanup Status>
 The JSON printed by `cleanup_all.py`, with keys `kg`, `memories`, and `feed`. A value starting with `success` passed; a value starting with `FAILED` did not. The `kg` key is blocking; `memories` and `feed` are non-blocking. Conversations are not in this JSON: they are deleted separately with direct `delete_chat` calls (see <Workflow - Confirm and Clear>) and never block.
 </Definition - Cleanup Status>
@@ -143,12 +147,12 @@ Workflow steps use these prefixes:
 <Workflow - Select Mode and Intake
 description="Determine whether to create or load a showcase, read the matching reference, and confirm the target or source before anything is deleted."
 tools=[file_read, web_search]
-triggers=["quick showcase studio", "load a showcase", "load the example demo", "load a demo", "switch demo", "create a showcase", "build a demo for a customer", "make a demo"]
+triggers=["quick showcase studio", "load a showcase", "load the example demo", "load a demo", "create a showcase", "build a demo for a customer", "make a demo"]
 >
 
 1. [Decide] Which mode does the request ask for? Use {{mode}} if provided.
    - Create, build, make, or author a showcase or demo: mode is create.
-   - Load, open, switch, or explore a showcase or demo, "the example", or a named showcase: mode is load. If the user asked for the example or built-in showcase, set SOURCE = built-in. If they named a saved showcase, or {{showcase_name}} is provided, record it as the folder to load.
+   - Load, open, or explore a showcase or demo, "the example", or a named showcase: mode is load. If the user asked for the example or built-in showcase, set SOURCE = built-in. If they named a saved showcase, or {{showcase_name}} is provided, record it as the folder to load.
    - Neither is clear (e.g. only "quick showcase studio"): [Ask user] Present <Template - Mode Picker> and use the answer.
 
 2. [Agent] Read `<skill_directory>/README.md` and check the pre-requisites the chosen mode needs: the Spaces connector tools (search_spaces, list_folder_members, and for create also create_space, create_folder, write_quick_suite_file; for load also read_quick_suite_file) for create mode and for loading a saved showcase. The Built-in Example needs none.
@@ -174,8 +178,8 @@ triggers=["quick showcase studio", "load a showcase", "load the example demo", "
 </Workflow - Select Mode and Intake>
 
 <Workflow - Confirm and Clear
-description="Warn that the account will be cleared, require the Typed Confirmation, and run the cleanup script."
-tools=[file_copy, run_python, kg_search, kg_edit, memory_list_all, memory_delete_by_id, list_recent_feed_items, resolve_feed_item, query_conversations, delete_chat]
+description="Warn that the account will be cleared, require the Typed Confirmation, show a first-time user how much will be deleted, then run the cleanup script."
+tools=[file_copy, run_python, kg_search, kg_edit, kg_add, memory_list_all, memory_delete_by_id, list_recent_feed_items, resolve_feed_item, query_conversations, delete_chat]
 triggers=["Mode and target or SOURCE confirmed in <Workflow - Select Mode and Intake>"]
 >
 
@@ -187,31 +191,46 @@ triggers=["Mode and target or SOURCE confirmed in <Workflow - Select Mode and In
    Validate: The reply meets <Definition - Typed Confirmation>.
    If fails: Say "No problem, cancelled. Nothing was changed." and STOP.
 
-3. [Agent] (exact) Copy the cleanup script into the session:
+3. [Ask user] First-run gate - the last confirmation before anything is deleted. First [Agent] enumerate the Knowledge Graph with a plain listing and look for the first-run marker in it (<Definition - First-Run Marker>). Use the deterministic listing, NOT a semantic `query=` search (which ranks by relevance and returns unrelated entities, so it cannot be trusted here):
+   ```
+   kg_search(limit=100)
+   ```
+   The marker is present only if one of the returned entities has the name exactly `Quick Showcase Studio Config` (<Definition - First-Run Marker>); scan the returned names for that exact string - match on the exact name, not category, and not a semantic resemblance.
+   - If such an entity is present (a repeat run on an account this skill already set up): skip the rest of this step and do not count anything; continue to step 4.
+   - If no entity with that exact name is present, or the search errors (treat an error as absent, so the warning is shown rather than skipped): this is a first run. [Agent] Count each category to be deleted, all read-only: Knowledge Graph by counting the entities returned by the listing above (<Gotchas> item 4), excluding any named `Quick Showcase Studio Config`; memories with memory_list_all; Activity Feed with list_recent_feed_items(limit=100); conversations by calling query_conversations with `SELECT COUNT(*) - 1 AS n FROM sessions WHERE deleted_at IS NULL` and reading `n` exactly as returned (the `- 1` is done in SQL to drop the current conversation, which cannot delete itself - do not subtract anything yourself). If a count cannot be read, use "an unknown number of" for that category. Also take the signed-in user's email (or name) exactly from your identity context to fill {{user}} in the card; omit it if your identity context does not provide one, and never guess. Then [Ask user] present <Template - First-Run Count Confirmation> filled in with those counts.
+     Validate: The user selects Proceed.
+     If fails (Exit): Say "No problem, cancelled. Nothing was changed." and STOP.
+
+4. [Agent] (exact) Copy the cleanup script into the session:
    ```
    file_copy(source="<skill_directory>/scripts/cleanup_all.py", destination="tmp/cleanup_all.py")
    ```
 
-4. [Agent] (exact) Run it:
+5. [Agent] (exact) Run it:
    ```
    run_python(
      file="tmp/cleanup_all.py",
      explanation="Clearing existing KG, memories, and feed",
+     code='cleanup(confirmation="DELETE")',
      tools=["kg_search", "kg_edit", "memory_list_all", "memory_delete_by_id",
             "list_recent_feed_items", "resolve_feed_item"]
    )
    ```
+   The `code` argument is required: `cleanup_all.py` only defines `cleanup()` and does nothing when run without it. The call must pass `confirmation="DELETE"` exactly, or the script refuses and deletes nothing (its `kg` value will not start with `success`).
    Validate: The Cleanup Status JSON is printed and its `kg` value starts with `success`.
    If fails (`kg` is not `success`): Tell the user the Knowledge Graph could not be cleared, quote the `kg` value, and report the other values, since those categories were still processed. STOP. Do not import.
    If fails (the run_python call times out or errors with no JSON printed): The Knowledge Graph cleanup cannot be confirmed. Tell the user cleanup did not complete and nothing was imported. STOP. Do not import.
    If fails (only `memories` or `feed` is not `success`): Name each failed category and its value to the user, then continue.
 
-5. [Agent] Delete the account's other conversations with **direct `delete_chat` tool calls** (NOT inside a script: `delete_chat` can hang when called from `run_python`, see <Gotchas> item 5). Call `query_conversations` with `SELECT id, title FROM sessions WHERE deleted_at IS NULL ORDER BY updated_at DESC` to list them, then call `delete_chat(session_id=<id>)` directly for each, one at a time. Skip the current conversation (a call on it returns "cannot delete itself"; skip it and continue). If any single call does not return promptly, skip that conversation and move on.
+6. [Agent] Delete the account's other conversations with **direct `delete_chat` tool calls** (NOT inside a script: `delete_chat` can hang when called from `run_python`, see <Gotchas> item 5). Call `query_conversations` with `SELECT id, title FROM sessions WHERE deleted_at IS NULL ORDER BY updated_at DESC` to list them, then call `delete_chat(session_id=<id>)` directly for each, one at a time. Skip the current conversation (a call on it returns "cannot delete itself"; skip it and continue). If any single call does not return promptly, skip that conversation and move on.
    Validate: Best effort only. This step never blocks, because conversation deletion is non-blocking by design.
    If fails (some could not be deleted): Tell the user which conversations remain and that they can be deleted from the sidebar, then continue.
 
-6. [Agent] Record that this run's Typed Confirmation was given, so the create-mode re-clear in <Workflow - Import and Verify> runs without asking again (<Rules> item 2). Continue to <Workflow - Produce or Fetch>.
-
+7. [Agent] Ensure the first-run marker exists so later runs recognise this account and skip the first-run count confirmation (<Definition - First-Run Marker>). Enumerate with kg_search(limit=100) (the deterministic listing, NOT a semantic `query=` search) and scan the returned names for an entity named exactly `Quick Showcase Studio Config` (match on the exact name, not category); if none exists (a first run), add it, and if one is already present, leave it as is (do not add a second one):
+   ```
+   kg_add(nodes='[{"name": "Quick Showcase Studio Config", "category": "QuickShowcaseStudioConfig", "summary": "Internal marker created by Quick Showcase Studio to record that the skill has run on this account. Not demo content, and kept across resets.", "source_type": "other"}]')
+   ```
+   The cleanup excludes any entity named `Quick Showcase Studio Config` (not the category, which the Knowledge Graph normalizes), so the marker survives this run's cleanup and any create-mode re-clear. If the kg_add fails, continue; the next run is simply treated as a first run again. Also record that this run's Typed Confirmation was given, so the create-mode re-clear in <Workflow - Import and Verify> runs without asking again (<Rules> item 2). Continue to <Workflow - Produce or Fetch>.
 </Workflow - Confirm and Clear>
 
 <Workflow - Produce or Fetch
@@ -303,7 +322,7 @@ triggers=["Scenario data present in workspace/attached_files/ after <Workflow - 
    - Yes: run step 2 before importing (<Gotchas> item 3).
    - No (load): skip to step 3. Load mode never web-searches, so its graph is already clear.
 
-2. [Agent] (exact) Re-clear immediately before import, without asking again (<Rules> item 2). Run the same file_copy and run_python call as <Workflow - Confirm and Clear> steps 3 and 4.
+2. [Agent] (exact) Re-clear immediately before import, without asking again (<Rules> item 2). Run the same file_copy and run_python call as <Workflow - Confirm and Clear> steps 4 and 5, including the `code='cleanup(confirmation="DELETE")'` argument (without it the script deletes nothing).
    Validate: The `kg` value starts with `success`.
    If fails (`kg` is not `success`): Tell the user the graph could not be re-cleared and nothing was imported. If step 10 of <Workflow - Produce or Fetch> saved the showcase, add that it is safe in the Quick-Showcases Space and can be loaded later by name. STOP.
    If fails (only other categories): Name each one and continue.
@@ -348,6 +367,16 @@ triggers=["Scenario data present in workspace/attached_files/ after <Workflow - 
 </decision>
 ```
 </Template - Mode Picker>
+
+<Template - First-Run Count Confirmation>
+Shown only on a first run (when the first-run marker is absent). Fill in the four counts (Knowledge Graph entities, memories, Activity Feed items, conversations) from step 3; {{conversations}} is the value of `n` from the query_conversations count, reported exactly as returned. Fill {{user}} with the signed-in user's email (or name) taken exactly from your identity context; if it is not available, remove the " ({{user}})" entirely - never guess. If a count could not be read, write "an unknown number of" in its place. When filling this card - which states what the reset will delete if the user chooses Proceed - list the conversations as data that WILL be deleted; never describe them as kept or "left in place". Only the current chat is spared. This governs the confirmation card only; if the user chooses Exit, the separate cancellation message correctly says nothing was changed.
+```
+<decision question="🛑 STOP!! This Quick Showcase Studio SKILL has not run on this account before, so before anything is deleted, here is what the reset will PERMANENTLY remove from the account you are signed in as ({{user}}): {{kg}} Knowledge Graph entities, {{memories}} memories, {{feed}} Activity Feed items, and {{conversations}} other conversations — every other conversation in this account is deleted; only this current chat is kept. This SKILL is meant to run ONLY while signed in as a dedicated Amazon Quick DEMO user, NEVER in your personal or work Amazon Quick account. If you recognise this as your REAL or WORK account, choose Exit. Proceed?">
+  <option>Proceed</option>
+  <option>Exit</option>
+</decision>
+```
+</Template - First-Run Count Confirmation>
 
 <Template - Destructive Confirmation>
 Before presenting, replace the showcase placeholder in the question below with "the built-in example", "the saved showcase <folder_name>", or "a new showcase for <target>".
@@ -402,26 +431,30 @@ Build the deck from the source script and data (the showcase's own story). Do no
 <Resources>
 
 <Resource - Bundled Files>
+
 | File | Used in |
-|---|---|
+| --- | --- |
 | `README.md` | <Workflow - Select Mode and Intake> step 2 |
 | `references/create-showcase.md` | <Workflow - Select Mode and Intake> steps 3 and 4; <Workflow - Produce or Fetch> steps 4 to 6 and 10 |
 | `references/load-showcase.md` | <Workflow - Select Mode and Intake> steps 3 and 4 |
 | `references/demo_scenario_data_schema.json` | <Workflow - Produce or Fetch> steps 3 and 5 |
 | `references/presentation-generation.md` | <Workflow - Produce or Fetch> step 9 (inline deck) and <Template - Deck Task Objective> |
-| `scripts/cleanup_all.py` | <Workflow - Confirm and Clear> steps 3 and 4; <Workflow - Import and Verify> step 2 |
+| `scripts/cleanup_all.py` | <Workflow - Confirm and Clear> steps 4 and 5; <Workflow - Import and Verify> step 2 |
 | `scripts/md_to_docx_converter.js` | <Workflow - Produce or Fetch> step 8 |
 | `scripts/download_demo_folder.py` | <Workflow - Produce or Fetch> step 12 |
 | `scripts/import_demo_data.py` | <Workflow - Import and Verify> step 3 |
 | `assets/marketing-consultancy/` (`demo-scenario-data.json`, `demo-script.md`, `use-case-deck.html`, and `use-case-deck.pptx` when present) | <Workflow - Produce or Fetch> step 11 |
+
 </Resource - Bundled Files>
 
 <Resource - Amazon Quick Documentation>
+
 | Topic | URL |
-|---|---|
-| Installing and managing skills | https://docs.aws.amazon.com/quick/latest/userguide/skills-desktop.html |
-| Connectors | https://docs.aws.amazon.com/quick/latest/userguide/connections-desktop.html |
-| Built-in system tools | https://docs.aws.amazon.com/quick/latest/userguide/system-tools-desktop.html |
+| --- | --- |
+| Installing and managing skills | <https://docs.aws.amazon.com/quick/latest/userguide/skills-desktop.html> |
+| Connectors | <https://docs.aws.amazon.com/quick/latest/userguide/connections-desktop.html> |
+| Built-in system tools | <https://docs.aws.amazon.com/quick/latest/userguide/system-tools-desktop.html> |
+
 </Resource - Amazon Quick Documentation>
 
 </Resources>
