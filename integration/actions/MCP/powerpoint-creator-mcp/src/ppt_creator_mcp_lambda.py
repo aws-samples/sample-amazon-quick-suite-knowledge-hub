@@ -5,26 +5,91 @@ import io
 import json
 import logging
 import os
+import re
+import uuid
 from datetime import UTC, datetime
 
 import boto3
+from botocore.config import Config
 from pptx import Presentation
 from pptx.util import Pt
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+DEFAULT_TEMPLATE_KEY = "templates/template.pptx"
+TEMPLATE_KEY_PATTERN = re.compile(
+    r"templates/[A-Za-z0-9_\-]+(?:/[A-Za-z0-9_\-]+)*\.pptx"
+)
+PPTX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+)
+DEFAULT_URL_EXPIRY_SECONDS = 3600
+MAX_URL_EXPIRY_SECONDS = 43200
+
+
+class InvalidInputError(ValueError):
+    pass
+
+
+def _s3_client():
+    return boto3.client(
+        "s3",
+        region_name=os.environ.get("AWS_REGION"),
+        config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+    )
+
+
+def _url_expiry_seconds():
+    try:
+        value = int(
+            os.environ.get("PRESIGNED_URL_EXPIRY_SECONDS", DEFAULT_URL_EXPIRY_SECONDS)
+        )
+    except ValueError:
+        value = DEFAULT_URL_EXPIRY_SECONDS
+    return max(60, min(value, MAX_URL_EXPIRY_SECONDS))
+
+
+def resolve_template_key(template_key):
+    """Return a validated template key restricted to the templates/ prefix."""
+    if template_key is None or template_key == "":
+        return DEFAULT_TEMPLATE_KEY
+    if not isinstance(template_key, str) or not TEMPLATE_KEY_PATTERN.fullmatch(
+        template_key
+    ):
+        raise InvalidInputError(
+            "template_key must be an S3 key under templates/ ending in .pptx"
+        )
+    return template_key
+
+
+def build_output_key():
+    """Return an unguessable, collision-free S3 key for a generated presentation."""
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+    return f"presentations/{uuid.uuid4().hex}/presentation_{timestamp}.pptx"
+
+
+def _validate_inputs(title, subtitle, slides):
+    if not isinstance(title, str) or not isinstance(subtitle, str):
+        raise InvalidInputError("title and subtitle must be strings")
+    if not isinstance(slides, list) or not all(
+        isinstance(slide, dict) for slide in slides
+    ):
+        raise InvalidInputError("slides must be an array of objects")
+
 
 def create_presentation(title_, subtitle_, slides_data_, template_key_=None):
     try:
-        s3 = boto3.client("s3")
+        _validate_inputs(title_, subtitle_, slides_data_)
+        template_key = resolve_template_key(template_key_)
+
+        s3 = _s3_client()
         bucket_name = os.environ["S3_BUCKET"]
 
         # Get custom content from event
         title_text = title_.upper()
         subtitle_text = subtitle_.upper()
         slides_data = slides_data_
-        template_key = template_key_ or "templates/template.pptx"
 
         # Download template from S3
         try:
@@ -91,8 +156,8 @@ def create_presentation(title_, subtitle_, slides_data_, template_key_=None):
         # Add additional slides from slides array
         total_slides_added = 0
         for slide_data in slides_data:
-            slide_title = slide_data.get("title", "Slide Title").upper()
-            slide_content = slide_data.get("content", "Slide Content")
+            slide_title = str(slide_data.get("title", "Slide Title")).upper()
+            slide_content = str(slide_data.get("content", "Slide Content"))
 
             # Split content into lines
             lines = slide_content.split("\n")
@@ -157,18 +222,27 @@ def create_presentation(title_, subtitle_, slides_data_, template_key_=None):
         prs.save(ppt_buffer)
         ppt_buffer.seek(0)
 
-        key = f"presentations/presentation_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.pptx"
+        key = build_output_key()
 
         s3.put_object(
             Bucket=bucket_name,
             Key=key,
             Body=ppt_buffer.getvalue(),
-            ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ContentType=PPTX_CONTENT_TYPE,
         )
 
-        # Generate CloudFront URL
-        cloudfront_domain = os.environ["CLOUDFRONT_DOMAIN"]
-        download_url = f"https://{cloudfront_domain}/{key}"
+        # Generate a short-lived pre-signed download URL
+        expiry_seconds = _url_expiry_seconds()
+        download_url = s3.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": bucket_name,
+                "Key": key,
+                "ResponseContentDisposition": 'attachment; filename="presentation.pptx"',
+                "ResponseContentType": PPTX_CONTENT_TYPE,
+            },
+            ExpiresIn=expiry_seconds,
+        )
 
         return {
             "statusCode": 200,
@@ -180,25 +254,30 @@ def create_presentation(title_, subtitle_, slides_data_, template_key_=None):
                     "subtitle": subtitle_text,
                     "slides_added": total_slides_added,
                     "download_url": download_url,
+                    "expires_in_seconds": expiry_seconds,
                 }
             ),
         }
+    except InvalidInputError as e:
+        logger.warning("Rejected presentation request: %s", type(e).__name__)
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
     except Exception as e:
-        logger.error(f"Error creating presentation: {str(e)}")
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        logger.error("Error creating presentation: %s", type(e).__name__)
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Failed to create presentation"}),
+        }
 
 
 def lambda_handler(event, context):
-    logger.info(f"INBOUND EVENT: {json.dumps(event)}")
-
-    path = event.get("path", "")
     method = event.get("httpMethod", "")
 
     if method == "POST":
         try:
-            body = json.loads(event.get("body", "{}"))
+            body = json.loads(event.get("body") or "{}")
             method_name = body.get("method")
             request_id = body.get("id")
+            logger.info("MCP request: method=%s", method_name)
 
             if method_name == "initialize":
                 response = {
@@ -219,7 +298,6 @@ def lambda_handler(event, context):
                         }
                     ),
                 }
-                logger.info(f"RESPONSE: {json.dumps(response)}")
                 return response
 
             elif method_name == "notifications/initialized":
@@ -228,7 +306,6 @@ def lambda_handler(event, context):
                     "headers": {"Content-Type": "application/json"},
                     "body": "",
                 }
-                logger.info(f"RESPONSE: {json.dumps(response)}")
                 return response
 
             elif method_name == "tools/list":
@@ -278,7 +355,7 @@ def lambda_handler(event, context):
                                                 },
                                                 "template_key": {
                                                     "type": "string",
-                                                    "description": "S3 key path to the template file (e.g., templates/template.pptx). Defaults to templates/template.pptx if not provided",
+                                                    "description": "S3 key of a template under templates/ ending in .pptx (e.g., templates/template.pptx). Defaults to templates/template.pptx if not provided",
                                                 },
                                             },
                                             "required": ["title", "subtitle", "slides"],
@@ -289,7 +366,6 @@ def lambda_handler(event, context):
                         }
                     ),
                 }
-                logger.info(f"RESPONSE: {json.dumps(response)}")
                 return response
 
             elif method_name == "tools/call":
@@ -315,7 +391,7 @@ def lambda_handler(event, context):
                                     "content": [
                                         {
                                             "type": "text",
-                                            "text": f"PowerPoint presentation '{ppt_result['title']}' created successfully!\n\nDownload URL: {ppt_result['download_url']}\n\nSlides added: {ppt_result['slides_added']}",
+                                            "text": f"PowerPoint presentation '{ppt_result['title']}' created successfully!\n\nDownload URL (expires in {ppt_result['expires_in_seconds'] // 60} minutes): {ppt_result['download_url']}\n\nSlides added: {ppt_result['slides_added']}",
                                         }
                                     ]
                                 },
@@ -327,8 +403,10 @@ def lambda_handler(event, context):
                                 "jsonrpc": "2.0",
                                 "id": request_id,
                                 "error": {
-                                    "code": -32603,
-                                    "message": f"Internal error: {json.loads(result['body'])['error']}",
+                                    "code": -32602
+                                    if result.get("statusCode") == 400
+                                    else -32603,
+                                    "message": json.loads(result["body"])["error"],
                                 },
                             }
                         )
@@ -339,7 +417,6 @@ def lambda_handler(event, context):
                         "body": response_body,
                     }
 
-                    logger.info(f"RESPONSE: {json.dumps(response)}")
                     return response
 
                 else:
@@ -357,7 +434,6 @@ def lambda_handler(event, context):
                             }
                         ),
                     }
-                    logger.info(f"RESPONSE: {json.dumps(response)}")
                     return response
 
             else:
@@ -375,11 +451,10 @@ def lambda_handler(event, context):
                         }
                     ),
                 }
-                logger.info(f"RESPONSE: {json.dumps(response)}")
                 return response
 
         except Exception as e:
-            logger.error(f"JSON-RPC error: {str(e)}")
+            logger.error("JSON-RPC error: %s", type(e).__name__)
             response = {
                 "statusCode": 200,
                 "headers": {"Content-Type": "application/json"},
@@ -387,11 +462,10 @@ def lambda_handler(event, context):
                     {
                         "jsonrpc": "2.0",
                         "id": body.get("id") if "body" in locals() else None,
-                        "error": {"code": -32700, "message": f"Parse error: {str(e)}"},
+                        "error": {"code": -32700, "message": "Parse error"},
                     }
                 ),
             }
-            logger.info(f"RESPONSE: {json.dumps(response)}")
             return response
 
     # Handle non-POST requests

@@ -299,7 +299,7 @@ JSON
 Then create the agent, attaching the connector **and** the prompt:
 
 ```bash
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Find the MCP connector's ARN (created in Step 2).
 aws quicksight list-action-connectors \

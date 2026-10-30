@@ -27,8 +27,10 @@ cd "$(dirname "$0")/.."
 STACK="${STACK:-quick-legalhold-mcp}"
 REGION="${AWS_REGION:-us-east-1}"
 QUICK_REDIRECT_URI="${QUICK_REDIRECT_URI:-}"
-# TEST-ONLY 3LO user password — supplied at deploy time, never hardcoded in the
-# stack. Provide a strong value (>=12 chars, upper/lower/number/symbol):
+# OPTIONAL TEST-ONLY 3LO user. Setting TEST_USER_PASSWORD creates the synthetic
+# Cognito user 'legal-admin-test' with that permanent password (passes
+# -c createTestUser=true). Leave it unset for a real deployment (no test user).
+# Value must satisfy the pool policy (>=12 chars, upper/lower/number/symbol):
 #   TEST_USER_PASSWORD='YourStr0ng!Passw0rd' ./scripts/deploy.sh
 TEST_USER_PASSWORD="${TEST_USER_PASSWORD:-}"
 
@@ -50,9 +52,21 @@ CALLER="$(aws sts get-caller-identity --output json 2>/dev/null)" \
 ACCOUNT="$(printf '%s' "$CALLER" | python3 -c 'import json,sys; print(json.load(sys.stdin)["Account"])')"
 ok "Account $ACCOUNT / region $REGION"
 
-# Require the test-user password (no hardcoded default in the stack).
-[[ -n "$TEST_USER_PASSWORD" ]] \
-  || die "TEST_USER_PASSWORD is required (>=12 chars, upper/lower/number/symbol). e.g. TEST_USER_PASSWORD='YourStr0ng!Passw0rd' ./scripts/deploy.sh"
+# Validate the optional test-user password up front so a weak value fails here
+# instead of mid-deploy inside the Cognito custom resource.
+if [[ -n "$TEST_USER_PASSWORD" ]]; then
+  TEST_USER_PASSWORD="$TEST_USER_PASSWORD" python3 - <<'PY' \
+    || die "TEST_USER_PASSWORD must be >=12 chars with upper, lower, number and symbol."
+import os, re, sys
+p = os.environ["TEST_USER_PASSWORD"]
+ok = (len(p) >= 12 and re.search(r"[A-Z]", p) and re.search(r"[a-z]", p)
+      and re.search(r"[0-9]", p) and re.search(r"[^A-Za-z0-9]", p))
+sys.exit(0 if ok else 1)
+PY
+  ok "test user 'legal-admin-test' will be created (TEST_USER_PASSWORD set)"
+else
+  ok "no TEST_USER_PASSWORD set - skipping synthetic test user"
+fi
 
 # ---------------------------------------------------------------------------
 log "Step 2/6: Install npm dependencies"
@@ -77,8 +91,11 @@ if [[ -n "$QUICK_REDIRECT_URI" ]]; then
   CTX_ARGS+=(-c "quickRedirectUri=$QUICK_REDIRECT_URI")
   ok "using quickRedirectUri=$QUICK_REDIRECT_URI"
 fi
-# Pass the test-user password as CDK context (never committed / never defaulted).
-CTX_ARGS+=(-c "testUserPassword=$TEST_USER_PASSWORD")
+# Enable the test user only when a password was supplied (never committed /
+# never defaulted). Without both flags the stack skips the user entirely.
+if [[ -n "$TEST_USER_PASSWORD" ]]; then
+  CTX_ARGS+=(-c "createTestUser=true" -c "testUserPassword=$TEST_USER_PASSWORD")
+fi
 
 # ---------------------------------------------------------------------------
 log "Step 4/6: Diff (informational)"
