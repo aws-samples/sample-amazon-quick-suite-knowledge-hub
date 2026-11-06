@@ -72,6 +72,7 @@ _staged: list[Path] = []
 # (acronyms etc.). Anything not listed is auto-titled from its folder name.
 _LABEL_OVERRIDES = {
     "multi-tenant-assets-deployment": "Amazon Quick Assets Deployment",
+    "aws-quick-admin-buddy-mcp": "AWS Quick Admin Buddy MCP",
     "quick-legal-hold-agent": "Amazon Quick Legal Hold Agent",
     "observability-agent": "Observability",
     "compliance-assistant-mcp": "Compliance Assistant MCP",
@@ -271,7 +272,7 @@ _CATEGORY_ORDER = [
         "infrastructure",
         "Infrastructure",
         "Building blocks for running Quick: Terraform bootstrap, custom domain, "
-        "observability, row-level security, and deployment.",
+        "observability, row-level security, admin onboarding, and deployment.",
     ),
     (
         "examples",

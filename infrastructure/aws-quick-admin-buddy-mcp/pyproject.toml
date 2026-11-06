@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quick-admin-buddy-mcp"
+version = "0.1.0"
+description = "MCP server fronting AWS Quick admin APIs with onboarding tools, deployed to Amazon Bedrock AgentCore Runtime."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT-0" }
+authors = [{ name = "Quick Admin Buddy" }]
+
+# Runtime dependencies required to run the MCP server on AgentCore Runtime.
+dependencies = [
+    # server.py uses the mcp 2.x API (mcp.server.mcpserver.MCPServer), which
+    # does not exist in 1.x.
+    "mcp>=2.0.0,<3.0.0",
+    # botocore 1.43.117 is the first release whose quicksight model includes the
+    # CreateDataSource Credentials.ServiceAccountCredentials member (Google
+    # Workspace domain-wide delegation for the admin-managed Google Drive
+    # knowledge base). Earlier botocore cannot serialize it (KeyError in the
+    # serializer), so this lower bound is required, not cosmetic.
+    "boto3>=1.43.117",
+]
+
+[project.optional-dependencies]
+# Development / test / infrastructure-validation tooling.
+dev = [
+    "pytest>=8.0",
+    "hypothesis>=6.100",
+    "cfn-lint>=1.53",
+    # moto provides a real (in-memory) DynamoDB implementation that enforces
+    # DynamoDB's actual UpdateExpression validation rules - unlike a
+    # hand-rolled fake Table, it would have caught the "document paths
+    # overlap" ValidationException that a single-expression SET of both a
+    # parent map and a nested path under it produces.
+    "moto[dynamodb]>=5.0,<6.0",
+]
+
+[project.scripts]
+# Entry point that starts the streamable-HTTP MCP server.
+quick-admin-buddy-mcp = "quick_admin_buddy_mcp.server:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ----------------------------------------------------------------------------
+# pytest + Hypothesis configuration
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra"
+
+# ----------------------------------------------------------------------------
+# Ruff: inherit the knowledge hub's root rules, but target Python 3.10, the
+# version the container image runs (Dockerfile). The root targets 3.11, whose
+# autofixes (for example datetime.UTC) would break this server on 3.10.
+# ----------------------------------------------------------------------------
+[tool.ruff]
+extend = "../../pyproject.toml"
+target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use assert, and S105/S106 flag secret *names* and dummy values.
+"tests/**" = ["S101", "S105", "S106"]
