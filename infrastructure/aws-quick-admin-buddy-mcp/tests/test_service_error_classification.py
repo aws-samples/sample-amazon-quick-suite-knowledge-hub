@@ -12,6 +12,10 @@
 from __future__ import annotations
 
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    DisableActionConnectorRequest,
+    EnableActionConnectorRequest,
+)
 from quick_admin_buddy_mcp.domain.service import OnboardingService, _record_key
 from quick_admin_buddy_mcp.domain.types import (
     ConnectorStatus,
@@ -20,6 +24,7 @@ from quick_admin_buddy_mcp.domain.types import (
     Suite,
 )
 from quick_admin_buddy_mcp.quick.mock import MockBehavior, MockQuickAdminClient, Mode
+from quick_admin_buddy_mcp.quick.secrets import InMemorySecretResolver
 from quick_admin_buddy_mcp.state.repository import InMemoryStateRepository
 
 TENANT = "acme-corp"
@@ -32,6 +37,15 @@ CUSTOM_OAUTH = {
     "token_url": "https://t",
     "redirect_url": "https://r",
 }
+CUSTOM_OAUTH_SECRET = "quick-admin-buddy/test-custom-oauth"
+
+# Credentials come only from Secrets Manager (inline secrets are rejected),
+# so tests store them in an in-memory resolver and pass the secret name.
+TEST_SECRETS = InMemorySecretResolver(
+    {
+        CUSTOM_OAUTH_SECRET: CUSTOM_OAUTH,
+    }
+)
 
 _ACTION_KEY = _record_key("outlook", IntegrationType.ACTION_CONNECTOR)
 
@@ -40,7 +54,7 @@ def _service(quick: MockQuickAdminClient | None = None):
     catalog = ConnectorCatalog()
     state = InMemoryStateRepository()
     quick = quick or MockQuickAdminClient()
-    return OnboardingService(catalog, state, quick), state, quick
+    return OnboardingService(catalog, state, quick, TEST_SECRETS), state, quick
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +72,12 @@ def test_enable_api_error_from_create_action_connector_is_server_error():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.SERVER_ERROR
@@ -74,7 +93,9 @@ def test_disable_api_error_from_delete_path_is_server_error():
     service, state, quick = _service(quick)
     state.set_connector_status(TENANT, _ACTION_KEY, ConnectorStatus.ENABLED, "admin")
 
-    result = service.disable_action_connector(TENANT, "outlook")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     assert result.status == ResultStatus.SERVER_ERROR
     assert "AWS Quick API" in result.message
@@ -96,7 +117,12 @@ def test_enable_internal_error_from_create_action_connector_is_internal_error():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.INTERNAL_ERROR
@@ -113,7 +139,9 @@ def test_disable_internal_error_from_delete_path_is_internal_error():
     service, state, quick = _service(quick)
     state.set_connector_status(TENANT, _ACTION_KEY, ConnectorStatus.ENABLED, "admin")
 
-    result = service.disable_action_connector(TENANT, "outlook")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     assert result.status == ResultStatus.INTERNAL_ERROR
     assert "internal error" in result.message.lower()
@@ -143,11 +171,18 @@ def _representative_results():
     # success — enable action connector happy path.
     s_state = InMemoryStateRepository()
     s_state.put_suite(TENANT, Suite.MICROSOFT_365)
-    s_service = OnboardingService(catalog, s_state, MockQuickAdminClient())
+    s_service = OnboardingService(
+        catalog, s_state, MockQuickAdminClient(), TEST_SECRETS
+    )
     yield (
         "success",
         s_service.enable_action_connector(
-            TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+            TENANT,
+            EnableActionConnectorRequest(
+                connector_key="outlook",
+                auth_type="custom_oauth_app",
+                secret_id=CUSTOM_OAUTH_SECRET,
+            ),
         ),
     )
 
@@ -155,22 +190,36 @@ def _representative_results():
     ac_state = InMemoryStateRepository()
     ac_state.put_suite(TENANT, Suite.MICROSOFT_365)
     ac_state.set_connector_status(TENANT, _ACTION_KEY, ConnectorStatus.ENABLED, "admin")
-    ac_service = OnboardingService(catalog, ac_state, MockQuickAdminClient())
+    ac_service = OnboardingService(
+        catalog, ac_state, MockQuickAdminClient(), TEST_SECRETS
+    )
     yield (
         "already_configured",
         ac_service.enable_action_connector(
-            TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+            TENANT,
+            EnableActionConnectorRequest(
+                connector_key="outlook",
+                auth_type="custom_oauth_app",
+                secret_id=CUSTOM_OAUTH_SECRET,
+            ),
         ),
     )
 
     # validation_failure — unknown connector key.
     vf_state = InMemoryStateRepository()
     vf_state.put_suite(TENANT, Suite.MICROSOFT_365)
-    vf_service = OnboardingService(catalog, vf_state, MockQuickAdminClient())
+    vf_service = OnboardingService(
+        catalog, vf_state, MockQuickAdminClient(), TEST_SECRETS
+    )
     yield (
         "validation_failure",
         vf_service.enable_action_connector(
-            TENANT, "totally_unknown", "custom_oauth_app", CUSTOM_OAUTH
+            TENANT,
+            EnableActionConnectorRequest(
+                connector_key="totally_unknown",
+                auth_type="custom_oauth_app",
+                secret_id=CUSTOM_OAUTH_SECRET,
+            ),
         ),
     )
 
@@ -178,7 +227,9 @@ def _representative_results():
     sc_state = InMemoryStateRepository()
     sc_state.put_suite(TENANT, Suite.MICROSOFT_365)
     sc_state.set_connector_status(TENANT, _ACTION_KEY, ConnectorStatus.ENABLED, "admin")
-    sc_service = OnboardingService(catalog, sc_state, MockQuickAdminClient())
+    sc_service = OnboardingService(
+        catalog, sc_state, MockQuickAdminClient(), TEST_SECRETS
+    )
     yield "suite_conflict", sc_service.set_suite(TENANT, Suite.GOOGLE_WORKSPACE.value)
 
     # server_error — Quick API error on create.
@@ -186,11 +237,16 @@ def _representative_results():
     se_quick.set_behavior("create_action_connector", MockBehavior(mode=Mode.API_ERROR))
     se_state = InMemoryStateRepository()
     se_state.put_suite(TENANT, Suite.MICROSOFT_365)
-    se_service = OnboardingService(catalog, se_state, se_quick)
+    se_service = OnboardingService(catalog, se_state, se_quick, TEST_SECRETS)
     yield (
         "server_error",
         se_service.enable_action_connector(
-            TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+            TENANT,
+            EnableActionConnectorRequest(
+                connector_key="outlook",
+                auth_type="custom_oauth_app",
+                secret_id=CUSTOM_OAUTH_SECRET,
+            ),
         ),
     )
 
@@ -201,11 +257,16 @@ def _representative_results():
     )
     ie_state = InMemoryStateRepository()
     ie_state.put_suite(TENANT, Suite.MICROSOFT_365)
-    ie_service = OnboardingService(catalog, ie_state, ie_quick)
+    ie_service = OnboardingService(catalog, ie_state, ie_quick, TEST_SECRETS)
     yield (
         "internal_error",
         ie_service.enable_action_connector(
-            TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+            TENANT,
+            EnableActionConnectorRequest(
+                connector_key="outlook",
+                auth_type="custom_oauth_app",
+                secret_id=CUSTOM_OAUTH_SECRET,
+            ),
         ),
     )
 

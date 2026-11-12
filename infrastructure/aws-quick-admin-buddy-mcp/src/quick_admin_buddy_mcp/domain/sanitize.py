@@ -1,7 +1,7 @@
 """Centralized result-sanitization boundary.
 
-This module implements the single sanitization boundary described in the design
-document's "Error Handling" section. Before any :class:`ToolResult` is
+This module implements the server's single sanitization boundary. Before any
+:class:`ToolResult` is
 serialized and returned to a caller, its ``message`` and ``data`` are scrubbed
 of two classes of sensitive content:
 
@@ -14,10 +14,8 @@ of two classes of sensitive content:
    are stripped and replaced with a safe redaction marker.
 
 Centralizing this logic here (rather than relying on each service branch to
-scrub its own output) satisfies Requirement 8.4 and Property 25:
-*no raw credentials or internal stack detail leak into any result*.
-
-Requirements: 8.4, 3.9, 7.6, 7.7.
+scrub its own output) guarantees that *no raw credentials or internal stack
+detail leak into any result*.
 """
 
 from __future__ import annotations

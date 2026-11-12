@@ -15,10 +15,17 @@ import pytest
 from botocore.exceptions import ClientError
 
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    EnableActionConnectorRequest,
+    EnableKnowledgeBaseRequest,
+    ShareActionConnectorRequest,
+    ShareKnowledgeBaseRequest,
+)
 from quick_admin_buddy_mcp.domain.service import OnboardingService
 from quick_admin_buddy_mcp.domain.types import ResultStatus, Suite
 from quick_admin_buddy_mcp.quick import MockQuickAdminClient
 from quick_admin_buddy_mcp.quick.boto_client import BotoQuickAdminClient
+from quick_admin_buddy_mcp.quick.secrets import InMemorySecretResolver
 from quick_admin_buddy_mcp.state import InMemoryStateRepository
 
 _ACCOUNT = "123456789012"
@@ -34,6 +41,15 @@ CUSTOM_OAUTH = {
     "token_url": "https://auth.example.com/token",
     "redirect_url": "https://eu-west-1.quicksight.aws.amazon.com/sn/oauthcallback",
 }
+CUSTOM_OAUTH_SECRET = "quick-admin-buddy/test-custom-oauth"
+
+# Credentials come only from Secrets Manager (inline secrets are rejected),
+# so tests store them in an in-memory resolver and pass the secret name.
+TEST_SECRETS = InMemorySecretResolver(
+    {
+        CUSTOM_OAUTH_SECRET: CUSTOM_OAUTH,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +137,7 @@ def _service(missing: set[str]) -> tuple[OnboardingService, MockQuickAdminClient
     quick = MockQuickAdminClient(missing_principals=missing)
     state = InMemoryStateRepository()
     state.put_suite(_TENANT, Suite.MICROSOFT_365)
-    return OnboardingService(ConnectorCatalog(), state, quick), quick
+    return OnboardingService(ConnectorCatalog(), state, quick, TEST_SECRETS), quick
 
 
 def _assert_missing_user(result, field_name: str) -> None:
@@ -140,7 +156,13 @@ def test_enable_action_connector_with_missing_share_with_user() -> None:
     service, quick = _service({_EMAIL})
 
     result = service.enable_action_connector(
-        _TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH, share_with=_EMAIL
+        _TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+            share_with=_EMAIL,
+        ),
     )
 
     _assert_missing_user(result, "share_with")
@@ -152,7 +174,13 @@ def test_enable_action_connector_with_existing_user_still_succeeds() -> None:
     service, quick = _service({_EMAIL})
 
     result = service.enable_action_connector(
-        _TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH, share_with="workshopuser"
+        _TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+            share_with="workshopuser",
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -163,7 +191,10 @@ def test_enable_kb_with_missing_owner() -> None:
     service, quick = _service({_EMAIL})
 
     result = service.enable_kb_integration(
-        _TENANT, "onedrive", "user_managed", owner=_EMAIL
+        _TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="onedrive", auth_type="user_managed", owner=_EMAIL
+        ),
     )
 
     _assert_missing_user(result, "owner")
@@ -175,7 +206,14 @@ def test_share_with_missing_user(method: str) -> None:
     service, quick = _service({_EMAIL})
     key = "outlook" if method == "share_action_connector" else "onedrive"
 
-    result = getattr(service, method)(_TENANT, key, _EMAIL)
+    request_type = (
+        ShareActionConnectorRequest
+        if method == "share_action_connector"
+        else ShareKnowledgeBaseRequest
+    )
+    result = getattr(service, method)(
+        _TENANT, request_type(connector_key=key, share_with=_EMAIL)
+    )
 
     _assert_missing_user(result, "share_with")
     assert quick.calls == []

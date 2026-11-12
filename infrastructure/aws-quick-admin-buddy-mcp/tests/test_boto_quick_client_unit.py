@@ -1,20 +1,17 @@
-"""Example unit tests for :class:`BotoQuickAdminClient` (task 16.1).
+"""Example unit tests for :class:`BotoQuickAdminClient`.
 
 These verify the boto3-backed client wiring using a hand-rolled fake boto3
 client (no network, no moto):
 
 * Each of the five protocol methods invokes the correspondingly-named boto3
-  method and returns the mapped ``ConnectorDetail`` / ``PermissionDetail``
-  (Requirements 7.1-7.5).
+  method and returns the mapped ``ConnectorDetail`` / ``PermissionDetail``.
 * A ``botocore.exceptions.ClientError`` (an API-level error response) is mapped
   to :class:`QuickAdminApiError` carrying the AWS error code, with a sanitized
-  message (Requirement 7.6).
+  message.
 * A ``botocore.exceptions.NoCredentialsError`` (auth-resolution failure) is
-  mapped to :class:`QuickAdminInternalError` with no retry / fallback attempt
-  (Requirements 7.7, 11.2).
+  mapped to :class:`QuickAdminInternalError` with no retry / fallback attempt.
 
-The dedicated, exhaustive per-action + auth-failure suite is the separate
-optional task 16.2; this is a focused example set.
+This is a focused example set, not an exhaustive per-action suite.
 """
 
 from __future__ import annotations
@@ -82,7 +79,7 @@ def _client_error(code: str, operation: str) -> ClientError:
 
 # ---------------------------------------------------------------------------
 # Each protocol method invokes the right boto3 method + maps the response
-# (Requirements 7.1-7.5)
+#
 # ---------------------------------------------------------------------------
 
 
@@ -96,7 +93,7 @@ def test_create_action_connector_invokes_boto_and_maps_detail():
     )
     # aws_account_id is injected so the test never makes a real STS call;
     # auth_type/auth_params mirror what the domain service always supplies
-    # (Requirement 7's custom_oauth_app contract).
+    # .
     client = BotoQuickAdminClient(client=fake, aws_account_id="123456789012")
 
     detail = client.create_action_connector(
@@ -122,7 +119,7 @@ def test_create_action_connector_invokes_boto_and_maps_detail():
     # Response preserved verbatim under raw.
     assert detail.raw["ActionConnector"]["Key"] == "outlook"
     # The request sent AwsAccountId and the real tagged-union auth shape
-    # (Requirement 7.1; verified against the live CreateActionConnector model).
+    # (verified against the live CreateActionConnector model).
     sent_params = fake.calls[0][1]
     assert sent_params["AwsAccountId"] == "123456789012"
     auth_config = sent_params["AuthenticationConfig"]
@@ -291,7 +288,7 @@ def test_search_action_connectors_invokes_boto_with_query():
 
 
 # ---------------------------------------------------------------------------
-# ClientError -> QuickAdminApiError (Requirement 7.6)
+# ClientError -> QuickAdminApiError
 # ---------------------------------------------------------------------------
 
 
@@ -321,7 +318,7 @@ def test_client_error_maps_to_api_error_with_code_and_sanitized_message():
 
 
 # ---------------------------------------------------------------------------
-# NoCredentialsError -> QuickAdminInternalError, no fallback (Reqs 7.7, 11.2)
+# NoCredentialsError -> QuickAdminInternalError, no fallback
 # ---------------------------------------------------------------------------
 
 

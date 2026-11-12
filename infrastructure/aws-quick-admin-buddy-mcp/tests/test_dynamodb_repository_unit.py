@@ -3,8 +3,8 @@
 These tests use a hand-rolled fake DynamoDB table that captures ``get_item`` /
 ``update_item`` calls (no real AWS, no ``moto`` dependency). They verify the
 repository's boto3 usage and its (de)serialization, not DynamoDB's own
-expression-evaluation semantics (that is covered by the integration test in
-task 15.2).
+expression-evaluation semantics (that is covered by the moto-backed tests in
+test_dynamodb_repository_moto.py).
 """
 
 from __future__ import annotations

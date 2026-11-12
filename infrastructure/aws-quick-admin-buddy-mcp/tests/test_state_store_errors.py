@@ -18,9 +18,15 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 
 from quick_admin_buddy_mcp import server
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    DisableActionConnectorRequest,
+    EnableActionConnectorRequest,
+    SetExtensionStatusRequest,
+)
 from quick_admin_buddy_mcp.domain.service import OnboardingService
 from quick_admin_buddy_mcp.domain.types import ResultStatus, Suite
 from quick_admin_buddy_mcp.quick import MockQuickAdminClient
+from quick_admin_buddy_mcp.quick.secrets import InMemorySecretResolver
 from quick_admin_buddy_mcp.state import (
     DynamoDbStateRepository,
     InMemoryStateRepository,
@@ -44,6 +50,15 @@ CUSTOM_OAUTH = {
     "token_url": "https://auth.example.com/token",
     "redirect_url": "https://eu-west-1.quicksight.aws.amazon.com/sn/oauthcallback",
 }
+CUSTOM_OAUTH_SECRET = "quick-admin-buddy/test-custom-oauth"
+
+# Credentials come only from Secrets Manager (inline secrets are rejected),
+# so tests store them in an in-memory resolver and pass the secret name.
+TEST_SECRETS = InMemorySecretResolver(
+    {
+        CUSTOM_OAUTH_SECRET: CUSTOM_OAUTH,
+    }
+)
 
 
 def _missing_table_error(operation: str = "write") -> StateStoreError:
@@ -178,12 +193,17 @@ class _BrokenState(InMemoryStateRepository):
     def set_extension_status(self, tenant, key, status, principal):
         if self.fail_writes:
             raise _missing_table_error()
-        return super().set_extension_status(tenant, key, status, principal)
+        return super().set_extension_status(
+            tenant,
+            SetExtensionStatusRequest(
+                extension_key=key, status=status, principal=principal
+            ),
+        )
 
 
 def _service(state) -> tuple[OnboardingService, MockQuickAdminClient]:
     quick = MockQuickAdminClient()
-    return OnboardingService(ConnectorCatalog(), state, quick), quick
+    return OnboardingService(ConnectorCatalog(), state, quick, TEST_SECRETS), quick
 
 
 def _assert_missing_table_result(result, status=ResultStatus.INTERNAL_ERROR) -> None:
@@ -229,10 +249,22 @@ def test_set_suite_reports_missing_table_on_write() -> None:
         lambda s: s.get_configuration(_TENANT),
         lambda s: s.get_summary(_TENANT),
         lambda s: s.list_extensions(_TENANT),
-        lambda s: s.set_extension_status(_TENANT, "outlook_addin", "installed"),
-        lambda s: s.disable_action_connector(_TENANT, "outlook"),
+        lambda s: s.set_extension_status(
+            _TENANT,
+            SetExtensionStatusRequest(
+                extension_key="outlook_addin", status="installed"
+            ),
+        ),
+        lambda s: s.disable_action_connector(
+            _TENANT, DisableActionConnectorRequest(connector_key="outlook")
+        ),
         lambda s: s.enable_action_connector(
-            _TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+            _TENANT,
+            EnableActionConnectorRequest(
+                connector_key="outlook",
+                auth_type="custom_oauth_app",
+                secret_id=CUSTOM_OAUTH_SECRET,
+            ),
         ),
     ],
 )
@@ -254,7 +286,12 @@ def test_enable_reports_created_resource_when_state_write_fails() -> None:
     service, quick = _service(state)
 
     result = service.enable_action_connector(
-        _TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        _TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     # A Quick API call already succeeded, so this is the documented
@@ -272,13 +309,20 @@ def test_disable_reports_deleted_resource_when_state_write_fails() -> None:
     state.put_suite(_TENANT, Suite.MICROSOFT_365)
     assert (
         service.enable_action_connector(
-            _TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+            _TENANT,
+            EnableActionConnectorRequest(
+                connector_key="outlook",
+                auth_type="custom_oauth_app",
+                secret_id=CUSTOM_OAUTH_SECRET,
+            ),
         ).status
         == ResultStatus.SUCCESS
     )
     state.fail_writes = True
 
-    result = service.disable_action_connector(_TENANT, "outlook")
+    result = service.disable_action_connector(
+        _TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     _assert_missing_table_result(result, ResultStatus.SERVER_ERROR)
     assert quick.calls_for("delete_action_connector")
@@ -290,14 +334,11 @@ def test_disable_reports_deleted_resource_when_state_write_fails() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_set_productivity_suite_tool_returns_structured_error(monkeypatch) -> None:
+def test_set_productivity_suite_tool_returns_structured_error() -> None:
     service, _ = _service(_BrokenState())
-    monkeypatch.setenv(server._TENANT_ENV, _TENANT)
-    server.set_service(service)
-    try:
-        result = server._set_productivity_suite_impl("microsoft_365", None)
-    finally:
-        server.set_service(None)
+    result = server.OnboardingTools(service, _TENANT).set_productivity_suite(
+        "microsoft_365"
+    )
 
     assert result["status"] == "internal_error"
     assert "does not exist" in result["message"]

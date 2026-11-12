@@ -1,6 +1,6 @@
 # Documentation
 
-Documentation for the Quick Admin Buddy MCP server — a Model Context Protocol
+Documentation for the AWS Quick Admin Buddy MCP server — a Model Context Protocol
 server that fronts the AWS Quick admin APIs for action connectors and knowledge
 bases with twelve higher-level onboarding tools, deployed to Amazon Bedrock AgentCore Runtime behind an
 AgentCore Gateway.
@@ -15,7 +15,7 @@ AgentCore Gateway.
   (gateway endpoint + Cognito identifiers), creating the AWS Quick action
   connector, updates, and teardown.
 - **[Authentication & Authorization Model](./auth-model.md)** — inbound Cognito
-  authentication at the AgentCore Gateway, outbound `Agent_IAM_Identity`
+  authentication at the AgentCore Gateway, outbound runtime-role
   authorization scoped to the specific Quick admin actions the server needs, and the end-to-end
   request flow.
 

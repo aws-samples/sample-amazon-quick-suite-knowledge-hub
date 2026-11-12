@@ -15,6 +15,10 @@ local state - the resource is assumed to already exist in AWS Quick.
 from __future__ import annotations
 
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    ShareActionConnectorRequest,
+    ShareKnowledgeBaseRequest,
+)
 from quick_admin_buddy_mcp.domain.service import OnboardingService
 from quick_admin_buddy_mcp.domain.types import ResultStatus
 from quick_admin_buddy_mcp.quick.mock import MockBehavior, MockQuickAdminClient, Mode
@@ -37,7 +41,10 @@ def _service(quick: MockQuickAdminClient | None = None):
 
 def test_share_action_unknown_key_is_validation_failure_no_api():
     service, _state, quick = _service()
-    result = service.share_action_connector(TENANT, "nope", "workshopuser")
+    result = service.share_action_connector(
+        TENANT,
+        ShareActionConnectorRequest(connector_key="nope", share_with="workshopuser"),
+    )
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert "nope" in result.message
     assert quick.calls == []
@@ -50,7 +57,10 @@ def test_share_action_unknown_key_is_validation_failure_no_api():
 
 def test_share_kb_unsupported_capability_is_validation_failure_no_api():
     service, _state, quick = _service()
-    result = service.share_kb_integration(TENANT, "outlook", "workshopuser")
+    result = service.share_kb_integration(
+        TENANT,
+        ShareKnowledgeBaseRequest(connector_key="outlook", share_with="workshopuser"),
+    )
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert quick.calls == []
 
@@ -62,7 +72,9 @@ def test_share_kb_unsupported_capability_is_validation_failure_no_api():
 
 def test_share_action_empty_principal_is_validation_failure_no_api():
     service, _state, quick = _service()
-    result = service.share_action_connector(TENANT, "outlook", "   ")
+    result = service.share_action_connector(
+        TENANT, ShareActionConnectorRequest(connector_key="outlook", share_with="   ")
+    )
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert quick.calls == []
 
@@ -75,7 +87,12 @@ def test_share_action_empty_principal_is_validation_failure_no_api():
 def test_share_action_invalid_prefix_is_validation_failure_no_api():
     service, _state, quick = _service()
     result = service.share_action_connector(
-        TENANT, "outlook", "workshopuser", connector_id_prefix="bad prefix!"
+        TENANT,
+        ShareActionConnectorRequest(
+            connector_key="outlook",
+            share_with="workshopuser",
+            connector_id_prefix="bad prefix!",
+        ),
     )
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert quick.calls == []
@@ -88,7 +105,10 @@ def test_share_action_invalid_prefix_is_validation_failure_no_api():
 
 def test_share_action_happy_path_calls_api_without_enabled_state():
     service, _state, quick = _service()
-    result = service.share_action_connector(TENANT, "outlook", "workshopuser")
+    result = service.share_action_connector(
+        TENANT,
+        ShareActionConnectorRequest(connector_key="outlook", share_with="workshopuser"),
+    )
     assert result.status == ResultStatus.SUCCESS
     assert result.data["shared_with"] == "workshopuser"
     calls = quick.calls_for("share_action_connector")
@@ -101,7 +121,12 @@ def test_share_kb_happy_path_passes_prefix_and_full_arn():
     service, _state, quick = _service()
     arn = "arn:aws:quicksight:us-east-1:999999999999:group/default/analysts"
     result = service.share_kb_integration(
-        TENANT, "sharepoint", arn, connector_id_prefix="my-company-"
+        TENANT,
+        ShareKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            share_with=arn,
+            connector_id_prefix="my-company-",
+        ),
     )
     assert result.status == ResultStatus.SUCCESS
     calls = quick.calls_for("share_knowledge_base")
@@ -118,7 +143,10 @@ def test_share_action_api_error_is_server_error():
     quick = MockQuickAdminClient()
     quick.set_behavior("share_action_connector", MockBehavior(mode=Mode.API_ERROR))
     service, _state, _ = _service(quick)
-    result = service.share_action_connector(TENANT, "outlook", "workshopuser")
+    result = service.share_action_connector(
+        TENANT,
+        ShareActionConnectorRequest(connector_key="outlook", share_with="workshopuser"),
+    )
     assert result.status == ResultStatus.SERVER_ERROR
 
 
@@ -126,5 +154,10 @@ def test_share_kb_internal_error_is_internal_error():
     quick = MockQuickAdminClient()
     quick.set_behavior("share_knowledge_base", MockBehavior(mode=Mode.INTERNAL_ERROR))
     service, _state, _ = _service(quick)
-    result = service.share_kb_integration(TENANT, "sharepoint", "workshopuser")
+    result = service.share_kb_integration(
+        TENANT,
+        ShareKnowledgeBaseRequest(
+            connector_key="sharepoint", share_with="workshopuser"
+        ),
+    )
     assert result.status == ResultStatus.INTERNAL_ERROR

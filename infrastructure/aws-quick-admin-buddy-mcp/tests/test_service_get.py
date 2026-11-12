@@ -1,22 +1,21 @@
 """Unit tests for OnboardingService.get_configuration and get_summary.
 
-These cover the example branches called out in the design's testing strategy for
-the two read-only tools (Requirements 5 and 6) using the in-memory
+These cover the example branches of the two read-only tools using the in-memory
 :class:`InMemoryStateRepository` fake and the configurable
 :class:`MockQuickAdminClient` mock.
 
-get_configuration (Requirement 5):
-  * reports the stored suite, or null when none stored              (5.1)
-  * projects all fourteen catalog keys, defaulting to not_configured  (5.2)
-  * echoes recorded last_changed_at + changed_by exactly            (5.4)
-  * repository read failure -> server_error describing missing data (5.3)
+get_configuration:
+  * reports the stored suite, or null when none stored
+  * projects all fourteen catalog keys, defaulting to not_configured
+  * echoes recorded last_changed_at + changed_by exactly
+  * repository read failure -> server_error describing missing data
 
-get_summary (Requirement 6):
-  * reports the stored suite                                        (6.1)
+get_summary:
+  * reports the stored suite
   * partitions all fourteen entries across the four stages, none
-    missing or duplicated                                           (6.3)
-  * every final status is within {enabled, skipped, not_configured} (6.4)
-  * suite-read failure -> server_error with no partial summary      (6.2)
+    missing or duplicated
+  * every final status is within {enabled, skipped, not_configured}
+  * suite-read failure -> server_error with no partial summary
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ from quick_admin_buddy_mcp.state.repository import InMemoryStateRepository
 
 TENANT = "acme-corp"
 
-# The four summary stage names (6.3).
+# The four summary stage names.
 FOUR_STAGES = (
     Stage.PRODUCTIVITY_SUITE.value,
     Stage.PRODUCTIVITY_CONNECTORS.value,
@@ -42,7 +41,7 @@ FOUR_STAGES = (
     Stage.OTHER_CONNECTORS.value,
 )
 
-# The allowed final-status set reported by the summary (6.4).
+# The allowed final-status set reported by the summary.
 ALLOWED_SUMMARY_STATUSES = {"enabled", "skipped", "not_configured"}
 
 
@@ -115,7 +114,7 @@ def test_get_configuration_status_values_are_within_allowed_set():
 def test_get_configuration_echoes_recorded_timestamp_and_principal():
     service, state, _quick = _service()
     # Record with an explicit, known timestamp and principal so we can assert
-    # they are echoed back byte-for-byte (5.4). We set the record directly on
+    # they are echoed back byte-for-byte. We set the record directly on
     # the stored state to control the timestamp value.
     from quick_admin_buddy_mcp.domain.types import ConnectorRecord, OnboardingState
 

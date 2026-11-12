@@ -1,9 +1,8 @@
 """Unit tests for OnboardingService.list_catalog and OnboardingService.set_suite.
 
-These cover each branch of the two methods delivered by task 7.1 using the
-in-memory :class:`InMemoryStateRepository` fake and the
-:class:`MockQuickAdminClient` mock, exactly as the design's testing strategy
-prescribes for the deterministic domain layer.
+These cover each branch of the two methods using the in-memory
+:class:`InMemoryStateRepository` fake and the :class:`MockQuickAdminClient`
+mock, so the deterministic domain layer is tested without AWS.
 """
 
 from __future__ import annotations

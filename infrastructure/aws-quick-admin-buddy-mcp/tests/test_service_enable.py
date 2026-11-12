@@ -22,6 +22,12 @@ Validation ordering under test:
 from __future__ import annotations
 
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    DisableActionConnectorRequest,
+    DisableKnowledgeBaseRequest,
+    EnableActionConnectorRequest,
+    EnableKnowledgeBaseRequest,
+)
 from quick_admin_buddy_mcp.domain.sanitize import SECRET_REDACTION
 from quick_admin_buddy_mcp.domain.service import OnboardingService, _record_key
 from quick_admin_buddy_mcp.domain.types import (
@@ -45,6 +51,7 @@ CUSTOM_OAUTH = {
     "token_url": "https://auth.example.com/token",
     "redirect_url": "https://eu-west-1.quicksight.aws.amazon.com/sn/oauthcallback",
 }
+CUSTOM_OAUTH_SECRET = "quick-admin-buddy/test-custom-oauth"
 
 # A Secrets Manager secret NAME for certificate-based KB connectors
 # (SharePoint/OneDrive admin-managed), whose body holds client_id, tenant_id,
@@ -109,7 +116,9 @@ def _service(quick: MockQuickAdminClient | None = None, secrets=None):
     catalog = ConnectorCatalog()
     state = InMemoryStateRepository()
     quick = quick or MockQuickAdminClient()
-    service = OnboardingService(catalog, state, quick, secrets)
+    service = OnboardingService(
+        catalog, state, quick, secrets if secrets is not None else TEST_SECRETS
+    )
     return service, state, quick
 
 
@@ -122,7 +131,12 @@ def test_enable_action_before_suite_set_is_validation_failure_no_api():
     service, state, quick = _service()
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -141,7 +155,12 @@ def test_enable_action_unknown_key_is_validation_failure():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "nope", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="nope",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -162,7 +181,12 @@ def test_enable_action_on_kb_only_connector_is_validation_failure():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_action_connector(
-        TENANT, "google_drive_kb", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="google_drive_kb",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -176,7 +200,12 @@ def test_enable_kb_on_action_only_connector_is_validation_failure():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_kb_integration(
-        TENANT, "gmail", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="gmail",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -194,7 +223,12 @@ def test_enable_action_suite_gate_mismatch_is_validation_failure():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "gmail", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="gmail",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -213,7 +247,12 @@ def test_enable_action_invalid_auth_type_is_validation_failure_listing_valid():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "basic_auth", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="basic_auth",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -238,7 +277,12 @@ def test_enable_action_missing_params_lists_them_and_contract():
 
     # Provide only a subset of the custom_oauth_app parameters.
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", {"client_id": "cid"}
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            auth_params={"client_id": "cid"},
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -263,7 +307,12 @@ def test_enable_kb_missing_connector_config_field_is_reported():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     # No config at all -> the required `sites` field is reported missing.
-    result = service.enable_kb_integration(TENANT, "sharepoint", "admin_managed")
+    result = service.enable_kb_integration(
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint", auth_type="admin_managed"
+        ),
+    )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert result.data["missing_config_fields"] == ["sites"]
@@ -282,7 +331,12 @@ def test_enable_kb_rejects_action_connector_auth_type():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_kb_integration(
-        TENANT, "onedrive", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="onedrive",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -297,7 +351,12 @@ def test_enable_action_rejects_kb_auth_type():
     service, state, quick = _service()
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
-    result = service.enable_action_connector(TENANT, "outlook", "admin_managed")
+    result = service.enable_action_connector(
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook", auth_type="admin_managed"
+        ),
+    )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert result.data["invalid_auth_type"] == "admin_managed"
@@ -315,7 +374,10 @@ def test_enable_kb_user_managed_needs_no_credentials():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_kb_integration(
-        TENANT, "google_drive", "user_managed", owner=KB_OWNER
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="google_drive", auth_type="user_managed", owner=KB_OWNER
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -335,7 +397,10 @@ def test_enable_kb_admin_managed_succeeds():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_kb_integration(
-        TENANT, "google_drive", "admin_managed", owner=KB_OWNER
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="google_drive", auth_type="admin_managed", owner=KB_OWNER
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -358,7 +423,10 @@ def test_enable_gdrive_kb_defaults_secret_name_when_omitted():
 
     # No secret_id passed -> defaults to quick-admin-buddy/google-drive-kb-admin.
     result = service.enable_kb_integration(
-        TENANT, "google_drive", "admin_managed", owner=KB_OWNER
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="google_drive", auth_type="admin_managed", owner=KB_OWNER
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -386,7 +454,10 @@ def test_enable_gdrive_kb_missing_secret_fields_is_validation_failure():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_kb_integration(
-        TENANT, "google_drive", "admin_managed", owner=KB_OWNER
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="google_drive", auth_type="admin_managed", owner=KB_OWNER
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -403,7 +474,10 @@ def test_enable_gdrive_kb_private_key_not_echoed():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_kb_integration(
-        TENANT, "google_drive", "admin_managed", owner=KB_OWNER
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="google_drive", auth_type="admin_managed", owner=KB_OWNER
+        ),
     )
 
     import json as _json
@@ -423,9 +497,9 @@ def test_enable_action_resolves_params_from_secret_success():
 
     result = service.enable_action_connector(
         TENANT,
-        "outlook",
-        "custom_oauth_app",
-        secret_id="my/secret",  # nosec B106 - test fixture secret name, not a credential
+        EnableActionConnectorRequest(
+            connector_key="outlook", auth_type="custom_oauth_app", secret_id="my/secret"
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -445,9 +519,11 @@ def test_enable_action_missing_secret_is_validation_failure():
 
     result = service.enable_action_connector(
         TENANT,
-        "outlook",
-        "custom_oauth_app",
-        secret_id="missing/secret",  # nosec B106 - test fixture secret name, not a credential
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id="missing/secret",
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -462,9 +538,11 @@ def test_enable_action_secret_access_error_is_internal_error():
 
     result = service.enable_action_connector(
         TENANT,
-        "outlook",
-        "custom_oauth_app",
-        secret_id="blocked/secret",  # nosec B106 - test fixture secret name, not a credential
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id="blocked/secret",
+        ),
     )
 
     assert result.status == ResultStatus.INTERNAL_ERROR
@@ -472,14 +550,18 @@ def test_enable_action_secret_access_error_is_internal_error():
 
 
 def test_enable_action_secret_requested_but_no_resolver_is_internal_error():
-    service, state, quick = _service(secrets=None)  # no resolver configured
+    state = InMemoryStateRepository()
+    quick = MockQuickAdminClient()
+    service = OnboardingService(ConnectorCatalog(), state, quick)  # no resolver
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
         TENANT,
-        "outlook",
-        "custom_oauth_app",
-        secret_id="any/secret",  # nosec B106 - test fixture secret name, not a credential
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id="any/secret",
+        ),
     )
 
     assert result.status == ResultStatus.INTERNAL_ERROR
@@ -502,7 +584,12 @@ def test_enable_action_already_enabled_is_already_configured_no_api():
     )
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.ALREADY_CONFIGURED
@@ -516,7 +603,12 @@ def test_action_and_kb_tracked_independently_for_same_connector():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     action = service.enable_action_connector(
-        TENANT, "confluence", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="confluence",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
     assert action.status == ResultStatus.SUCCESS
 
@@ -539,7 +631,13 @@ def test_enable_action_happy_path_calls_create_action_connector():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH, principal="admin@acme"
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+            principal="admin@acme",
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -571,10 +669,12 @@ def test_enable_kb_happy_path_calls_create_knowledge_base():
     # SharePointClientCredentials), so it is the generic SecretArn example here.
     result = service.enable_kb_integration(
         TENANT,
-        "onedrive",
-        "admin_managed",
-        secret_id=KB_SECRET_NAME,
-        owner=KB_OWNER,
+        EnableKnowledgeBaseRequest(
+            connector_key="onedrive",
+            auth_type="admin_managed",
+            secret_id=KB_SECRET_NAME,
+            owner=KB_OWNER,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -606,7 +706,12 @@ def test_enable_action_api_error_surfaces_server_error_passthrough_no_state():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.SERVER_ERROR
@@ -636,10 +741,12 @@ def test_enable_kb_api_error_surfaces_server_error():
 
     result = service.enable_kb_integration(
         TENANT,
-        "onedrive",
-        "admin_managed",
-        secret_id=KB_SECRET_NAME,
-        owner=KB_OWNER,
+        EnableKnowledgeBaseRequest(
+            connector_key="onedrive",
+            auth_type="admin_managed",
+            secret_id=KB_SECRET_NAME,
+            owner=KB_OWNER,
+        ),
     )
 
     assert result.status == ResultStatus.SERVER_ERROR
@@ -655,7 +762,12 @@ def test_enable_action_internal_error_surfaces_internal_error():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.INTERNAL_ERROR
@@ -672,7 +784,12 @@ def test_enable_action_persistence_failure_after_create_is_server_error():
     state.set_connector_status = _boom  # type: ignore[assignment]
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.SERVER_ERROR
@@ -690,7 +807,12 @@ def test_enable_action_does_not_echo_client_secret():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -707,9 +829,19 @@ def test_enable_action_redacts_client_secret_in_error_message():
     service, state, quick = _service(quick)
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
-    params = {**CUSTOM_OAUTH, "client_secret": secret}
+    # The secret value comes from Secrets Manager; if the API error text echoes
+    # it, the sanitize boundary still redacts it.
+    secrets = InMemorySecretResolver(
+        {"quick-admin-buddy/leaky": {**CUSTOM_OAUTH, "client_secret": secret}}
+    )
+    service = OnboardingService(ConnectorCatalog(), state, quick, secrets)
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", params
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id="quick-admin-buddy/leaky",
+        ),
     )
 
     assert result.status == ResultStatus.SERVER_ERROR
@@ -728,10 +860,12 @@ def test_enable_action_passes_custom_id_prefix_to_create_request():
 
     result = service.enable_action_connector(
         TENANT,
-        "outlook",
-        "custom_oauth_app",
-        CUSTOM_OAUTH,
-        connector_id_prefix="my-company-",
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+            connector_id_prefix="my-company-",
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -749,12 +883,14 @@ def test_enable_kb_passes_custom_id_prefix_to_create_request():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        secret_id=SHAREPOINT_SECRET_NAME,
-        config=dict(SHAREPOINT_KB_CONFIG),
-        connector_id_prefix="acme_",
-        owner=KB_OWNER,
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            secret_id=SHAREPOINT_SECRET_NAME,
+            config=dict(SHAREPOINT_KB_CONFIG),
+            connector_id_prefix="acme_",
+            owner=KB_OWNER,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -769,10 +905,12 @@ def test_enable_action_invalid_id_prefix_is_validation_failure_no_api():
     # A space is outside [\w\-]+, so the derived resource id would be invalid.
     result = service.enable_action_connector(
         TENANT,
-        "outlook",
-        "custom_oauth_app",
-        CUSTOM_OAUTH,
-        connector_id_prefix="bad prefix!",
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+            connector_id_prefix="bad prefix!",
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -786,7 +924,13 @@ def test_enable_action_empty_prefix_falls_back_to_default():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_action_connector(
-        TENANT, "outlook", "custom_oauth_app", CUSTOM_OAUTH, connector_id_prefix=""
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+            connector_id_prefix="",
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -806,7 +950,10 @@ def test_disable_action_forwards_custom_id_prefix_to_delete():
     )
 
     result = service.disable_action_connector(
-        TENANT, "outlook", connector_id_prefix="my-company-"
+        TENANT,
+        DisableActionConnectorRequest(
+            connector_key="outlook", connector_id_prefix="my-company-"
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -826,7 +973,10 @@ def test_disable_action_invalid_id_prefix_is_validation_failure_no_api():
     )
 
     result = service.disable_action_connector(
-        TENANT, "outlook", connector_id_prefix="bad prefix!"
+        TENANT,
+        DisableActionConnectorRequest(
+            connector_key="outlook", connector_id_prefix="bad prefix!"
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -847,11 +997,13 @@ def test_enable_kb_creates_data_source_then_knowledge_base_in_order():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        secret_id=SHAREPOINT_SECRET_NAME,
-        config=dict(SHAREPOINT_KB_CONFIG),
-        owner=KB_OWNER,
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            secret_id=SHAREPOINT_SECRET_NAME,
+            config=dict(SHAREPOINT_KB_CONFIG),
+            owner=KB_OWNER,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -885,10 +1037,12 @@ def test_enable_kb_with_secret_name_threads_resolved_credentials_secret_arn():
 
     result = service.enable_kb_integration(
         TENANT,
-        "onedrive",
-        "admin_managed",
-        secret_id=secret_name,
-        owner=KB_OWNER,
+        EnableKnowledgeBaseRequest(
+            connector_key="onedrive",
+            auth_type="admin_managed",
+            secret_id=secret_name,
+            owner=KB_OWNER,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -908,10 +1062,15 @@ def test_disable_kb_deletes_knowledge_base_then_data_source():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
     # Enable first so the integration is in the ENABLED state.
     service.enable_kb_integration(
-        TENANT, "google_drive", "admin_managed", owner=KB_OWNER
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="google_drive", auth_type="admin_managed", owner=KB_OWNER
+        ),
     )
 
-    result = service.disable_kb_integration(TENANT, "google_drive")
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key="google_drive")
+    )
 
     assert result.status == ResultStatus.SUCCESS
     delete_actions = [c.action for c in quick.calls if c.action.startswith("delete_")]
@@ -928,9 +1087,11 @@ def test_enable_sharepoint_kb_without_secret_is_validation_failure():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        config=dict(SHAREPOINT_KB_CONFIG),  # sites, but no secret available
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            config=dict(SHAREPOINT_KB_CONFIG),
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -942,7 +1103,10 @@ def test_enable_onedrive_kb_without_secret_is_validation_failure():
     state.put_suite(TENANT, Suite.MICROSOFT_365)
 
     result = service.enable_kb_integration(
-        TENANT, "onedrive", "admin_managed", owner=KB_OWNER
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="onedrive", auth_type="admin_managed", owner=KB_OWNER
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -960,11 +1124,13 @@ def test_enable_sharepoint_kb_with_name_secret_succeeds():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        secret_id=SHAREPOINT_SECRET_NAME,  # bare name, not an ARN
-        config=dict(SHAREPOINT_KB_CONFIG),
-        owner=KB_OWNER,
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            secret_id=SHAREPOINT_SECRET_NAME,
+            config=dict(SHAREPOINT_KB_CONFIG),
+            owner=KB_OWNER,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -987,10 +1153,12 @@ def test_enable_sharepoint_kb_defaults_secret_name_when_omitted():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        config=dict(SHAREPOINT_KB_CONFIG),
-        owner=KB_OWNER,
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            config=dict(SHAREPOINT_KB_CONFIG),
+            owner=KB_OWNER,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -1008,10 +1176,12 @@ def test_enable_sharepoint_kb_with_arn_secret_is_validation_failure():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        secret_id="arn:aws:secretsmanager:eu-west-1:123456789012:secret:quick-admin-buddy/kb-sp-AbCdEf",  # nosec B106 - ARN fixture asserting ARNs are rejected, not a credential
-        config=dict(SHAREPOINT_KB_CONFIG),
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            secret_id="arn:aws:secretsmanager:eu-west-1:123456789012:secret:quick-admin-buddy/kb-sp-AbCdEf",
+            config=dict(SHAREPOINT_KB_CONFIG),
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -1028,7 +1198,12 @@ def test_enable_action_on_dual_connector_does_not_require_kb_fields():
     # sharepoint has kb_required_fields but no base required_fields; enabling it
     # as an ACTION connector should succeed without sites/tenant_id/etc.
     result = service.enable_action_connector(
-        TENANT, "sharepoint", "custom_oauth_app", CUSTOM_OAUTH
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="sharepoint",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -1049,11 +1224,12 @@ def test_enable_kb_requires_owner():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        secret_id=SHAREPOINT_SECRET_NAME,
-        config=dict(SHAREPOINT_KB_CONFIG),
-        # owner intentionally omitted
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            secret_id=SHAREPOINT_SECRET_NAME,
+            config=dict(SHAREPOINT_KB_CONFIG),
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -1070,11 +1246,13 @@ def test_enable_kb_threads_owner_into_create_request():
 
     result = service.enable_kb_integration(
         TENANT,
-        "sharepoint",
-        "admin_managed",
-        secret_id=SHAREPOINT_SECRET_NAME,
-        config=dict(SHAREPOINT_KB_CONFIG),
-        owner="alice",
+        EnableKnowledgeBaseRequest(
+            connector_key="sharepoint",
+            auth_type="admin_managed",
+            secret_id=SHAREPOINT_SECRET_NAME,
+            config=dict(SHAREPOINT_KB_CONFIG),
+            owner="alice",
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -1092,6 +1270,7 @@ CONFLUENCE_API_KEY = {
     "domain_url": "https://contoso.atlassian.net",
     "email": "admin@contoso.com",
 }
+CONFLUENCE_API_KEY_SECRET = "quick-admin-buddy/test-confluence-api-key"
 
 
 def test_enable_confluence_action_api_key_succeeds():
@@ -1099,7 +1278,12 @@ def test_enable_confluence_action_api_key_succeeds():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)  # confluence suite_gate = any
 
     result = service.enable_action_connector(
-        TENANT, "confluence", "api_key", CONFLUENCE_API_KEY
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="confluence",
+            auth_type="api_key",
+            secret_id=CONFLUENCE_API_KEY_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -1114,7 +1298,12 @@ def test_enable_confluence_action_api_key_missing_token_is_validation_failure():
 
     # Missing api_key -> reported with the secret contract; no API call.
     result = service.enable_action_connector(
-        TENANT, "confluence", "api_key", {"domain_url": "https://contoso.atlassian.net"}
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="confluence",
+            auth_type="api_key",
+            auth_params={"domain_url": "https://contoso.atlassian.net"},
+        ),
     )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
@@ -1128,7 +1317,12 @@ def test_enable_confluence_action_api_key_token_not_echoed():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_action_connector(
-        TENANT, "confluence", "api_key", dict(CONFLUENCE_API_KEY)
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="confluence",
+            auth_type="api_key",
+            auth_params=dict(CONFLUENCE_API_KEY),
+        ),
     )
 
     import json as _json
@@ -1146,6 +1340,17 @@ JIRA_API_KEY = {
     "domain_url": "https://api.atlassian.com/ex/jira/abc-123",
     "email": "admin@contoso.com",
 }
+JIRA_API_KEY_SECRET = "quick-admin-buddy/test-jira-api-key"
+
+# Credentials come only from Secrets Manager (inline secrets are rejected),
+# so tests store them in an in-memory resolver and pass the secret name.
+TEST_SECRETS = InMemorySecretResolver(
+    {
+        CUSTOM_OAUTH_SECRET: CUSTOM_OAUTH,
+        CONFLUENCE_API_KEY_SECRET: CONFLUENCE_API_KEY,
+        JIRA_API_KEY_SECRET: JIRA_API_KEY,
+    }
+)
 
 
 def test_enable_jira_action_api_key_succeeds():
@@ -1153,7 +1358,12 @@ def test_enable_jira_action_api_key_succeeds():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)  # atlassian suite_gate = any
 
     result = service.enable_action_connector(
-        TENANT, "atlassian", "api_key", JIRA_API_KEY
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="atlassian",
+            auth_type="api_key",
+            secret_id=JIRA_API_KEY_SECRET,
+        ),
     )
 
     assert result.status == ResultStatus.SUCCESS
@@ -1167,9 +1377,96 @@ def test_enable_jira_action_api_key_token_not_echoed():
     state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
 
     result = service.enable_action_connector(
-        TENANT, "atlassian", "api_key", dict(JIRA_API_KEY)
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="atlassian",
+            auth_type="api_key",
+            auth_params=dict(JIRA_API_KEY),
+        ),
     )
 
     import json as _json
 
     assert "ATATT-jira-token" not in _json.dumps(result.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# Secret values only through Secrets Manager
+# ---------------------------------------------------------------------------
+
+
+def test_enable_action_rejects_inline_client_secret_before_anything_else():
+    service, state, quick = _service()
+    # No suite stored: the inline-secret check runs first, before any state read.
+    result = service.enable_action_connector(
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            auth_params=CUSTOM_OAUTH,
+        ),
+    )
+
+    assert result.status == ResultStatus.VALIDATION_FAILURE
+    assert result.data["error_type"] == "inline_secret_not_allowed"
+    assert result.data["inline_secret_params"] == ["client_secret"]
+    assert "secret_id" in result.message
+    assert CUSTOM_OAUTH["client_secret"] not in result.to_json()
+    assert quick.calls == []
+
+
+def test_enable_action_rejects_inline_api_key():
+    service, state, quick = _service()
+    state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
+
+    result = service.enable_action_connector(
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="atlassian", auth_type="api_key", auth_params=JIRA_API_KEY
+        ),
+    )
+
+    assert result.data["error_type"] == "inline_secret_not_allowed"
+    assert result.data["inline_secret_params"] == ["api_key"]
+    assert quick.calls == []
+
+
+def test_enable_kb_rejects_secret_in_config_or_auth_params():
+    service, state, quick = _service()
+    state.put_suite(TENANT, Suite.GOOGLE_WORKSPACE)
+
+    result = service.enable_kb_integration(
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="google_drive",
+            auth_type="admin_managed",
+            auth_params={"private_key": "inline-private-key-material-0123456789"},
+            config={"admin_password": "inline-password-value-0123456789"},
+            owner=KB_OWNER,
+        ),
+    )
+
+    assert result.status == ResultStatus.VALIDATION_FAILURE
+    assert result.data["inline_secret_params"] == ["admin_password", "private_key"]
+    assert "inline-private-key-material" not in result.to_json()
+    assert quick.calls == []
+
+
+def test_enable_action_allows_non_secret_inline_values_over_the_secret():
+    service, state, quick = _service()
+    state.put_suite(TENANT, Suite.MICROSOFT_365)
+
+    result = service.enable_action_connector(
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="outlook",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+            auth_params={"domain_url": "https://graph.example.org"},
+        ),
+    )
+
+    assert result.status == ResultStatus.SUCCESS
+    sent = quick.calls_for("create_action_connector")[0].args[1]["auth_params"]
+    assert sent["domain_url"] == "https://graph.example.org"
+    assert sent["client_secret"] == CUSTOM_OAUTH["client_secret"]

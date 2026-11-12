@@ -1,8 +1,7 @@
 """The Quick Admin API client interface and its failure taxonomy.
 
 This module defines the :class:`QuickAdminClient` protocol that the domain layer
-depends on. The protocol fronts the five AWS Quick admin API actions
-(Requirements 7.1-7.5): ``create_action_connector``,
+depends on. The protocol fronts the five AWS Quick admin API actions: ``create_action_connector``,
 ``describe_action_connector``, ``describe_action_connector_permissions``,
 ``list_action_connectors``, and ``search_action_connectors``.
 
@@ -11,14 +10,13 @@ It also defines the lightweight value objects returned by those actions
 classes the domain layer uses to classify failures:
 
 * :class:`QuickAdminApiError` - a failure *returned by* a Quick Admin API action.
-  The domain layer maps this to a ``server_error`` Tool_Result (Requirement 7.6).
+  The domain layer maps this to a ``server_error`` Tool_Result.
 * :class:`QuickAdminInternalError` - an internal/network failure (timeouts,
   connection errors, credential-resolution failures) that is *not* an API-level
-  error. The domain layer maps this to an ``internal_error`` Tool_Result
-  (Requirement 7.7).
+  error. The domain layer maps this to an ``internal_error`` Tool_Result.
 
 The protocol is transport-agnostic: the runtime implementation wraps ``boto3``
-(see task 16), while domain tests use the configurable :mod:`mock` in this
+(:mod:`boto_client`), while domain tests use the configurable :mod:`mock` in this
 package. Keeping the interface here lets the domain layer stay independent of
 both AWS and the test harness.
 """
@@ -93,7 +91,7 @@ class PermissionDetail:
     ``key`` is the Connector_Key the permissions belong to. ``granted`` reflects
     whether the required third-party authorization has been granted.
     ``authorization_url`` carries the authorization URL verbatim when a grant is
-    still required (Requirement 3.8); it is ``None`` once ``granted`` is true.
+    still required; it is ``None`` once ``granted`` is true.
     ``raw`` carries any additional API attributes.
     """
 
@@ -128,7 +126,7 @@ class QuickAdminApiError(Exception):
     """A failure returned by a Quick Admin API action.
 
     The domain layer maps this to a Tool_Result with Result_Status
-    ``server_error`` (Requirement 7.6). ``code`` is the API-provided error code
+    ``server_error``. ``code`` is the API-provided error code
     when available; ``message`` is a human-readable description. Callers must
     ensure raw credentials and internal stack detail are stripped before the
     message reaches a Tool_Result (handled by the sanitization boundary).
@@ -144,7 +142,7 @@ class QuickAdminInternalError(Exception):
 
     Covers timeouts, connection failures, and credential-resolution failures.
     The domain layer maps this to a Tool_Result with Result_Status
-    ``internal_error`` (Requirement 7.7).
+    ``internal_error``.
     """
 
 

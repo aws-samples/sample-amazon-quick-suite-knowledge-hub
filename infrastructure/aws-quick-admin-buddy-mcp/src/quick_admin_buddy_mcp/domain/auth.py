@@ -10,11 +10,12 @@ https://docs.aws.amazon.com/quick/latest/userguide/quick-action-auth.html
 The agent can supply these parameters two ways (see
 :class:`~quick_admin_buddy_mcp.domain.service.OnboardingService`):
 
-1. **Inline** — the agent collects every required value from the admin and passes
-   them as ``auth_params``.
-2. **Via Secrets Manager** — the admin stores a JSON secret whose keys are the
-   ``snake_case`` parameter names below, and the agent passes the secret id /
-   ARN. The server resolves and parses it. The JSON contract is exactly
+1. **Via Secrets Manager** (required for secret values) — the admin stores a
+   JSON secret whose keys are the ``snake_case`` parameter names below, and the
+   agent passes the secret name as ``secret_id``.
+2. **Inline, non-secret values only** — values such as ``client_id`` or
+   ``domain_url`` may be passed as ``auth_params``. Secret-bearing keys
+   (:data:`INLINE_FORBIDDEN_PARAM_NAMES`) are rejected inline. The server resolves and parses it. The JSON contract is exactly
    ``{"<param_name>": "<value>", ...}``; :func:`secret_contract_example` renders
    the template for a given auth type.
 
@@ -95,6 +96,34 @@ ALLOWED_AUTH_TYPES: dict[IntegrationType, tuple[AuthType, ...]] = {
 SECRET_PARAM_NAMES: frozenset[str] = frozenset(
     {"client_secret", "service_credentials_ref", "api_key"}
 )
+
+# Secret values are accepted ONLY through a Secrets Manager secret (secret_id),
+# never inline in a tool argument: an inline value has already passed through
+# the chat and the model context before it reaches the server, and redacting it
+# from the result cannot undo that. A key is treated as secret-bearing when it
+# is one of these names or contains one of the markers below. Non-secret values
+# (client_id, domain_url, token_url, and so on) may still be passed inline.
+INLINE_FORBIDDEN_PARAM_NAMES: frozenset[str] = SECRET_PARAM_NAMES | frozenset(
+    {"private_key", "password", "access_token", "refresh_token", "session_token"}
+)
+_INLINE_FORBIDDEN_MARKERS: tuple[str, ...] = ("secret", "password", "private_key")
+
+
+def inline_secret_params(values: dict | None) -> list[str]:
+    """Return the secret-bearing keys present in ``values`` (sorted).
+
+    Used to reject tool arguments that carry a credential inline. Only the key
+    names are returned, never the values, so the result is safe to echo.
+    """
+    found: list[str] = []
+    for name in values or {}:
+        lowered = str(name).lower()
+        if lowered in INLINE_FORBIDDEN_PARAM_NAMES or any(
+            marker in lowered for marker in _INLINE_FORBIDDEN_MARKERS
+        ):
+            found.append(str(name))
+    return sorted(found)
+
 
 # The stable list of ALL valid auth-type string values, for generic messages.
 VALID_AUTH_TYPES: tuple[str, ...] = tuple(a.value for a in AuthType)

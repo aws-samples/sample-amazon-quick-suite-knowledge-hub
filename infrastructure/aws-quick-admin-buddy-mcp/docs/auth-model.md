@@ -1,15 +1,16 @@
-# Authentication and Authorization Model
+# Authentication and authorization model
 
-The Quick Admin Buddy MCP server uses two independent identity boundaries:
+The AWS Quick Admin Buddy MCP server uses two independent identity boundaries:
 
 - **Inbound** — who may call the server. Amazon Cognito authenticates users; the
   AgentCore Gateway validates the token and **gates access** before any request
   reaches the server. This is access control only: a valid Cognito user token is
   required to call the server, but the user's identity is **not** propagated to
   the backend.
-- **Outbound** — what the server may do to AWS Quick. A least-privilege AWS
-  IAM role (`Agent_IAM_Identity`) scopes the server's calls to the specific
-  Quick admin actions it needs (listed below).
+- **Outbound** — what the server may do to AWS Quick. An AWS Identity and
+  Access Management (IAM) role, `<stack-name>-Agent-IAM-Identity` (the runtime
+  role), allows only the specific AWS Quick admin actions the server needs
+  (listed in [Outbound authorization](#outbound-authorization-runtime-role-to-aws-quick)).
 
 The two are deliberately separate: the inbound Cognito identity gates access; the
 outbound IAM identity is the server's own scoped role and is never derived from,
@@ -17,16 +18,16 @@ or substituted by, caller credentials.
 
 This deployment intentionally does **not** propagate per-user identity to the
 backend. All authenticated callers map to a **single shared tenant** (see
-"Shared tenant" below). This mirrors the proven AWS SAP MCP gateway-fronted
-pattern (Cognito CUSTOM_JWT inbound gating, IAM SigV4 to the runtime, a shared
-service identity downstream).
+[Shared tenant](#shared-tenant-no-per-user-propagation)). The pattern is
+Cognito `CUSTOM_JWT` inbound gating, IAM Signature Version 4 (SigV4) to the
+runtime, and a shared service identity downstream.
 
 ## Inbound authentication (Cognito → AgentCore Gateway)
 
 The AgentCore Gateway is configured with a **CUSTOM_JWT inbound authorizer** that
 trusts the Cognito user pool provisioned by the CloudFormation template.
 
-- A request that arrives with a **valid** Cognito user token is forwarded to the
+- A request that arrives with a **valid** Cognito access token is forwarded to the
   MCP server on the AgentCore Runtime.
 - A request that arrives with a **missing or invalid** token is **rejected at the
   gateway with an authorization error and is never forwarded** to the server. The
@@ -51,17 +52,17 @@ OAuth2 endpoints and app client this stack provisions. Once created, it
 authenticates to the gateway using the **OAuth2 authorization code grant**
 against the same Cognito user pool the gateway trusts:
 
-1. QuickSight redirects the admin to the Cognito **authorization endpoint**
+1. AWS Quick redirects the admin to the Cognito **authorization endpoint**
    (`https://<prefix>.auth.<region>.amazoncognito.com/oauth2/authorize`) to sign
    in and consent.
-2. Cognito redirects back to the QuickSight callback
+2. Cognito redirects back to the AWS Quick callback
    (`https://<region>.quicksight.aws.amazon.com/sn/oauthcallback`) with an
    authorization code. The Cognito app client registers this exact URL as an
    allowed callback.
-3. QuickSight exchanges the code at the Cognito **token endpoint**
+3. AWS Quick exchanges the code at the Cognito **token endpoint**
    (`.../oauth2/token`) using the app client id and secret, receiving an access
    token.
-4. QuickSight calls the gateway MCP endpoint (the gateway URL, which already
+4. AWS Quick calls the gateway MCP endpoint (the gateway URL, which already
    ends in `/mcp`) presenting that token, which the gateway validates with its
    CUSTOM_JWT authorizer as above.
 
@@ -73,17 +74,18 @@ endpoint, and the callback URL as outputs, and the secret is retrieved from
 Secrets Manager when configuring the connector by hand (see the manual-setup
 steps in [deployment-guide.md](./deployment-guide.md)).
 
-This is a **user-delegated** (interactive) flow: a human authenticates through
-Cognito's hosted UI. The credential can be shared by any admin user of the Quick
-instance — the point of the flow is to prove a valid Cognito user is calling, not
-to identify which one. It does not change the outbound identity below.
+This is a user-delegated (interactive) flow: a person authenticates through the
+Cognito hosted UI. The point of the flow is to prove that a valid Cognito user
+is calling; the backend doesn't use the user's identity, and the flow doesn't
+change the outbound identity.
 
-The stack provisions a Cognito sign-in user (`quickadminbuddy`) with a generated
-permanent password stored in Secrets Manager, so an admin has credentials to
-complete the hosted-UI sign-in. The app client allows both the hosted-UI
-authorization code flow and direct `USER_PASSWORD_AUTH`. See the manual-setup and
-"Sign-in user" sections of [deployment-guide.md](./deployment-guide.md) for how
-to retrieve the credentials.
+The stack creates a Cognito sign-in user (`quickadminbuddy`) with a generated
+permanent password stored in Secrets Manager, so the administrator who sets up
+the account has credentials for the hosted-UI sign-in. The app client allows
+only the hosted-UI authorization code grant and refresh tokens, so a token
+can't be obtained with the client credentials and the password alone. See
+the "Sign-in user" section of [deployment-guide.md](./deployment-guide.md) for
+how to read the credentials.
 
 ### Shared tenant (no per-user propagation)
 
@@ -94,18 +96,18 @@ that tenant from the `ONBOARDING_TENANT` environment variable (set from the
 `OnboardingState` reads and writes. No tool accepts a tenant argument, so a
 caller can neither select nor spoof a tenant — there is exactly one.
 
-This is a deliberate design choice: the requirement is to authenticate that a
-valid Quick admin is calling (a credential any admin in the instance may share),
-not to isolate state per individual user. If per-user isolation is ever required,
+This is a deliberate design choice: the skill is meant for setting up an AWS
+Quick account, so the requirement is to authenticate that a valid AWS Quick
+administrator is calling, not to isolate state per individual user. If per-user isolation is ever required,
 it would need a different architecture (for example, invoking the runtime
 directly with the user token rather than through an IAM-signed gateway hop, or an
 AgentCore OBO/interceptor mechanism) — the current gateway-fronted design does
 not carry the user identity to the backend.
 
-## Outbound authorization (`Agent_IAM_Identity` → AWS Quick)
+## Outbound authorization (runtime role to AWS Quick)
 
 The server's calls to the AWS Quick admin APIs are signed (SigV4) with the
-**`Agent_IAM_Identity`** role, used via the AgentCore Runtime execution role. The
+`<stack-name>-Agent-IAM-Identity` role, the AgentCore Runtime execution role. The
 boto3 client is created without explicit credentials, so it uses the Runtime's
 role automatically — there are no static or caller-supplied credentials in the
 server.
@@ -113,8 +115,7 @@ server.
 The server creates **two** kinds of AWS Quick integrations — action
 connectors ([`CreateActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateActionConnector.html)) and knowledge bases ([`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html))
 — so the role grants the admin actions for both, plus read access to the Secrets
-Manager secrets that hold integration auth parameters (least privilege, nothing
-more):
+Manager secrets that hold integration auth parameters, and nothing else:
 
 Action connectors:
 
@@ -147,18 +148,26 @@ The AWS Quick actions above are further restricted with an
 
 Users (read-only lookup):
 
-- `DescribeUser` — on this account's Quick user ARNs only
-  (`arn:<partition>:quicksight:*:<account>:user/*`; any Region, because Quick
-  users live in the account's identity Region). Before granting a connector or
+- `DescribeUser` — on this account's AWS Quick user ARNs only
+  (`arn:<partition>:quicksight:*:<account>:user/*`; any Region, because AWS
+  Quick users live in the account's identity Region). Before granting a connector or
   knowledge base to `share_with` / `owner`, the server checks the user exists so
   it can report "user does not exist" (for example an email passed instead of
-  the username) instead of Quick's generic `InvalidParameterValueException`.
+  the username) instead of the generic `InvalidParameterValueException`.
   If the lookup is not permitted, the check is skipped.
 
 Secrets (auth parameters supplied by reference):
 
-- `secretsmanager:GetSecretValue` — scoped to this stack's secrets and to
-  admin-supplied auth secrets by naming convention (`quick-admin-buddy/*`).
+- `secretsmanager:GetSecretValue` and `secretsmanager:DescribeSecret` — scoped
+  by naming convention to admin-supplied auth secrets (`quick-admin-buddy/*`).
+  The stack's own Cognito secrets are not readable by the runtime role.
+  `DescribeSecret` returns a secret's ARN without its value, which is all the
+  server needs where it forwards a secret by reference (OneDrive knowledge
+  bases).
+- The tools accept secret values only through these secrets. A secret value
+  passed inline as a tool argument is rejected with `validation_failure`
+  (`data.error_type: inline_secret_not_allowed`), so credentials don't pass
+  through the chat or the model context.
 
 State and encryption:
 
@@ -167,10 +176,11 @@ State and encryption:
 - `kms:Encrypt`, `kms:Decrypt`, `kms:GenerateDataKey*`, `kms:DescribeKey` — on
   the stack's customer-managed key only, and only when used through DynamoDB.
   (The key policy delegates to IAM and has no wildcard principal; its only
-  other statement lets the CloudWatch Logs service principal use the key for
-  this account's AgentCore vended-log groups.)
+  other statement lets the Amazon CloudWatch Logs service principal use the key
+  for this account's AgentCore vended-log groups and the stack's Lambda log
+  groups.)
 
-**Fail-fast, no fallback.** If authentication with the `Agent_IAM_Identity` fails
+**Fail-fast, no fallback.** If authentication with the runtime role fails
 (for example, credential resolution fails), the server fails the operation
 immediately and returns a `Tool_Result` with Result_Status `internal_error`
 describing the authentication failure. It does **not** attempt any fallback
@@ -192,7 +202,7 @@ MCP Server (AgentCore Runtime)
         │  resolve the single shared tenant from ONBOARDING_TENANT
         │  run domain logic (catalog, suite gating, validation, idempotency)
         ├─ read / write shared-tenant state ───────► DynamoDB OnboardingState
-        └─ configure connectors (SigV4, Agent_IAM_Identity, least privilege)
+        └─ configure connectors (SigV4, runtime role, allowed actions only)
                                               ──────► AWS Quick Admin API
 ```
 
@@ -205,7 +215,7 @@ MCP Server (AgentCore Runtime)
    the requested tool's domain logic.
 4. State reads and writes go to the shared tenant's row in the DynamoDB table.
 5. Connector and knowledge-base operations call the AWS Quick admin API,
-   signed with the `Agent_IAM_Identity` role and limited to the allowed action
+   signed with the runtime role and limited to the allowed action
    set above. On any auth failure, the operation returns `internal_error` with
    no fallback.
 

@@ -1,4 +1,4 @@
-# Quick Admin Buddy MCP Server container image for Amazon Bedrock AgentCore Runtime.
+# AWS Quick Admin Buddy MCP server container image for Amazon Bedrock AgentCore Runtime.
 #
 # AgentCore Runtime hosts a stateless streamable-HTTP MCP server. The server
 # defaults to a loopback bind; this image sets MCP_BIND_HOST so it listens on
@@ -12,10 +12,10 @@
 # without credentials, so it works for any consumer of this sample, and it
 # avoids Docker Hub's anonymous pull rate limits. For supply-chain hardening,
 # pin the base image to a digest you have verified, e.g.:
-#   FROM public.ecr.aws/docker/library/python:3.10-slim@sha256:<digest>
+#   FROM public.ecr.aws/docker/library/python:3.12-slim@sha256:<digest>
 # (obtain with
-#  `docker buildx imagetools inspect public.ecr.aws/docker/library/python:3.10-slim`).
-FROM public.ecr.aws/docker/library/python:3.10-slim
+#  `docker buildx imagetools inspect public.ecr.aws/docker/library/python:3.12-slim`).
+FROM public.ecr.aws/docker/library/python:3.12-slim
 
 # Do not buffer stdout/stderr so logs surface promptly in the Runtime.
 ENV PYTHONUNBUFFERED=1 \
@@ -26,13 +26,17 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install dependencies first for better layer caching. Copy only the packaging
-# metadata, then install the project (runtime dependencies only).
+# Install the project and its pinned runtime dependencies (see pyproject.toml).
 COPY pyproject.toml README.md ./
 COPY src ./src
 
 RUN pip install --upgrade pip \
     && pip install .
+
+# Run as an unprivileged user. The server needs no write access to the image
+# and binds to an unprivileged port, so it does not need root.
+RUN useradd --create-home --uid 10001 app
+USER app
 
 # AgentCore Runtime expects the MCP server to listen on port 8000.
 EXPOSE 8000

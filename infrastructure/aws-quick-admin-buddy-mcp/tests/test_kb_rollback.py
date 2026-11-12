@@ -14,6 +14,10 @@ base that references it. These tests pin down that:
 from __future__ import annotations
 
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    DisableKnowledgeBaseRequest,
+    EnableKnowledgeBaseRequest,
+)
 from quick_admin_buddy_mcp.domain.service import OnboardingService, _record_key
 from quick_admin_buddy_mcp.domain.types import (
     ConnectorStatus,
@@ -42,7 +46,13 @@ def _enable(service: OnboardingService, prefix: str | None = None):
     # user_managed needs no secret, which keeps these tests about the
     # create/rollback sequence rather than credentials.
     return service.enable_kb_integration(
-        TENANT, KEY, "user_managed", owner=OWNER, connector_id_prefix=prefix
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key=KEY,
+            auth_type="user_managed",
+            owner=OWNER,
+            connector_id_prefix=prefix,
+        ),
     )
 
 
@@ -240,7 +250,9 @@ def test_disable_records_not_configured_when_data_source_delete_fails():
     )
     service, state, _ = _enabled_service(quick)
 
-    result = service.disable_kb_integration(TENANT, KEY)
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key=KEY)
+    )
 
     assert result.status == ResultStatus.SERVER_ERROR
     assert _status(state) == ConnectorStatus.NOT_CONFIGURED
@@ -249,7 +261,9 @@ def test_disable_records_not_configured_when_data_source_delete_fails():
     assert "ConflictException" in result.message
 
     # A retry is now a no-op: the knowledge base is disabled.
-    again = service.disable_kb_integration(TENANT, KEY)
+    again = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key=KEY)
+    )
     assert again.status == ResultStatus.ALREADY_CONFIGURED
 
 
@@ -259,7 +273,9 @@ def test_disable_records_not_configured_on_data_source_internal_error():
     )
     service, state, _ = _enabled_service(quick)
 
-    result = service.disable_kb_integration(TENANT, KEY)
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key=KEY)
+    )
 
     assert result.status == ResultStatus.SERVER_ERROR
     assert _status(state) == ConnectorStatus.NOT_CONFIGURED
@@ -272,7 +288,9 @@ def test_disable_kb_already_missing_counts_as_deleted():
     )
     service, state, quick = _enabled_service(quick)
 
-    result = service.disable_kb_integration(TENANT, KEY)
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key=KEY)
+    )
 
     assert result.status == ResultStatus.SUCCESS
     assert len(quick.calls_for("delete_data_source")) == 1
@@ -286,7 +304,9 @@ def test_disable_missing_data_source_is_success():
     )
     service, state, _ = _enabled_service(quick)
 
-    result = service.disable_kb_integration(TENANT, KEY)
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key=KEY)
+    )
 
     assert result.status == ResultStatus.SUCCESS
     assert _status(state) == ConnectorStatus.NOT_CONFIGURED
@@ -299,7 +319,9 @@ def test_disable_kb_delete_failure_keeps_enabled_and_skips_data_source():
     )
     service, state, quick = _enabled_service(quick)
 
-    result = service.disable_kb_integration(TENANT, KEY)
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key=KEY)
+    )
 
     assert result.status == ResultStatus.SERVER_ERROR
     assert quick.calls_for("delete_data_source") == []
@@ -312,7 +334,9 @@ def test_disable_kb_delete_internal_error_keeps_enabled():
     )
     service, state, quick = _enabled_service(quick)
 
-    result = service.disable_kb_integration(TENANT, KEY)
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key=KEY)
+    )
 
     assert result.status == ResultStatus.INTERNAL_ERROR
     assert quick.calls_for("delete_data_source") == []

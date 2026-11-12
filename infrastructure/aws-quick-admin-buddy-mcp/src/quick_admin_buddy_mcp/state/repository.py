@@ -10,9 +10,8 @@ The interface guarantees:
 - ``get`` returns a fresh, empty :class:`OnboardingState` for the tenant when no
   state has been stored yet (never ``None``).
 - state is isolated per tenant, so one tenant's writes are never visible to
-  another tenant (Requirement 9.2).
-- reads reflect the durably persisted state for the requested tenant
-  (Requirement 9.3).
+  another tenant.
+- reads reflect the durably persisted state for the requested tenant.
 
 ``TenantId`` is a plain string alias naming the tenant partition key.
 """
@@ -20,7 +19,7 @@ The interface guarantees:
 from __future__ import annotations
 
 import copy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
 from quick_admin_buddy_mcp.domain.types import (
@@ -204,12 +203,7 @@ class StateRepository(Protocol):
 
 def _utc_now_iso() -> str:
     """Return the current UTC time as an ISO-8601 string with a ``Z`` suffix."""
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 class InMemoryStateRepository:

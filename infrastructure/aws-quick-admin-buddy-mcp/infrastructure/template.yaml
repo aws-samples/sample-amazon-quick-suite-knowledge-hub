@@ -1,17 +1,15 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: >-
-  Quick Admin Buddy MCP Server - single-template deployment (Requirement 13.1).
+  Quick Admin Buddy MCP Server - single-template deployment.
   Provisions the DynamoDB Onboarding_State table, the least-privilege
-  Agent_IAM_Identity role (Requirement 11.3), the Cognito user pool authorizer
-  (Requirements 10.1/10.2), the Amazon Bedrock AgentCore Runtime hosting the MCP
+  Agent_IAM_Identity role, the Cognito user pool authorizer, the Amazon Bedrock AgentCore Runtime hosting the MCP
   server container, and the AgentCore Gateway with a Cognito JWT inbound
-  authorizer routing to the Runtime (Requirements 12.2, 10.1). The AWS Quick
+  authorizer routing to the Runtime. The AWS Quick
   MCP action connector is NOT created here (custom MCP connectors are not
   supported for automated/CloudFormation creation); instead the gateway
   endpoint, Cognito OAuth2 endpoints, and app client id/secret are exposed as
-  stack outputs so an operator can create the connector manually in AWS Quick
-  (Requirements 12.3, 13.2, 13.4).
+  stack outputs so an operator can create the connector manually in AWS Quick.
 
 # ---------------------------------------------------------------------------
 # NOTE ON RESOURCE-TYPE ASSUMPTIONS
@@ -94,11 +92,11 @@ Parameters:
     Type: String
     Default: "quick-setup-buddy"
     Description: >-
-      Unique identifier for the "Quick Setup Buddy" QuickSight Agent
+      Unique identifier for the "Quick Setup Buddy" AWS Quick chat agent
       (AWS::QuickSight::Agent), unique per account and region. AgentId is a
-      create-only property (changing it replaces the agent), so keep the same
-      value across stack updates; override it only to deploy a second copy
-      in the same account and region.
+      create-only property (changing it replaces the chat agent), so keep the
+      same value across stack updates. The stack's resource names are fixed,
+      so deploy one stack per account and region.
     AllowedPattern: "^[0-9a-zA-Z-_. +]+$"
     MinLength: 1
     MaxLength: 256
@@ -108,14 +106,14 @@ Parameters:
     Default: ""
     Description: >-
       Comma-separated list of AWS Quick principal ARNs (users, groups, or a
-      namespace ARN) to share the "Quick Setup Buddy" agent with. The
+      namespace ARN) to share the "Quick Setup Buddy" chat agent with. The
       AWS::QuickSight::Agent resource has NO permissions/sharing property of
       its own (its CloudFormation schema exposes only ActionConnectors, Spaces,
       StarterPrompts, Tags, etc.) — agent visibility is controlled exclusively
       via the separate UpdateAgentPermissions API, which this template invokes
       through a custom resource (see AgentPermissionsSetter below). Leave empty
       to grant no sharing (only the creating principal/console admin can see
-      the agent until shared by hand). Example value: a QuickSight user ARN
+      the chat agent until shared by hand). Example value: an AWS Quick user ARN
       like arn:aws:quicksight:eu-west-1:123456789012:user/default/jane, or a
       group ARN, or a namespace ARN
       (arn:aws:quicksight:eu-west-1:123456789012:namespace/default) to share
@@ -137,7 +135,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      Description: !Sub "CMK for ${AWS::StackName} DynamoDB table, Secrets Manager secrets and AgentCore log groups"
+      Description: !Sub "CMK for ${AWS::StackName} DynamoDB table, Secrets Manager secrets and log groups"
       EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"
@@ -148,10 +146,11 @@ Resources:
               AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
             Action: "kms:*"
             Resource: "*"
-          # CloudWatch Logs encrypts the AgentCore vended-log groups below
-          # with this key (CFN_GUARD CLOUDWATCH_LOG_GROUP_ENCRYPTED). The grant
-          # is to the regional Logs service principal only, scoped by the
-          # encryption context to this account's AgentCore vended-log groups.
+          # CloudWatch Logs encrypts the AgentCore vended-log groups and this
+          # stack's Lambda log groups with this key (CFN_GUARD
+          # CLOUDWATCH_LOG_GROUP_ENCRYPTED). The grant is to the regional Logs
+          # service principal only, scoped by the encryption context to those
+          # log groups in this account.
           - Sid: AllowCloudWatchLogsForAgentCoreLogGroups
             Effect: Allow
             Principal:
@@ -165,10 +164,12 @@ Resources:
             Resource: "*"
             Condition:
               ArnLike:
-                kms:EncryptionContext:aws:logs:arn: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/vendedlogs/bedrock-agentcore/*"
+                kms:EncryptionContext:aws:logs:arn:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/vendedlogs/bedrock-agentcore/*"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}/*"
       Tags:
         - Key: Project
-          Value: quick-admin-buddy-mcp
+          Value: QuickAdminBuddy
 
   EncryptionKeyAlias:
     Type: AWS::KMS::Alias
@@ -177,7 +178,7 @@ Resources:
       TargetKeyId: !Ref EncryptionKey
 
   # -------------------------------------------------------------------------
-  # DynamoDB: durable per-tenant Onboarding_State (Requirements 9, 13.1).
+  # DynamoDB: durable per-tenant Onboarding_State.
   # Partition key tenant_id (String); PAY_PER_REQUEST billing.
   # -------------------------------------------------------------------------
   OnboardingStateTable:
@@ -204,7 +205,7 @@ Resources:
         KMSMasterKeyId: !Ref EncryptionKey
       Tags:
         - Key: Project
-          Value: quick-admin-buddy-mcp
+          Value: QuickAdminBuddy
 
   # -------------------------------------------------------------------------
   # IAM: Agent_IAM_Identity - the AgentCore Runtime execution role.
@@ -216,6 +217,9 @@ Resources:
   AgentIamIdentityRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       RoleName: !Sub "${AWS::StackName}-Agent-IAM-Identity"
       Description: >-
         Least-privilege execution role assumed by the AgentCore Runtime for the
@@ -242,7 +246,7 @@ Resources:
               # knowledge bases (CreateKnowledgeBase), with their describe/list
               # and delete counterparts used by the enable/disable method pairs.
               # Uses the quicksight: service prefix, consistent with the boto3
-              # QuickSight client the server uses for these AWS Quick actions.
+              # quicksight client the server uses for these AWS Quick actions.
               - Sid: QuickActionConnectorActions
                 Effect: Allow
                 Action:
@@ -305,17 +309,19 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              # The server resolves integration auth parameters from a Secrets
-              # Manager secret when the agent passes a secret id instead of
-              # inline parameters. Read-only; scoped to secrets this solution
-              # provisions and to admin-supplied auth secrets by naming
-              # convention. Broaden/narrow to match your secret naming.
+              # The server reads integration auth parameters from the
+              # admin-supplied Secrets Manager secret the agent names in
+              # secret_id (secret values are never accepted inline). Read-only
+              # and scoped by naming convention to quick-admin-buddy/* secrets.
+              # The stack's own Cognito secrets are NOT readable by the server.
+              # DescribeSecret returns a secret's ARN without its value; the
+              # server uses it where only the ARN must be forwarded (OneDrive).
               - Sid: ReadAuthSecrets
                 Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AWS::StackName}-*"
                   - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:quick-admin-buddy/*"
         - PolicyName: OnboardingStateTableAccess
           PolicyDocument:
@@ -420,6 +426,9 @@ Resources:
   GatewayExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       RoleName: !Sub "${AWS::StackName}-Gateway-Execution"
       Description: Execution role for the AgentCore Gateway fronting the MCP server.
       AssumeRolePolicyDocument:
@@ -480,10 +489,10 @@ Resources:
                 Resource: "*"
 
   # -------------------------------------------------------------------------
-  # Cognito: inbound authorizer identity source (Requirements 10.1/10.2).
+  # Cognito: inbound authorizer identity source.
   # The user pool issues JWTs; the AgentCore Gateway's JWT authorizer trusts
   # this pool via its OIDC discovery URL. The issuer/discovery URLs are exposed
-  # as stack outputs (13.4).
+  # as stack outputs.
   # -------------------------------------------------------------------------
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -499,7 +508,7 @@ Resources:
           RequireNumbers: true
           RequireSymbols: true
       UserPoolTags:
-        Project: quick-admin-buddy-mcp
+        Project: QuickAdminBuddy
 
   # Resource server defines the custom scope requested during the
   # authorization-code flow so the gateway JWT authorizer can validate
@@ -522,11 +531,13 @@ Resources:
     Properties:
       ClientName: !Sub "${AWS::StackName}-client"
       UserPoolId: !Ref CognitoUserPool
-      # Confidential client for the QuickSight action connector using the
+      # Confidential client for the AWS Quick action connector using the
       # OAuth2 authorization code grant.
       GenerateSecret: true
+      # The connector uses the hosted-UI authorization code grant, so the only
+      # other flow allowed is refresh tokens. No direct username/password
+      # InitiateAuth: a token can't be obtained without the hosted UI.
       ExplicitAuthFlows:
-        - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows:
@@ -534,7 +545,7 @@ Resources:
       AllowedOAuthScopes:
         - openid
         - quick-admin-buddy/invoke
-      # QuickSight OAuth callback (must match the connector RedirectUrl).
+      # AWS Quick OAuth callback (must match the connector RedirectUrl).
       CallbackURLs:
         - !Sub "https://${AWS::Region}.quicksight.aws.amazon.com/sn/oauthcallback"
       SupportedIdentityProviders:
@@ -555,15 +566,17 @@ Resources:
   # -------------------------------------------------------------------------
   # Client secret retrieval: Cognito generates the app-client secret, but
   # CloudFormation does NOT expose it (no GetAtt). A Lambda-backed custom
-  # resource calls cognito-idp:DescribeUserPoolClient to read the secret, and
-  # stores it in Secrets Manager for best-practice secret handling. The secret
-  # value is also returned as an attribute so the QuickSight connector (whose
-  # schema requires an inline ClientSecret string, not a Secrets Manager ARN)
-  # can consume it.
+  # resource calls cognito-idp:DescribeUserPoolClient to read the secret and
+  # stores it in Secrets Manager, which is the only copy. The custom resource
+  # returns no attributes; the admin reads the secret from Secrets Manager when
+  # creating the AWS Quick connector by hand.
   # -------------------------------------------------------------------------
   ClientSecretReaderRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       RoleName: !Sub "${AWS::StackName}-ClientSecretReader"
       Description: Execution role for the Lambda that reads the Cognito app client secret.
       AssumeRolePolicyDocument:
@@ -604,20 +617,23 @@ Resources:
                 Condition:
                   StringEquals:
                     kms:ViaService: !Sub "secretsmanager.${AWS::Region}.amazonaws.com"
-              # CloudWatch Logs for the Lambda.
+              # Write only to this function's own log group (declared below
+              # with retention and KMS encryption), so no CreateLogGroup.
               - Sid: Logs
                 Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+                Resource: !GetAtt ClientSecretReaderLogGroup.Arn
 
   # Secrets Manager secret holding the Cognito app client secret. Populated by
   # the custom resource (best-practice storage of the credential).
   CognitoClientSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-cognito-client-secret"
       KmsKeyId: !Ref EncryptionKey
       Description: >-
@@ -625,17 +641,37 @@ Resources:
         OAUTH2_AUTHORIZATION_CODE grant (a confidential client, so the token
         exchange is authenticated with this secret).
 
+  # Log group for ClientSecretReaderFunction: declared so it has a retention period
+  # and KMS encryption like the rest of the stack, instead of the default
+  # never-expiring, unencrypted /aws/lambda/<function> group Lambda creates.
+  ClientSecretReaderLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}/client-secret-reader"
+      RetentionInDays: 90
+      KmsKeyId: !GetAtt EncryptionKey.Arn
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
+
   ClientSecretReaderFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       FunctionName: !Sub "${AWS::StackName}-client-secret-reader"
       Description: >-
         Reads the Cognito app client secret via DescribeUserPoolClient and
-        stores it in Secrets Manager; returns it as a custom-resource attribute.
+        stores it in Secrets Manager. Returns no attributes.
       Runtime: python3.12
       Handler: index.handler
       Timeout: 60
       Role: !GetAtt ClientSecretReaderRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref ClientSecretReaderLogGroup
       Code:
         ZipFile: |
           import boto3
@@ -666,12 +702,10 @@ Resources:
                   sm = boto3.client("secretsmanager")
                   sm.put_secret_value(SecretId=secret_id, SecretString=secret)
 
-                  # ClientSecret is returned so the connector can consume it via
-                  # GetAtt. NoEcho on the custom resource is not available, so the
-                  # Secrets Manager copy remains the source of truth for humans.
+                  # Secrets Manager holds the only copy: the secret is never
+                  # returned as a custom-resource attribute.
                   cfnresponse.send(
-                      event, context, cfnresponse.SUCCESS,
-                      {"ClientSecret": secret}, physical_id, noEcho=True,
+                      event, context, cfnresponse.SUCCESS, {}, physical_id,
                   )
               except Exception as exc:  # surface failure to CloudFormation
                   cfnresponse.send(
@@ -701,6 +735,9 @@ Resources:
   CognitoUserCredentialsSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-cognito-user-credentials"
       KmsKeyId: !Ref EncryptionKey
       Description: Credentials (username + password) for the Cognito quickadminbuddy user.
@@ -708,6 +745,9 @@ Resources:
   CognitoUserManagerRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       RoleName: !Sub "${AWS::StackName}-CognitoUserManager"
       Description: Execution role for the Lambda that provisions the Cognito user.
       AssumeRolePolicyDocument:
@@ -749,17 +789,36 @@ Resources:
                 Condition:
                   StringEquals:
                     kms:ViaService: !Sub "secretsmanager.${AWS::Region}.amazonaws.com"
+              # Write only to this function's own log group (declared below
+              # with retention and KMS encryption), so no CreateLogGroup.
               - Sid: Logs
                 Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+                Resource: !GetAtt CognitoUserManagerLogGroup.Arn
+
+  # Log group for CognitoUserManagerFunction: declared so it has a retention period
+  # and KMS encryption like the rest of the stack, instead of the default
+  # never-expiring, unencrypted /aws/lambda/<function> group Lambda creates.
+  CognitoUserManagerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}/cognito-user-manager"
+      RetentionInDays: 90
+      KmsKeyId: !GetAtt EncryptionKey.Arn
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
 
   CognitoUserManagerFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       FunctionName: !Sub "${AWS::StackName}-cognito-user-manager"
       Description: >-
         Creates the quickadminbuddy Cognito user with a generated permanent
@@ -768,6 +827,8 @@ Resources:
       Handler: index.handler
       Timeout: 60
       Role: !GetAtt CognitoUserManagerRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref CognitoUserManagerLogGroup
       Code:
         ZipFile: |
           import secrets
@@ -858,7 +919,7 @@ Resources:
       SecretId: !Ref CognitoUserCredentialsSecret
 
   # -------------------------------------------------------------------------
-  # AgentCore Runtime: hosts the MCP server container image (Requirement 12.1).
+  # AgentCore Runtime: hosts the MCP server container image.
   # Schema-accurate for AWS::BedrockAgentCore::Runtime. NOTE: AgentRuntimeName
   # must match [a-zA-Z][a-zA-Z0-9_]{0,47} (no hyphens), so a fixed underscore
   # name is used rather than an interpolated stack name.
@@ -866,9 +927,11 @@ Resources:
   AgentCoreRuntime:
     Type: AWS::BedrockAgentCore::Runtime
     Properties:
+      Tags:
+        Project: QuickAdminBuddy
       AgentRuntimeName: quick_admin_buddy_runtime
-      Description: MCP server (FastMCP, stateless streamable-HTTP) for Quick Admin Buddy.
-      # Wire the execution identity to Agent_IAM_Identity (Requirement 11).
+      Description: MCP server (stateless streamable HTTP) for AWS Quick Admin Buddy.
+      # Wire the execution identity to Agent_IAM_Identity.
       RoleArn: !GetAtt AgentIamIdentityRole.Arn
       # The container image that runs the MCP server (parameterized).
       AgentRuntimeArtifact:
@@ -899,21 +962,24 @@ Resources:
 
   # -------------------------------------------------------------------------
   # AgentCore Gateway: fronts the Runtime with a Cognito JWT inbound authorizer
-  # (Requirements 10.1, 12.2). Missing/invalid tokens are rejected by the
-  # gateway before reaching the server (Requirement 10.2). Schema-accurate for
+  #. Missing/invalid tokens are rejected by the
+  # gateway before reaching the server. Schema-accurate for
   # AWS::BedrockAgentCore::Gateway.
   # -------------------------------------------------------------------------
   AgentCoreGateway:
     Type: AWS::BedrockAgentCore::Gateway
     Properties:
+      Tags:
+        Project: QuickAdminBuddy
       Name: quick-admin-buddy-gateway
       Description: AgentCore Gateway fronting the Quick Admin Buddy MCP server.
       ProtocolType: MCP
       RoleArn: !GetAtt GatewayExecutionRole.Arn
-      # Return detailed error information (e.g. target connect/auth failures)
-      # in gateway responses to aid debugging/observability.
-      ExceptionLevel: DEBUG
-      # JWT inbound authorizer trusting the Cognito user pool (10.1/10.2).
+      # ExceptionLevel is left unset, so callers get generic gateway errors
+      # instead of internal detail. While debugging a deployment you can set
+      # `ExceptionLevel: DEBUG` here temporarily (see docs/deployment-guide.md);
+      # remove it again afterwards.
+      # JWT inbound authorizer trusting the Cognito user pool.
       AuthorizerType: CUSTOM_JWT
       AuthorizerConfiguration:
         CustomJWTAuthorizer:
@@ -925,7 +991,7 @@ Resources:
             - !Ref CognitoUserPoolClient
 
   # Gateway target that routes inbound MCP requests to the AgentCore Runtime
-  # (Requirement 12.2). The AgentCore Gateway reaches the Runtime over its
+  #. The AgentCore Gateway reaches the Runtime over its
   # HTTPS invocation endpoint, modeled as an McpServer target.
   #
   # The Runtime invocation endpoint is NOT returned by any API; it is derived
@@ -972,8 +1038,8 @@ Resources:
       # so the runtime only ever sees the gateway's machine identity, never the
       # end user. Per-user identity is deliberately NOT propagated to the
       # backend: every authenticated Quick admin maps to a single shared tenant
-      # (see the ONBOARDING_TENANT env var on the Runtime and server.py
-      # _resolve_tenant). This mirrors the proven AWS SAP MCP gateway-fronted
+      # (see the ONBOARDING_TENANT env var on the Runtime and OnboardingTools in
+      # server.py). This mirrors the proven AWS SAP MCP gateway-fronted
       # pattern (Cognito JWT inbound, IAM SigV4 to the runtime). `Authorization`
       # cannot be added to AllowedRequestHeaders anyway — AgentCore rejects it
       # as a restricted header.
@@ -1004,6 +1070,9 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/runtime/APPLICATION_LOGS/${AgentCoreRuntime.AgentRuntimeId}"
       RetentionInDays: 90
       KmsKeyId: !GetAtt EncryptionKey.Arn
@@ -1013,6 +1082,9 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/runtime/USAGE_LOGS/${AgentCoreRuntime.AgentRuntimeId}"
       RetentionInDays: 90
       KmsKeyId: !GetAtt EncryptionKey.Arn
@@ -1022,6 +1094,9 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/gateway/APPLICATION_LOGS/${AgentCoreGateway.GatewayIdentifier}"
       RetentionInDays: 90
       KmsKeyId: !GetAtt EncryptionKey.Arn
@@ -1037,6 +1112,9 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       LogGroupName: /aws/vendedlogs/bedrock-agentcore/workload-identity-directory/APPLICATION_LOGS/default
       RetentionInDays: 90
       KmsKeyId: !GetAtt EncryptionKey.Arn
@@ -1045,6 +1123,9 @@ Resources:
   RuntimeAppLogsDeliverySource:
     Type: AWS::Logs::DeliverySource
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-runtime-app-logs"
       ResourceArn: !GetAtt AgentCoreRuntime.AgentRuntimeArn
       LogType: APPLICATION_LOGS
@@ -1052,6 +1133,9 @@ Resources:
   RuntimeUsageLogsDeliverySource:
     Type: AWS::Logs::DeliverySource
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-runtime-usage-logs"
       ResourceArn: !GetAtt AgentCoreRuntime.AgentRuntimeArn
       LogType: USAGE_LOGS
@@ -1059,6 +1143,9 @@ Resources:
   GatewayAppLogsDeliverySource:
     Type: AWS::Logs::DeliverySource
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-gateway-app-logs"
       ResourceArn: !GetAtt AgentCoreGateway.GatewayArn
       LogType: APPLICATION_LOGS
@@ -1069,6 +1156,9 @@ Resources:
   IdentityAppLogsDeliverySource:
     Type: AWS::Logs::DeliverySource
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-identity-app-logs"
       ResourceArn: !Sub "arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/${AgentCoreGateway.GatewayIdentifier}"
       LogType: APPLICATION_LOGS
@@ -1077,24 +1167,36 @@ Resources:
   RuntimeAppLogsDeliveryDestination:
     Type: AWS::Logs::DeliveryDestination
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-runtime-app-logs-dest"
       DestinationResourceArn: !GetAtt RuntimeApplicationLogGroup.Arn
 
   RuntimeUsageLogsDeliveryDestination:
     Type: AWS::Logs::DeliveryDestination
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-runtime-usage-logs-dest"
       DestinationResourceArn: !GetAtt RuntimeUsageLogGroup.Arn
 
   GatewayAppLogsDeliveryDestination:
     Type: AWS::Logs::DeliveryDestination
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-gateway-app-logs-dest"
       DestinationResourceArn: !GetAtt GatewayApplicationLogGroup.Arn
 
   IdentityAppLogsDeliveryDestination:
     Type: AWS::Logs::DeliveryDestination
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       Name: !Sub "${AWS::StackName}-identity-app-logs-dest"
       DestinationResourceArn: !GetAtt IdentityApplicationLogGroup.Arn
 
@@ -1102,41 +1204,53 @@ Resources:
   RuntimeAppLogsDelivery:
     Type: AWS::Logs::Delivery
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       DeliverySourceName: !Ref RuntimeAppLogsDeliverySource
       DeliveryDestinationArn: !GetAtt RuntimeAppLogsDeliveryDestination.Arn
 
   RuntimeUsageLogsDelivery:
     Type: AWS::Logs::Delivery
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       DeliverySourceName: !Ref RuntimeUsageLogsDeliverySource
       DeliveryDestinationArn: !GetAtt RuntimeUsageLogsDeliveryDestination.Arn
 
   GatewayAppLogsDelivery:
     Type: AWS::Logs::Delivery
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       DeliverySourceName: !Ref GatewayAppLogsDeliverySource
       DeliveryDestinationArn: !GetAtt GatewayAppLogsDeliveryDestination.Arn
 
   IdentityAppLogsDelivery:
     Type: AWS::Logs::Delivery
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       DeliverySourceName: !Ref IdentityAppLogsDeliverySource
       DeliveryDestinationArn: !GetAtt IdentityAppLogsDeliveryDestination.Arn
 
   # -------------------------------------------------------------------------
-  # QuickSight Agent: "Quick Setup Buddy". Synthesized from the agent that
-  # already exists in this account/region (AgentId defaults to its id) so
-  # that redeploying this template reproduces it rather than creating a
-  # second, distinct agent. AgentId/AgentLifecycle are create-only
-  # (replacement on change) per the AWS::QuickSight::Agent resource schema.
+  # AWS Quick chat agent: "Quick Setup Buddy". The stack creates a published
+  # chat agent that answers AWS Quick setup questions and points admins to the
+  # Quick Admin Onboarding Buddy skill to apply changes. AgentId and
+  # AgentLifecycle are create-only (replacement on change) per the
+  # AWS::QuickSight::Agent resource schema, so keep QuickSetupBuddyAgentId
+  # stable across updates.
   #
   # CustomPromptInput uses NewPrompt.CustomInstructions rather than
-  # ExistingPrompt: the live agent's resolved CustomPromptInterface
-  # (ModelProfileId/SubscriptionId/QbsAwsAccountId) are runtime-assigned
-  # values tied to this specific QuickSight subscription, not portable
-  # template inputs. NewPrompt lets QuickSight (re)resolve those from the
-  # authored instructions on create, which is what happened when the agent
-  # was originally created by hand.
+  # ExistingPrompt: an existing prompt's resolved CustomPromptInterface
+  # (ModelProfileId/SubscriptionId/QbsAwsAccountId) holds runtime-assigned
+  # values tied to one AWS Quick subscription, not portable template inputs.
+  # NewPrompt lets AWS Quick resolve those from the authored instructions when
+  # the chat agent is created.
   #
   # VISIBILITY NOTE: this resource type has NO sharing/permissions property
   # (no Permissions field, unlike AWS::QuickSight::ActionConnector), so an
@@ -1263,7 +1377,7 @@ Resources:
             ## Configuring for real (guided onboarding)
 
             Use the **Quick Admin Onboarding Buddy** skill
-            (`quick-admin-onboarding-buddy`) to actually apply the admin's
+            (`admin-onboarding-buddy`) to actually apply the admin's
             choices. This skill packages all the logic for correctly setting
             extensions (connectors and knowledge bases) in AWS Quick,
             applying every change through the Quick Admin Buddy MCP server's
@@ -1285,22 +1399,21 @@ Resources:
 
             **If the skill is not installed or not enabled**, do not attempt
             to configure connectors yourself. Instead, guide the admin
-            through setting it up in Quick Desktop:
+            through setting it up in the AWS Quick desktop application:
 
-            1. Open Quick Desktop and go to **Settings → Capabilities →
-            Skills** (also labeled **Agents & Skills → Skills** on some
-            builds).
+            1. In the AWS Quick desktop application, choose **Customize** →
+            **Skills** → **Create** → **From file**.
 
-            2. Install the Quick Admin Onboarding Buddy skill package there
-            (via **Upload**/**Import from file**, or **Create with AI** if
-            only the skill definition is available).
+            2. Select the Quick Admin Onboarding Buddy skill `.zip` file. Do
+            not unzip it first.
 
-            3. Fully quit and relaunch Quick Desktop — a newly installed
-            skill does not activate until restart.
+            3. Under **Customize** → **Connectors**, install the **Admin
+            Onboarding Buddy Endpoint** connector, sign in, and enable it,
+            since the skill applies every change through it.
 
-            4. Enable the **Quick Admin Buddy MCP** action connector under
-            **Settings → Capabilities → Connections**, since the skill
-            applies every change through it.
+            4. Open a new chat from the skill (**Skills** → Quick Admin
+            Onboarding Buddy → **Try it**). A chat sees only the tools that
+            were connected when it started.
 
             5. Confirm it loaded by asking "What skills do you have?" or
             "Tell me about Quick Admin Onboarding Buddy."
@@ -1336,7 +1449,7 @@ Resources:
             and the next step they can take.
       Tags:
         - Key: Project
-          Value: quick-admin-buddy-mcp
+          Value: QuickAdminBuddy
 
   # -------------------------------------------------------------------------
   # Agent sharing: AWS::QuickSight::Agent has NO permissions/sharing property
@@ -1347,7 +1460,7 @@ Resources:
   # principal ARN listed in QuickSetupBuddySharePrincipals. On delete it
   # revokes those same grants (best-effort; never fails the stack delete).
   #
-  # ASSUMPTION: the exact action names QuickSight expects on
+  # ASSUMPTION: the exact action names AWS Quick expects on
   # UpdateAgentPermissions' Grant/RevokePermissions.Actions are not published
   # as a fixed enum in the API reference (unlike, say, ActionConnector
   # permissions). "quicksight:DescribeAgent" and "quicksight:UseAgent" are the
@@ -1357,6 +1470,9 @@ Resources:
   AgentPermissionsSetterRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       RoleName: !Sub "${AWS::StackName}-AgentPermissionsSetter"
       Description: >-
         Execution role for the Lambda that shares the Quick Setup Buddy agent
@@ -1381,26 +1497,47 @@ Resources:
                   - quicksight:UpdateAgentPermissions
                   - quicksight:DescribeAgentPermissions
                 Resource: !GetAtt QuickSetupBuddyAgent.Arn
+              # Write only to this function's own log group (declared below
+              # with retention and KMS encryption), so no CreateLogGroup.
               - Sid: Logs
                 Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+                Resource: !GetAtt AgentPermissionsSetterLogGroup.Arn
+
+  # Log group for AgentPermissionsSetterFunction: declared so it has a retention period
+  # and KMS encryption like the rest of the stack, instead of the default
+  # never-expiring, unencrypted /aws/lambda/<function> group Lambda creates.
+  AgentPermissionsSetterLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}/agent-permissions-setter"
+      RetentionInDays: 90
+      KmsKeyId: !GetAtt EncryptionKey.Arn
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
 
   AgentPermissionsSetterFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Tags:
+        - Key: Project
+          Value: QuickAdminBuddy
       FunctionName: !Sub "${AWS::StackName}-agent-permissions-setter"
       Description: >-
-        Grants/revokes agent-level QuickSight permissions on the Quick Setup
-        Buddy agent for the configured principals via a raw SigV4-signed
+        Grants/revokes agent-level AWS Quick permissions on the Quick Setup
+        Buddy chat agent for the configured principals via a raw SigV4-signed
         UpdateAgentPermissions call (not in this runtime's bundled boto3).
       Runtime: python3.12
       Handler: index.handler
       Timeout: 60
       Role: !GetAtt AgentPermissionsSetterRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref AgentPermissionsSetterLogGroup
       Code:
         ZipFile: |
           import json
@@ -1430,7 +1567,7 @@ Resources:
 
           # UpdateAgentPermissions (PUT /accounts/{AwsAccountId}/agents/{AgentId}/permissions)
           # is not exposed by the boto3 version bundled with the Lambda
-          # python3.12 runtime, even though it is a published QuickSight API
+          # python3.12 runtime, even though it is a published AWS Quick API
           # (confirmed present starting boto3 1.43.x; the runtime ships
           # 1.42.29 as of this writing). Rather than vendor a newer boto3 via
           # a Lambda layer, this signs and sends the REST call directly with
@@ -1538,7 +1675,7 @@ Resources:
 Outputs:
   AgentCoreGatewayEndpoint:
     Description: >-
-      AgentCore Gateway MCP endpoint URL (Requirement 13.4). Register this as
+      AgentCore Gateway MCP endpoint URL. Register this as
       the MCP server URL in the Quick Admin Onboarding Buddy skill / client.
     Value: !GetAtt AgentCoreGateway.GatewayUrl
 
@@ -1585,7 +1722,7 @@ Outputs:
     Value: !GetAtt AgentCoreRuntime.AgentRuntimeArn
 
   CognitoUserPoolId:
-    Description: Cognito User Pool ID used by the gateway JWT authorizer (13.4).
+    Description: Cognito User Pool ID used by the gateway JWT authorizer.
     Value: !Ref CognitoUserPool
 
   CognitoUserPoolClientId:
@@ -1631,13 +1768,13 @@ Outputs:
   CognitoIssuerUrl:
     Description: >-
       Cognito user pool issuer URL (JWT "iss" claim); its
-      /.well-known/openid-configuration is the OIDC discovery document (13.4).
+      /.well-known/openid-configuration is the OIDC discovery document.
     Value: !Sub
       - "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}"
       - UserPoolId: !Ref CognitoUserPool
 
   CognitoDiscoveryUrl:
-    Description: Cognito OpenID Connect discovery document URL (13.4).
+    Description: Cognito OpenID Connect discovery document URL.
     Value: !Sub
       - "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}/.well-known/openid-configuration"
       - UserPoolId: !Ref CognitoUserPool
@@ -1647,15 +1784,15 @@ Outputs:
     Value: !Ref OnboardingStateTable
 
   AgentIamIdentityRoleArn:
-    Description: ARN of the Agent_IAM_Identity execution role (Requirement 11).
+    Description: ARN of the Agent_IAM_Identity execution role.
     Value: !GetAtt AgentIamIdentityRole.Arn
 
   QuickSetupBuddyAgentArn:
-    Description: ARN of the "Quick Setup Buddy" QuickSight Agent.
+    Description: ARN of the "Quick Setup Buddy" AWS Quick chat agent.
     Value: !GetAtt QuickSetupBuddyAgent.Arn
 
   QuickSetupBuddyAgentIdOutput:
-    Description: AgentId of the "Quick Setup Buddy" QuickSight Agent.
+    Description: AgentId of the "Quick Setup Buddy" AWS Quick chat agent.
     Value: !Ref QuickSetupBuddyAgentId
 
   QuickSetupBuddySharedWithPrincipals:

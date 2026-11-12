@@ -1,7 +1,7 @@
 """Shared pytest / Hypothesis configuration for the Quick Admin Buddy MCP tests.
 
 Registers a Hypothesis profile that runs each property-based test with a minimum
-of 100 iterations (examples), as required by the design's Testing Strategy, and
+of 100 iterations (examples), and
 activates it for the whole test session.
 """
 

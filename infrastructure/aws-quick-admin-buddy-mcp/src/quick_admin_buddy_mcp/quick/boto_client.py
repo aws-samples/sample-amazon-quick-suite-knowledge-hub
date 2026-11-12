@@ -5,17 +5,17 @@
 
 * An API-level error response (``botocore.exceptions.ClientError``) becomes a
   :class:`QuickAdminApiError` carrying the AWS error ``Code`` (the domain layer
-  maps this to Result_Status ``server_error``, Requirement 7.6).
+  maps this to Result_Status ``server_error``).
 * A credential-resolution / authentication failure, or a network/timeout
   failure, becomes a :class:`QuickAdminInternalError` (the domain layer maps this
-  to Result_Status ``internal_error``, Requirements 7.7 and 11.2). No fallback
-  credentials are ever attempted - the operation fails fast (Requirement 11.2).
+  to Result_Status ``internal_error``). No fallback
+  credentials are ever attempted - the operation fails fast.
 * Any other unexpected exception is also surfaced as
-  :class:`QuickAdminInternalError` (Requirement 7.7).
+  :class:`QuickAdminInternalError`.
 
 The underlying ``boto3`` client is created *without* explicit credentials so it
 resolves the AgentCore Runtime execution role (the ``Agent_IAM_Identity``) from
-the standard credential chain (Requirement 11.1). No access key, secret, session
+the standard credential chain. No access key, secret, session
 token, or profile is ever passed in.
 
 Boto3 method-name assumption
@@ -52,6 +52,9 @@ from botocore.exceptions import (
     PartialCredentialsError,
     ReadTimeoutError,
 )
+
+from quick_admin_buddy_mcp.domain.types import AuthType
+from quick_admin_buddy_mcp.observability import record_request_id
 
 from .client import (
     DEFAULT_RESOURCE_ID_PREFIX,
@@ -227,7 +230,7 @@ def _bare_domain(value: str | None) -> str | None:
 
 
 # Credential-resolution / authentication failure types. These indicate the
-# Agent_IAM_Identity could not be resolved or was rejected; per Requirement 11.2
+# Agent_IAM_Identity could not be resolved or was rejected, so
 # we fail fast and never attempt fallback credentials. Some names are only
 # present on newer botocore versions, so they are resolved defensively below.
 _CREDENTIAL_ERROR_TYPES: tuple[type[BaseException], ...] = (
@@ -244,12 +247,88 @@ for _optional_name in ("CredentialRetrievalError", "UnauthorizedSSOTokenError"):
     except AttributeError:  # pragma: no cover - older botocore
         pass
 
-# Network / timeout failure types -> internal_error (Requirement 7.7).
+# Network / timeout failure types -> internal_error.
 _NETWORK_ERROR_TYPES: tuple[type[BaseException], ...] = (
     EndpointConnectionError,
     ConnectTimeoutError,
     ReadTimeoutError,
 )
+
+
+def _custom_oauth_app_config(auth_params: dict) -> dict:
+    """``custom_oauth_app`` (3LO) -> ``OAUTH2_AUTHORIZATION_CODE``."""
+    return {
+        "AuthenticationType": "OAUTH2_AUTHORIZATION_CODE",
+        "AuthenticationMetadata": {
+            "AuthorizationCodeGrantMetadata": {
+                "BaseEndpoint": auth_params.get("domain_url"),
+                "RedirectUrl": auth_params.get("redirect_url"),
+                "AuthorizationCodeGrantCredentialsSource": "PLAIN_CREDENTIALS",
+                "AuthorizationCodeGrantCredentialsDetails": {
+                    "AuthorizationCodeGrantDetails": {
+                        "ClientId": auth_params.get("client_id"),
+                        "ClientSecret": auth_params.get("client_secret"),
+                        "TokenEndpoint": auth_params.get("token_url"),
+                        "AuthorizationEndpoint": auth_params.get("authorization_url"),
+                    }
+                },
+            }
+        },
+    }
+
+
+def _service_to_service_oauth_config(auth_params: dict) -> dict:
+    """``service_to_service_oauth`` (2LO client credentials) ->
+    ``OAUTH2_CLIENT_CREDENTIALS``."""
+    return {
+        "AuthenticationType": "OAUTH2_CLIENT_CREDENTIALS",
+        "AuthenticationMetadata": {
+            "ClientCredentialsGrantMetadata": {
+                "BaseEndpoint": auth_params.get("domain_url"),
+                "ClientCredentialsSource": "PLAIN_CREDENTIALS",
+                "ClientCredentialsDetails": {
+                    "ClientCredentialsGrantDetails": {
+                        "ClientId": auth_params.get("client_id"),
+                        "ClientSecret": auth_params.get("client_secret"),
+                        "TokenEndpoint": auth_params.get("token_url"),
+                    }
+                },
+            }
+        },
+    }
+
+
+def _api_key_config(auth_params: dict) -> dict:
+    """``api_key`` (2LO API token, e.g. Atlassian Confluence Cloud) ->
+    ``API_KEY`` / ``ApiKeyConnectionMetadata``.
+
+    BaseEndpoint and ApiKey are required; Email is optional (for Confluence it
+    is the Atlassian account email, and api_key is the API token). Email is
+    omitted when not provided so an empty value is not sent.
+    """
+    metadata: dict[str, Any] = {
+        "BaseEndpoint": auth_params.get("domain_url"),
+        "ApiKey": auth_params.get("api_key"),
+    }
+    email = auth_params.get("email")
+    if email:
+        metadata["Email"] = email
+    return {
+        "AuthenticationType": "API_KEY",
+        "AuthenticationMetadata": {"ApiKeyConnectionMetadata": metadata},
+    }
+
+
+# Action connector auth type -> AuthenticationConfig builder. The two OAuth
+# methods use the PLAIN_CREDENTIALS source: the server resolves the client id
+# and secret from the admin's Secrets Manager secret and passes them directly.
+# Knowledge-base auth types (user_managed / admin_managed) are not action
+# connector methods, so they have no entry.
+_AUTH_CONFIG_BUILDERS: dict[AuthType, Callable[[dict], dict]] = {
+    AuthType.CUSTOM_OAUTH_APP: _custom_oauth_app_config,
+    AuthType.SERVICE_TO_SERVICE_OAUTH: _service_to_service_oauth_config,
+    AuthType.API_KEY: _api_key_config,
+}
 
 
 class BotoQuickAdminClient:
@@ -285,10 +364,9 @@ class BotoQuickAdminClient:
         """Return the boto3 client, creating it lazily on first use.
 
         The client is created WITHOUT explicit credentials so boto3 resolves the
-        execution role from the standard credential chain (Requirement 11.1).
+        execution role from the standard credential chain.
         A failure to build the client (e.g. no credentials/region available) is
-        surfaced as an internal error - never a silent fallback (Requirement
-        11.2).
+        surfaced as an internal error - never a silent fallback.
         """
         if self._client is None:
             try:
@@ -315,7 +393,7 @@ class BotoQuickAdminClient:
         Every Quick admin action requires ``AwsAccountId`` in its request. It
         is resolved once (then cached) from the same execution-role credential
         chain as the QuickSight client - no explicit credentials are passed.
-        A resolution failure is an internal error (Requirement 11.2): no
+        A resolution failure is an internal error: no
         fallback account id is ever guessed.
         """
         if self._aws_account_id is None:
@@ -611,22 +689,22 @@ class BotoQuickAdminClient:
         return True
 
     def describe_action_connector(self, key: str) -> ConnectorDetail:
-        """Return detail for a single action connector (Requirement 7.2)."""
+        """Return detail for a single action connector."""
         response = self._invoke("describe_action_connector", {"Key": key})
         return self._to_connector_detail(key, response)
 
     def describe_action_connector_permissions(self, key: str) -> PermissionDetail:
-        """Return permission detail for a connector (Requirement 7.3)."""
+        """Return permission detail for a connector."""
         response = self._invoke("describe_action_connector_permissions", {"Key": key})
         return self._to_permission_detail(key, response)
 
     def list_action_connectors(self) -> list[ConnectorDetail]:
-        """Return all of a tenant's action connectors (Requirement 7.4)."""
+        """Return all of a tenant's action connectors."""
         response = self._invoke("list_action_connectors", {})
         return self._to_connector_list(response)
 
     def search_action_connectors(self, query: dict) -> list[ConnectorDetail]:
-        """Return action connectors matching ``query`` (Requirement 7.5)."""
+        """Return action connectors matching ``query``."""
         response = self._invoke("search_action_connectors", dict(query or {}))
         return self._to_connector_list(response)
 
@@ -637,20 +715,21 @@ class BotoQuickAdminClient:
 
         * ``ClientError`` (an API-level error response) -> :class:`QuickAdminApiError`
           with a sanitized, actionable message and ``code`` set to the AWS error
-          code (Requirement 7.6).
+          code.
         * credential-resolution / network / timeout failures ->
-          :class:`QuickAdminInternalError`, with no fallback attempt (Requirements
-          7.7, 11.2).
-        * any other unexpected exception -> :class:`QuickAdminInternalError`
-          (Requirement 7.7).
+          :class:`QuickAdminInternalError`, with no fallback attempt.
+        * any other unexpected exception -> :class:`QuickAdminInternalError`.
         """
         client = self._get_client()
         method_name = _BOTO_METHODS[action]
         method: Callable[..., dict] = getattr(client, method_name)
 
         try:
-            return method(**params) or {}
+            response = method(**params) or {}
+            record_request_id(response)
+            return response
         except ClientError as exc:
+            record_request_id(exc)
             code = self._error_code(exc)
             detail = self._error_message(exc)
             # Include the AWS error Code AND the service's own error message
@@ -658,7 +737,7 @@ class BotoQuickAdminClient:
             # credentials or stack detail. The message is produced by the AWS
             # Quick service from the request and contains no caller secrets
             # (secret values travel via Credentials.SecretArn, which the service
-            # does not echo) (Requirement 7.6 / 8.4).
+            # does not echo).
             message = (
                 f"The AWS Quick admin API rejected the {action} request"
                 + (f" (error code: {code})" if code else "")
@@ -667,7 +746,7 @@ class BotoQuickAdminClient:
             )
             raise QuickAdminApiError(message, code=code) from exc
         except _CREDENTIAL_ERROR_TYPES as exc:
-            # Auth-resolution failure: fail fast, no fallback credentials (11.2).
+            # Auth-resolution failure: fail fast, no fallback credentials.
             raise QuickAdminInternalError(self._auth_failure_message(exc)) from exc
         except _NETWORK_ERROR_TYPES as exc:
             raise QuickAdminInternalError(
@@ -681,8 +760,8 @@ class BotoQuickAdminClient:
             # structure), not an internal/network failure - so surface it as a
             # server_error carrying the actual validation detail rather than
             # letting it fall through to the generic "unexpected internal
-            # error" catch-all, which would hide the real cause (Requirement
-            # 7.6: actionable, no raw credentials). The message is produced by
+            # error" catch-all, which would hide the real cause (the message
+            # stays actionable and carries no raw credentials). The message is produced by
             # botocore from the service model and contains no caller secrets.
             raise QuickAdminApiError(
                 f"The AWS Quick admin API rejected the {action} request "
@@ -746,82 +825,28 @@ class BotoQuickAdminClient:
         ``BasicAuthConnectionMetadata`` / ``ApiKeyConnectionMetadata`` /
         ``NoneConnectionMetadata`` / ``IamConnectionMetadata`` may be set - a
         flat dict of the domain's snake_case auth parameters is not a valid
-        member and raises ``ParamValidationError`` (surfaced to the caller as a
-        generic ``internal_error``). This server maps three auth types:
-        ``custom_oauth_app`` (3LO) -> ``OAUTH2_AUTHORIZATION_CODE``,
-        ``service_to_service_oauth`` (2LO client credentials) ->
-        ``OAUTH2_CLIENT_CREDENTIALS``, and ``api_key`` (2LO API token, e.g.
-        Atlassian Confluence Cloud) -> ``API_KEY`` /
-        ``ApiKeyConnectionMetadata``. The two OAuth methods resolve to the
-        ``PLAIN_CREDENTIALS`` credentials source since the admin supplies the
-        client id/secret directly.
-        """
-        auth_type = request.get("auth_type")
-        auth_params = dict(request.get("auth_params") or {})
-        base_endpoint = auth_params.get("domain_url")
+        member and raises ``ParamValidationError``.
 
-        if auth_type == "custom_oauth_app":
-            return {
-                "AuthenticationType": "OAUTH2_AUTHORIZATION_CODE",
-                "AuthenticationMetadata": {
-                    "AuthorizationCodeGrantMetadata": {
-                        "BaseEndpoint": base_endpoint,
-                        "RedirectUrl": auth_params.get("redirect_url"),
-                        "AuthorizationCodeGrantCredentialsSource": "PLAIN_CREDENTIALS",
-                        "AuthorizationCodeGrantCredentialsDetails": {
-                            "AuthorizationCodeGrantDetails": {
-                                "ClientId": auth_params.get("client_id"),
-                                "ClientSecret": auth_params.get("client_secret"),
-                                "TokenEndpoint": auth_params.get("token_url"),
-                                "AuthorizationEndpoint": auth_params.get(
-                                    "authorization_url"
-                                ),
-                            }
-                        },
-                    }
-                },
-            }
-        if auth_type == "service_to_service_oauth":
-            return {
-                "AuthenticationType": "OAUTH2_CLIENT_CREDENTIALS",
-                "AuthenticationMetadata": {
-                    "ClientCredentialsGrantMetadata": {
-                        "BaseEndpoint": base_endpoint,
-                        "ClientCredentialsSource": "PLAIN_CREDENTIALS",
-                        "ClientCredentialsDetails": {
-                            "ClientCredentialsGrantDetails": {
-                                "ClientId": auth_params.get("client_id"),
-                                "ClientSecret": auth_params.get("client_secret"),
-                                "TokenEndpoint": auth_params.get("token_url"),
-                            }
-                        },
-                    }
-                },
-            }
-        if auth_type == "api_key":
-            # 2LO API-key auth (e.g. Atlassian Confluence Cloud). BaseEndpoint +
-            # ApiKey are required; Email is optional (for Confluence it is the
-            # Atlassian account email, and api_key is the API token). Omit Email
-            # when not provided so an empty value is not sent.
-            metadata: dict[str, Any] = {
-                "BaseEndpoint": base_endpoint,
-                "ApiKey": auth_params.get("api_key"),
-            }
-            email = auth_params.get("email")
-            if email:
-                metadata["Email"] = email
-            return {
-                "AuthenticationType": "API_KEY",
-                "AuthenticationMetadata": {"ApiKeyConnectionMetadata": metadata},
-            }
-        # Unknown/missing auth_type: the domain layer validates auth_type
-        # against VALID_AUTH_TYPES before a create call is ever reached
-        # (service.py step 5), so this should be unreachable in practice.
-        # Fail fast rather than send a request guaranteed to be rejected.
-        raise QuickAdminInternalError(
-            f"No AuthenticationConfig mapping for auth_type {auth_type!r}. "
-            "This is a server defect, not a caller error - please report it."
-        )
+        The mapping is the :data:`_AUTH_CONFIG_BUILDERS` table, keyed by
+        :class:`~quick_admin_buddy_mcp.domain.types.AuthType`: adding an action
+        connector auth type is one entry there, and an auth type without a
+        builder fails at once instead of sending a malformed request.
+        """
+        raw = request.get("auth_type")
+        try:
+            auth_type = AuthType(raw)
+        except ValueError:
+            auth_type = None
+        builder = _AUTH_CONFIG_BUILDERS.get(auth_type) if auth_type else None
+        if builder is None:
+            # The domain layer validates auth_type before a create call is ever
+            # reached, so this should be unreachable in practice. Fail fast
+            # rather than send a request guaranteed to be rejected.
+            raise QuickAdminInternalError(
+                f"No AuthenticationConfig mapping for auth_type {raw!r}. "
+                "This is a server defect, not a caller error - please report it."
+            )
+        return builder(dict(request.get("auth_params") or {}))
 
     def _build_action_connector_params(self, key: str, request: dict) -> dict:
         """Assemble ``CreateActionConnector`` request parameters."""
@@ -1149,8 +1174,7 @@ class BotoQuickAdminClient:
         backend (console-only), so ACLs default off here.
         """
         config = dict(request.get("config") or {})
-        auth_type = request.get("auth_type")
-        acl_enabled = auth_type == "admin_managed"
+        acl_enabled = request.get("auth_type") == AuthType.KB_ADMIN_MANAGED.value
         params: dict[str, Any] = {
             "AwsAccountId": self._get_aws_account_id(),
             "KnowledgeBaseId": _resource_id(key, request.get("id_prefix")),

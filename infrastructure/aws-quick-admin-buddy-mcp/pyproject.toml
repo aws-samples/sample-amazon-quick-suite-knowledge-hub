@@ -7,21 +7,25 @@ name = "quick-admin-buddy-mcp"
 version = "0.1.0"
 description = "MCP server fronting AWS Quick admin APIs with onboarding tools, deployed to Amazon Bedrock AgentCore Runtime."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "MIT-0" }
 authors = [{ name = "Quick Admin Buddy" }]
 
 # Runtime dependencies required to run the MCP server on AgentCore Runtime.
 dependencies = [
+    # Exact pins so two builds of the same image tag get the same versions.
     # server.py uses the mcp 2.x API (mcp.server.mcpserver.MCPServer), which
     # does not exist in 1.x.
-    "mcp>=2.0.0,<3.0.0",
+    "mcp==2.3.0",
     # botocore 1.43.117 is the first release whose quicksight model includes the
     # CreateDataSource Credentials.ServiceAccountCredentials member (Google
     # Workspace domain-wide delegation for the admin-managed Google Drive
     # knowledge base). Earlier botocore cannot serialize it (KeyError in the
-    # serializer), so this lower bound is required, not cosmetic.
-    "boto3>=1.43.117",
+    # serializer), so it is the minimum version that works.
+    "boto3==1.43.117",
+    # Reads and validates the server's environment variables at startup
+    # (quick_admin_buddy_mcp.config).
+    "pydantic-settings==2.16.2",
 ]
 
 [project.optional-dependencies]
@@ -60,13 +64,11 @@ python_functions = ["test_*"]
 addopts = "-ra"
 
 # ----------------------------------------------------------------------------
-# Ruff: inherit the knowledge hub's root rules, but target Python 3.10, the
-# version the container image runs (Dockerfile). The root targets 3.11, whose
-# autofixes (for example datetime.UTC) would break this server on 3.10.
+# Ruff: inherit the knowledge hub's root rules (Python 3.11+ target, which the
+# 3.12 container image satisfies).
 # ----------------------------------------------------------------------------
 [tool.ruff]
 extend = "../../pyproject.toml"
-target-version = "py310"
 
 [tool.ruff.lint.per-file-ignores]
 # Tests use assert, and S105/S106 flag secret *names* and dummy values.

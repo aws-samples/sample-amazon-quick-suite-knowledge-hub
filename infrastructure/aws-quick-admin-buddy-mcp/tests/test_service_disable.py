@@ -13,6 +13,10 @@ disable calls ``delete_knowledge_base``.
 from __future__ import annotations
 
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    DisableActionConnectorRequest,
+    DisableKnowledgeBaseRequest,
+)
 from quick_admin_buddy_mcp.domain.service import OnboardingService, _record_key
 from quick_admin_buddy_mcp.domain.types import (
     ConnectorStatus,
@@ -49,7 +53,9 @@ def _enable_action(state, key: str) -> None:
 def test_disable_action_unknown_key_is_validation_failure_no_api():
     service, state, quick = _service()
 
-    result = service.disable_action_connector(TENANT, "nope")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="nope")
+    )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert "nope" in result.message
@@ -64,7 +70,9 @@ def test_disable_action_unknown_key_is_validation_failure_no_api():
 def test_disable_kb_on_action_only_connector_is_validation_failure():
     service, state, quick = _service()
 
-    result = service.disable_kb_integration(TENANT, "gmail")
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key="gmail")
+    )
 
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert "does not support a knowledge base" in result.message
@@ -79,7 +87,9 @@ def test_disable_kb_on_action_only_connector_is_validation_failure():
 def test_disable_action_absent_is_already_configured_no_api():
     service, state, quick = _service()
 
-    result = service.disable_action_connector(TENANT, "outlook")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     assert result.status == ResultStatus.ALREADY_CONFIGURED
     assert quick.calls == []
@@ -94,7 +104,9 @@ def test_disable_action_enabled_deletes_via_api_and_records_not_configured():
     service, state, quick = _service()
     _enable_action(state, "outlook")
 
-    result = service.disable_action_connector(TENANT, "outlook")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     assert result.status == ResultStatus.SUCCESS
     assert len(quick.calls_for("delete_action_connector")) == 1
@@ -113,7 +125,9 @@ def test_disable_kb_enabled_deletes_via_delete_knowledge_base():
         "admin",
     )
 
-    result = service.disable_kb_integration(TENANT, "sharepoint")
+    result = service.disable_kb_integration(
+        TENANT, DisableKnowledgeBaseRequest(connector_key="sharepoint")
+    )
 
     assert result.status == ResultStatus.SUCCESS
     assert len(quick.calls_for("delete_knowledge_base")) == 1
@@ -126,7 +140,9 @@ def test_disable_action_api_error_surfaces_server_error_no_state_change():
     service, state, quick = _service(quick)
     _enable_action(state, "outlook")
 
-    result = service.disable_action_connector(TENANT, "outlook")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     assert result.status == ResultStatus.SERVER_ERROR
     assert (
@@ -145,7 +161,9 @@ def test_disable_action_internal_error_surfaces_internal_error():
     service, state, quick = _service(quick)
     _enable_action(state, "outlook")
 
-    result = service.disable_action_connector(TENANT, "outlook")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     assert result.status == ResultStatus.INTERNAL_ERROR
     assert (
@@ -165,7 +183,9 @@ def test_disable_action_persistence_failure_after_delete_is_server_error():
 
     state.set_connector_status = _boom  # type: ignore[assignment]
 
-    result = service.disable_action_connector(TENANT, "outlook")
+    result = service.disable_action_connector(
+        TENANT, DisableActionConnectorRequest(connector_key="outlook")
+    )
 
     assert result.status == ResultStatus.SERVER_ERROR
     assert "persist" in result.message.lower()

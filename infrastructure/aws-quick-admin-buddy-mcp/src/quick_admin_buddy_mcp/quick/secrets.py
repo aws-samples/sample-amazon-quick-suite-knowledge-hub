@@ -36,6 +36,8 @@ from __future__ import annotations
 import json
 from typing import Any, Protocol, runtime_checkable
 
+from quick_admin_buddy_mcp.observability import record_request_id
+
 #: Prefix every Secrets Manager (indeed every AWS) ARN starts with. The
 #: name-only contract rejects any ``secret_id`` beginning with ``arn:``.
 _ARN_PREFIX = "arn:"
@@ -160,7 +162,9 @@ class BotoSecretResolver:
         client = self._get_client()
         try:
             response = client.get_secret_value(SecretId=secret_id)
+            record_request_id(response)
         except Exception as exc:  # noqa: BLE001 - classify by error code below
+            record_request_id(exc)
             code = _error_code(exc)
             # Caller-fixable: the secret name/ARN is wrong or inaccessible as a
             # resource.
@@ -171,15 +175,14 @@ class BotoSecretResolver:
                 ) from exc
             # Access denied is the most common failure here and is almost always
             # the secret-naming / IAM scope: the execution role only grants
-            # GetSecretValue on secrets named 'quick-admin-buddy/*' or
-            # '<stack-name>-*'. Name the message so the remedy is obvious.
+            # GetSecretValue on secrets named 'quick-admin-buddy/*'. Name the
+            # message so the remedy is obvious.
             if code in {"AccessDeniedException", "AccessDenied"}:
                 raise SecretAccessError(
                     "Access to the secret was denied. The server may only read "
-                    "secrets whose name starts with 'quick-admin-buddy/' (or the "
-                    "stack's own '<stack-name>-' prefix). Rename the secret to use "
-                    "that prefix, or widen the AuthSecretRead policy to include "
-                    "this secret, then retry. Also pass secret_id as the secret "
+                    "secrets whose name starts with 'quick-admin-buddy/'. Rename "
+                    "the secret to use that prefix, or widen the AuthSecretRead "
+                    "policy to include this secret, then retry. Also pass secret_id as the secret "
                     "NAME/ID (the part after ':secret:'), not the full ARN."
                 ) from exc
             # Everything else (throttling, network, service error) is a generic
@@ -192,21 +195,20 @@ class BotoSecretResolver:
         return _parse_secret_string(secret_id, response.get("SecretString"))
 
     def resolve_secret_arn(self, secret_name: str) -> str:
-        """Return the canonical ARN for ``secret_name`` via ``GetSecretValue``.
+        """Return the canonical ARN for ``secret_name`` via ``DescribeSecret``.
 
-        ``GetSecretValue`` returns the secret's full ARN (name plus AWS's
-        trailing ``-<6 chars>`` suffix) in its response, so the server can
-        forward a valid ``Credentials.SecretArn`` while the agent only ever
-        supplies the name. We deliberately use ``GetSecretValue`` rather than
-        ``DescribeSecret`` because the ``AuthSecretRead`` execution-role policy
-        grants ``GetSecretValue`` only — reusing it keeps the role least-
-        privilege and avoids a second IAM permission. Errors are classified
-        exactly like :meth:`get_secret_json`.
+        ``DescribeSecret`` returns the secret's full ARN (name plus AWS's
+        trailing ``-<6 chars>`` suffix) WITHOUT the secret value, so the server
+        can forward a valid ``Credentials.SecretArn`` while never holding the
+        credentials it passes by reference. The agent only ever supplies the
+        name. Errors are classified exactly like :meth:`get_secret_json`.
         """
         client = self._get_client()
         try:
-            response = client.get_secret_value(SecretId=secret_name)
+            response = client.describe_secret(SecretId=secret_name)
+            record_request_id(response)
         except Exception as exc:  # noqa: BLE001 - classify by error code below
+            record_request_id(exc)
             code = _error_code(exc)
             if code in {"ResourceNotFoundException", "InvalidParameterException"}:
                 raise SecretResolutionError(
@@ -216,10 +218,9 @@ class BotoSecretResolver:
             if code in {"AccessDeniedException", "AccessDenied"}:
                 raise SecretAccessError(
                     "Access to the secret was denied. The server may only read "
-                    "secrets whose name starts with 'quick-admin-buddy/' (or the "
-                    "stack's own '<stack-name>-' prefix). Rename the secret to use "
-                    "that prefix, or widen the AuthSecretRead policy to include "
-                    "this secret, then retry."
+                    "secrets whose name starts with 'quick-admin-buddy/'. Rename "
+                    "the secret to use that prefix, or widen the AuthSecretRead "
+                    "policy to include this secret, then retry."
                 ) from exc
             raise SecretAccessError(
                 "Could not describe the referenced secret in Secrets Manager "

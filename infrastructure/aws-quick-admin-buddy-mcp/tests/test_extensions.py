@@ -14,6 +14,9 @@ import boto3
 import pytest
 
 from quick_admin_buddy_mcp.domain.catalog import ConnectorCatalog, ExtensionCatalog
+from quick_admin_buddy_mcp.domain.requests import (
+    SetExtensionStatusRequest,
+)
 from quick_admin_buddy_mcp.domain.service import OnboardingService
 from quick_admin_buddy_mcp.domain.types import ExtensionStatus, ResultStatus, Suite
 from quick_admin_buddy_mcp.quick.mock import MockQuickAdminClient
@@ -103,7 +106,12 @@ def test_set_extension_status_installed_succeeds_and_persists():
     service, state = _service()
     service.set_suite(TENANT, "microsoft_365")
 
-    result = service.set_extension_status(TENANT, "outlook_addin", "installed", "admin")
+    result = service.set_extension_status(
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="outlook_addin", status="installed", principal="admin"
+        ),
+    )
     assert result.status == ResultStatus.SUCCESS
     assert result.data["status"] == "installed"
 
@@ -119,7 +127,10 @@ def test_set_extension_status_skipped():
     service, state = _service()
     service.set_suite(TENANT, "google_workspace")
     result = service.set_extension_status(
-        TENANT, "browser_extension", "skipped", "admin"
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="browser_extension", status="skipped", principal="admin"
+        ),
     )
     assert result.status == ResultStatus.SUCCESS
     assert state.get(TENANT).extensions["browser_extension"].status == (
@@ -132,7 +143,10 @@ def test_set_extension_status_suite_mismatch_is_validation_failure():
     service.set_suite(TENANT, "microsoft_365")
     # browser_extension is google_workspace-gated -> rejected under MS
     result = service.set_extension_status(
-        TENANT, "browser_extension", "installed", "admin"
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="browser_extension", status="installed", principal="admin"
+        ),
     )
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert result.data["suite_gate"] == "google_workspace"
@@ -141,7 +155,12 @@ def test_set_extension_status_suite_mismatch_is_validation_failure():
 
 def test_set_extension_status_unknown_key_is_validation_failure():
     service, _ = _service()
-    result = service.set_extension_status(TENANT, "nope_addin", "installed", "admin")
+    result = service.set_extension_status(
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="nope_addin", status="installed", principal="admin"
+        ),
+    )
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert "nope_addin" in result.message
     assert "outlook_addin" in result.data["valid_extensions"]
@@ -149,7 +168,12 @@ def test_set_extension_status_unknown_key_is_validation_failure():
 
 def test_set_extension_status_invalid_status_is_validation_failure():
     service, _ = _service()
-    result = service.set_extension_status(TENANT, "excel_addin", "bogus", "admin")
+    result = service.set_extension_status(
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="excel_addin", status="bogus", principal="admin"
+        ),
+    )
     assert result.status == ResultStatus.VALIDATION_FAILURE
     assert set(result.data["valid_statuses"]) == {
         "installed",
@@ -161,7 +185,12 @@ def test_set_extension_status_invalid_status_is_validation_failure():
 def test_set_extension_status_no_suite_allows_any():
     """With no stored suite, the suite gate does not block (catalog view only)."""
     service, state = _service()
-    result = service.set_extension_status(TENANT, "outlook_addin", "installed", "admin")
+    result = service.set_extension_status(
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="outlook_addin", status="installed", principal="admin"
+        ),
+    )
     assert result.status == ResultStatus.SUCCESS
 
 
@@ -173,7 +202,12 @@ def test_set_extension_status_no_suite_allows_any():
 def test_get_configuration_includes_extensions():
     service, _ = _service()
     service.set_suite(TENANT, "microsoft_365")
-    service.set_extension_status(TENANT, "outlook_addin", "installed", "admin")
+    service.set_extension_status(
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="outlook_addin", status="installed", principal="admin"
+        ),
+    )
 
     cfg = service.get_configuration(TENANT)
     exts = cfg.data["extensions"]
@@ -186,7 +220,12 @@ def test_get_configuration_includes_extensions():
 def test_get_summary_includes_extensions():
     service, _ = _service()
     service.set_suite(TENANT, "google_workspace")
-    service.set_extension_status(TENANT, "browser_extension", "skipped", "admin")
+    service.set_extension_status(
+        TENANT,
+        SetExtensionStatusRequest(
+            extension_key="browser_extension", status="skipped", principal="admin"
+        ),
+    )
 
     summ = service.get_summary(TENANT)
     assert summ.data["extensions"] == {"browser_extension": "skipped"}
@@ -262,15 +301,14 @@ def test_server_list_and_set_extension_tools():
     catalog = ConnectorCatalog()
     state = InMemoryStateRepository()
     svc = OnboardingService(catalog, state, MockQuickAdminClient())
-    server.set_service(svc)
-    try:
-        svc.set_suite(TENANT, "microsoft_365")
-        listed = server._list_extensions_impl(ctx=None)
-        assert listed["status"] == "success"
-        assert {e["key"] for e in listed["data"]["extensions"]} == _MS_EXTENSIONS
+    tools = server.OnboardingTools(svc, TENANT)
+    svc.set_suite(TENANT, "microsoft_365")
+    listed = tools.list_extensions()
+    assert listed["status"] == "success"
+    assert {e["key"] for e in listed["data"]["extensions"]} == _MS_EXTENSIONS
 
-        res = server._set_extension_status_impl("word_addin", "installed", ctx=None)
-        assert res["status"] == "success"
-        assert res["data"]["status"] == "installed"
-    finally:
-        server.set_service(None)
+    res = tools.set_extension_status(
+        SetExtensionStatusRequest(extension_key="word_addin", status="installed"),
+    )
+    assert res["status"] == "success"
+    assert res["data"]["status"] == "installed"

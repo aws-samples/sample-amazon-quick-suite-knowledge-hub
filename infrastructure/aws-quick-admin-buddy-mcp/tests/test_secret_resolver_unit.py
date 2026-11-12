@@ -31,30 +31,32 @@ from quick_admin_buddy_mcp.quick.secrets import (
 
 
 class FakeSecretsManager:
-    """Minimal fake exposing ``get_secret_value``.
+    """Minimal fake exposing ``get_secret_value`` and ``describe_secret``.
 
     Returns a configured response or raises a configured exception, recording
-    the ``SecretId`` it was called with so tests can assert the resolver passes
-    the id through unchanged.
+    which operation was called and the ``SecretId`` it was called with, so tests
+    can assert the resolver passes the id through unchanged and never reads a
+    secret value it does not need.
     """
 
     def __init__(self, response=None, error=None):
         self.response = response
         self.error = error
         self.calls: list[dict] = []
+        self.operations: list[str] = []
 
-    def get_secret_value(self, **kwargs):
+    def _respond(self, operation, kwargs):
+        self.operations.append(operation)
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
         return self.response or {}
 
+    def get_secret_value(self, **kwargs):
+        return self._respond("GetSecretValue", kwargs)
+
     def describe_secret(self, **kwargs):
-        # resolve_secret_arn MUST NOT call DescribeSecret (the AuthSecretRead
-        # policy only grants GetSecretValue). Blow up loudly if it ever does.
-        raise AssertionError(
-            "resolve_secret_arn must use GetSecretValue, not DescribeSecret"
-        )
+        return self._respond("DescribeSecret", kwargs)
 
 
 def _client_error(code: str) -> ClientError:
@@ -152,17 +154,16 @@ def test_is_secret_arn(value, expected):
 # ---------------------------------------------------------------------------
 
 
-def test_boto_resolve_secret_arn_returns_arn_from_get_secret_value():
+def test_boto_resolve_secret_arn_returns_arn_from_describe_secret():
     arn = "arn:aws:secretsmanager:eu-west-1:1:secret:quick-admin-buddy/kb-AbCdEf"
-    fake = FakeSecretsManager(
-        response={"ARN": arn, "Name": "quick-admin-buddy/kb", "SecretString": "{}"}
-    )
+    fake = FakeSecretsManager(response={"ARN": arn, "Name": "quick-admin-buddy/kb"})
     resolver = BotoSecretResolver(client=fake)
 
     assert resolver.resolve_secret_arn("quick-admin-buddy/kb") == arn
-    # The NAME is passed through as SecretId via GetSecretValue (NOT
-    # DescribeSecret, which the execution role is not permitted to call).
+    # The NAME is passed through as SecretId via DescribeSecret, which returns
+    # the ARN without the secret value; GetSecretValue is never called.
     assert fake.calls[0]["SecretId"] == "quick-admin-buddy/kb"
+    assert fake.operations == ["DescribeSecret"]
 
 
 def test_boto_resolve_secret_arn_not_found_is_resolution_error():
@@ -177,8 +178,13 @@ def test_boto_resolve_secret_arn_access_denied_is_access_error():
     fake = FakeSecretsManager(error=_client_error("AccessDeniedException"))
     resolver = BotoSecretResolver(client=fake)
 
-    with pytest.raises(SecretAccessError):
+    with pytest.raises(SecretAccessError) as excinfo:
         resolver.resolve_secret_arn("quick-admin-buddy/kb")
+
+    # Only the quick-admin-buddy/ prefix is readable; the stack's own secrets
+    # (<stack-name>-*) are no longer covered by the read policy.
+    assert "quick-admin-buddy/" in str(excinfo.value)
+    assert "stack-name" not in str(excinfo.value)
 
 
 def test_inmemory_resolve_secret_arn_synthesizes_for_known_secret():

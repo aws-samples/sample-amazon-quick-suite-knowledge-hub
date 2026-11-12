@@ -172,14 +172,26 @@ example `quick-admin-buddy/outlook-custom-oauth`. Never pass a full
 arguments, so the server rejects an ARN with `validation_failure`. If you only
 have the ARN, pass the part after `:secret:`, including the trailing `-xxxxxx`
 suffix. When the server needs the ARN (OneDrive knowledge bases), it resolves
-it from the name. The execution role can read secrets named
+it from the name with `DescribeSecret`, which returns the ARN without the
+secret value. The runtime role can read only secrets named
 `quick-admin-buddy/*`.
 
-**`auth_params`** (optional) carries authentication parameters inline, as a flat
-object with snake_case keys. When both `secret_id` and `auth_params` are given,
-the server loads the secret first and then applies `auth_params` on top, so an
-inline value overrides the same key in the secret. An `auth_type` key in the
-secret body is ignored.
+**Secret values come only from Secrets Manager.** A secret value passed inline
+in `auth_params` or `config` is rejected before anything else is checked, with
+`validation_failure`, `data.error_type: "inline_secret_not_allowed"`, and
+`data.inline_secret_params` (the rejected key names, never their values). A key
+counts as secret-bearing when it is `client_secret`, `api_key`, `private_key`,
+`password`, `access_token`, `refresh_token`, `session_token`, or
+`service_credentials_ref`, or contains `secret`, `password`, or `private_key`.
+Credentials passed in the chat reach the model context before the server sees
+them, so the server doesn't accept them at all.
+
+**`auth_params`** (optional) carries non-secret authentication parameters
+inline, as a flat object with snake_case keys (for example `client_id` or
+`domain_url`). When both `secret_id` and `auth_params` are given, the server
+loads the secret first and then applies `auth_params` on top, so an inline value
+overrides the same key in the secret. An `auth_type` key in the secret body is
+ignored.
 
 **Principals** (`share_with`, `owner`) are either a bare AWS Quick user name,
 which the server expands to a user in the `default` namespace of the account
@@ -207,8 +219,8 @@ Create an AWS Quick **action connector** for a catalog connector
 |---|---|---|---|
 | `connector_key` | string | required | Catalog key. The connector must support action connectors (all 14 do). |
 | `auth_type` | string | required | `custom_oauth_app`, `service_to_service_oauth`, or `api_key`. See the table below. |
-| `auth_params` | object | optional | Auth parameters inline. |
-| `secret_id` | string | optional | Name of a Secrets Manager secret that holds the auth parameters. |
+| `secret_id` | string | required in practice | Name of the Secrets Manager secret that holds the auth parameters. Every action connector auth type needs a secret value (`client_secret` or `api_key`), which can come only from this secret. |
+| `auth_params` | object | optional | Non-secret auth parameters inline, overriding the same keys in the secret. Secret-bearing keys are rejected. |
 | `config` | object | optional | Connector settings. `name` and `description` override the connector's display name (default: the connector key) and description. |
 | `share_with` | string | optional | Principal to grant owner-equivalent access to the new connector. Without it, only the server's execution role can see the connector. |
 | `connector_id_prefix` | string | optional | Resource id prefix (default `quickadminbuddy-`). |
@@ -221,8 +233,7 @@ Required auth parameters per `auth_type`:
 | `service_to_service_oauth` | Two-legged client-credentials OAuth; actions run as a service identity. | `client_id`, `client_secret`, `domain_url`, `token_url` |
 | `api_key` | Two-legged API token, for example Atlassian Confluence Cloud. | `api_key`, `domain_url` (optional `email`, the Atlassian account email) |
 
-The secret, when you use one, is a JSON object with exactly these keys, for
-example:
+The secret is a JSON object with these keys, for example:
 
 ```json
 {
@@ -240,6 +251,7 @@ example:
 | Status | When | Extra `data` |
 |---|---|---|
 | `validation_failure` | `secret_id` is an ARN. | — |
+| `validation_failure` | A secret value was passed inline in `auth_params` or `config`. Nothing is read or created. | `error_type` (`inline_secret_not_allowed`), `inline_secret_params` |
 | `validation_failure` | No productivity suite has been set yet. | — |
 | `validation_failure` | Unknown connector key. | — |
 | `validation_failure` | Invalid `connector_id_prefix`. | `invalid_connector_id_prefix` |
@@ -307,7 +319,7 @@ references the new data source by ARN. Both resources get the id
 | `auth_type` | string | required | `admin_managed` (service credentials; document-level ACLs enforced) or `user_managed` (no credentials; ACLs off). The OAuth app methods of action connectors are not valid here. |
 | `owner` | string | required | Principal who owns the knowledge base. AWS Quick grants it the OWNER role at creation. Without an owner the knowledge base would be visible only to the server's execution role, so the server rejects the call. |
 | `secret_id` | string | depends | Name of the Secrets Manager secret with the source's service credentials. See the table below. |
-| `auth_params` | object | optional | Credential fields inline. They override the same keys from the secret. |
+| `auth_params` | object | optional | Non-secret fields inline, overriding the same keys from the secret. Secret-bearing keys are rejected. |
 | `config` | object | depends | Source-connection settings, plus optional `name` and `description`. See the table below. |
 | `connector_id_prefix` | string | optional | Resource id prefix (default `quickadminbuddy-`). |
 | `share_with` | string | optional | **Ignored** for knowledge bases. Use [`share_kb_integration`](#share_kb_integration) after creation. |
@@ -319,7 +331,7 @@ references the new data source by ARN. Both resources get the id
 | `sharepoint` | Required. Defaults to `quick-admin-buddy/sharepoint-kb-admin` when `secret_id` is omitted. | `certificate_thumbprint`, `kms_key_arn`, `tenant_id`, `client_id`, `domain_url` | `sites` (list of site URLs to index) | `Credentials.SharePointClientCredentials` (inline) plus `SharePointParameters` |
 | `onedrive` | Required. No default name. | `client_id`, `tenant_id`, `kms_key_arn`, `certificate_thumbprint` | — | `Credentials.SecretArn` (the server resolves the name to its ARN) |
 | `google_drive` | Required. Defaults to `quick-admin-buddy/google-drive-kb-admin` when `secret_id` is omitted. | The downloaded Google service-account JSON (`client_email`, `private_key`, …) plus an added `admin_account_email` | — | `Credentials.ServiceAccountCredentials` (inline) |
-| `confluence` | Optional. | `client_id`, `client_secret` (if you use credentials) | `confluence_url` | `Credentials.OAuthClientCredentials` (inline) |
+| `confluence` | Optional; required if you use credentials. | `client_id`, `client_secret` | `confluence_url` | `Credentials.OAuthClientCredentials` |
 
 The certificate-based connectors (SharePoint, OneDrive) can't take their
 credentials fully inline: the KMS signing-key ARN and certificate thumbprint
@@ -337,6 +349,7 @@ happens in the AWS Quick console.
 | Status | When | Extra `data` |
 |---|---|---|
 | `validation_failure` | `secret_id` is an ARN. | — |
+| `validation_failure` | A secret value was passed inline in `auth_params` or `config`. Nothing is read or created. | `error_type` (`inline_secret_not_allowed`), `inline_secret_params` |
 | `validation_failure` | No productivity suite has been set yet. | — |
 | `validation_failure` | Unknown connector key, or the connector doesn't support knowledge bases. | — |
 | `validation_failure` | Invalid `connector_id_prefix`. | `invalid_connector_id_prefix` |

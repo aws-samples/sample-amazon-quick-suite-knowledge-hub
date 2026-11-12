@@ -5,9 +5,7 @@ statuses, summary stages, and tool-result statuses) and the core dataclasses
 that flow through the domain layer: :class:`CatalogEntry`, :class:`ConnectorRecord`,
 :class:`OnboardingState`, and :class:`ToolResult`.
 
-These types are deterministic, dependency-free value objects. They match the
-shapes specified in the design document's "Data Models" and
-"Components and Interfaces" sections.
+These types are deterministic, dependency-free value objects.
 """
 
 from __future__ import annotations

@@ -14,8 +14,8 @@ so a test can, for example, make only ``create_action_connector`` fail while
 every other action succeeds.
 
 The mock also records every call it receives so tests can assert which API
-actions were invoked (e.g. Property 7 requires ``create_action_connector`` to
-be called on the enable happy path).
+actions were invoked (for example, that ``create_action_connector`` is called
+on the enable happy path).
 
 This lives in the package (rather than ``tests/``) so both the domain tests and
 any future in-package harness can import it without a test-only path hack.

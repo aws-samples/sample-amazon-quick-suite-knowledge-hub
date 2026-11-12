@@ -2,7 +2,7 @@
 
 Persists per-tenant :class:`~quick_admin_buddy_mcp.domain.types.OnboardingState`
 to a single DynamoDB table (``OnboardingState``, partition key ``tenant_id``),
-storing one item per tenant using the design's item shape:
+storing one item per tenant with this item shape:
 
 .. code-block:: json
 
@@ -17,15 +17,15 @@ storing one item per tenant using the design's item shape:
 
 Design guarantees implemented here:
 
-- **Per-tenant isolation (9.2).** Every operation keys the item by ``tenant_id``
+- **Per-tenant isolation.** Every operation keys the item by ``tenant_id``
   only, so an operation for one tenant can never read or write another tenant's
   item. This is inherent to the partition-key access pattern below.
-- **Durable reads (9.3).** :meth:`get` reads the item by key and returns a fresh,
+- **Durable reads.** :meth:`get` reads the item by key and returns a fresh,
   empty :class:`OnboardingState` when the item is absent (never ``None``).
-- **Writes complete before returning (9.1).** ``put_suite`` and
+- **Writes complete before returning.** ``put_suite`` and
   ``set_connector_status`` issue a synchronous ``update_item`` and return only
   after it succeeds, so the change is durable before the caller sees a result.
-- **Idempotency / convergence (9.4).** Both writes use idempotent ``SET`` update
+- **Idempotency / convergence.** Both writes use idempotent ``SET`` update
   expressions rather than full-item ``Put`` operations. A ``SET`` of ``suite`` or
   of a single ``connectors.<key>`` entry produces the same item no matter how
   many times it runs, so a re-invoked, interrupted write converges to the same
@@ -43,7 +43,7 @@ Design guarantees implemented here:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -102,12 +102,7 @@ def _classify_client_error(exc: ClientError) -> tuple[str, str, bool]:
 
 def _utc_now_iso() -> str:
     """Return the current UTC time as an ISO-8601 string with a ``Z`` suffix."""
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 class DynamoDbStateRepository:
@@ -187,7 +182,7 @@ class DynamoDbStateRepository:
 
         Reads the single item keyed by ``tenant_id`` (per-tenant isolation, 9.2)
         and deserializes it into an :class:`OnboardingState`. Returns a fresh,
-        empty state when no item exists for the tenant (9.3).
+        empty state when no item exists for the tenant.
         """
         response = self._call("read", "get_item", Key={"tenant_id": tenant})
         item = response.get("Item")
@@ -198,14 +193,14 @@ class DynamoDbStateRepository:
     # -- writes ------------------------------------------------------------
 
     def put_suite(self, tenant: TenantId, suite: Suite) -> None:
-        """Persist the tenant's suite, creating the item if absent (9.1).
+        """Persist the tenant's suite, creating the item if absent.
 
         Uses a ``SET`` update expression that sets ``suite`` and initializes
         ``connectors`` to an empty map only when it does not already exist
         (``if_not_exists``), so existing connectors are never clobbered. The
         expression is idempotent: setting the same suite twice yields the same
-        item, so an interrupted, re-invoked write converges (9.4). ``update_item``
-        completes before this method returns (9.1).
+        item, so an interrupted, re-invoked write converges. ``update_item``
+        completes before this method returns.
         """
         self._call(
             "write",
@@ -227,7 +222,7 @@ class DynamoDbStateRepository:
         status: ConnectorStatus,
         principal: str,
     ) -> None:
-        """Persist a connector's status with change metadata (9.1).
+        """Persist a connector's status with change metadata.
 
         Issues two sequential ``update_item`` calls rather than one:
 
@@ -249,7 +244,7 @@ class DynamoDbStateRepository:
         the parent map must already exist, or the call fails with
         ``ValidationException: ... attribute does not exist in the item``.
 
-        Each call is independently idempotent (9.4): step 1 is a no-op once
+        Each call is independently idempotent: step 1 is a no-op once
         ``connectors`` exists (``if_not_exists`` leaves it untouched), and step 2
         is a plain idempotent ``SET`` of one entry. A re-invoked, interrupted
         write (which could only have failed after step 1, since step 2 either
@@ -257,7 +252,7 @@ class DynamoDbStateRepository:
         ``connectors.<key>`` entry is ever touched, so other connectors and the
         suite are preserved. ``status`` is a DynamoDB reserved word, so it is
         aliased through :class:`ExpressionAttributeNames`. Both calls complete
-        before this method returns (9.1).
+        before this method returns.
         """
         self._call(
             "write",
@@ -288,7 +283,7 @@ class DynamoDbStateRepository:
         status: ExtensionStatus,
         principal: str,
     ) -> None:
-        """Persist an extension's admin-attested status with change metadata (9.1).
+        """Persist an extension's admin-attested status with change metadata.
 
         Mirrors :meth:`set_connector_status` exactly, but writes to a separate
         top-level ``extensions`` map so extension status (``installed`` /
