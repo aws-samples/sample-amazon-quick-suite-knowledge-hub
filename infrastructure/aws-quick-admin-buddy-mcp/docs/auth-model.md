@@ -5,7 +5,7 @@ The AWS Quick Admin Buddy MCP server uses two independent identity boundaries:
 - **Inbound** — who may call the server. Amazon Cognito authenticates users; the
   AgentCore Gateway validates the token and **gates access** before any request
   reaches the server. This is access control only: a valid Cognito user token is
-  required to call the server, but the user's identity is **not** propagated to
+  required to call the server, but the user's identity is not propagated to
   the backend.
 - **Outbound** — what the server may do to AWS Quick. An AWS Identity and
   Access Management (IAM) role, `<stack-name>-Agent-IAM-Identity` (the runtime
@@ -16,7 +16,7 @@ The two are deliberately separate: the inbound Cognito identity gates access; th
 outbound IAM identity is the server's own scoped role and is never derived from,
 or substituted by, caller credentials.
 
-This deployment intentionally does **not** propagate per-user identity to the
+This deployment intentionally does not propagate per-user identity to the
 backend. All authenticated callers map to a **single shared tenant** (see
 [Shared tenant](#shared-tenant-no-per-user-propagation)). The pattern is
 Cognito `CUSTOM_JWT` inbound gating, IAM Signature Version 4 (SigV4) to the
@@ -189,7 +189,7 @@ State and encryption:
 **Fail-fast, no fallback.** If authentication with the runtime role fails
 (for example, credential resolution fails), the server fails the operation
 immediately and returns a `Tool_Result` with Result_Status `internal_error`
-describing the authentication failure. It does **not** attempt any fallback
+describing the authentication failure. It does not attempt any fallback
 credentials.
 
 ## End-to-end request flow

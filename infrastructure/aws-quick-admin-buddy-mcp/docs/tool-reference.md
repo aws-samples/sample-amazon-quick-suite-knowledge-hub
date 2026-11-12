@@ -82,7 +82,7 @@ CloudFormation stack's table, IAM policies or KMS key) must be reviewed first.
 
 When `share_with` (action connectors, `share_*` tools) or `owner` (knowledge
 bases) names a Quick user that does not exist, the server returns
-`validation_failure` **before** creating or changing anything, with
+`validation_failure` before creating or changing anything, with
 `data.error_type = "principal_not_found"`, `data.invalid_principal` and
 `data.principal_field` (`share_with` or `owner`). The most common cause is
 passing the user's **email instead of the AWS Quick username** (the two are
@@ -629,7 +629,7 @@ declaration; nothing is installed or verified.
 The catalog is a fixed, compile-time constant. `Suite_Gate` is one of
 `microsoft_365`, `google_workspace`, or `any` (`any` matches every suite).
 `Stage` is used for summary grouping. "Required config (KB)" lists the fields
-required **only** when enabling the connector as a knowledge base (used to
+required only when enabling the connector as a knowledge base (used to
 create its backing data source); action-connector enables of the same connector
 do not require them.
 
