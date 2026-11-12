@@ -60,7 +60,7 @@ from the official catalog.
 The following diagram shows how a request from the skill reaches AWS Quick.
 The step labels in the diagram match the table after it.
 
-![Architecture of the AWS Quick Admin Buddy MCP server, from the skill in the AWS Quick desktop application through Amazon Cognito, AWS Quick, and Amazon Bedrock AgentCore to AWS Secrets Manager, Amazon DynamoDB, and the AWS Quick API.](images/quick-admin-buddy-architecture.png)
+![AWS Quick desktop application running the skill from the official catalog, a custom MCP action connector with Amazon Cognito inbound auth, the MCP backend on Amazon Bedrock AgentCore with state in Amazon DynamoDB, and the AWS Quick action connectors and knowledge bases it configures.](images/quick-admin-buddy-architecture.png)
 
 | Step | What happens |
 | --- | --- |
