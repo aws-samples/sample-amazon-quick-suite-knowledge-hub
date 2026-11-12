@@ -348,7 +348,10 @@ def build_server(tools: OnboardingTools) -> MCPServer:
 
         Creates a data source (CreateDataSource) and then the knowledge base that
         references it (CreateKnowledgeBase). Supported connectors: sharepoint,
-        onedrive, google_drive, confluence.
+        onedrive, google_drive. A confluence knowledge base can only be created in
+        the AWS Quick console (CreateKnowledgeBase does not support Confluence); it
+        is rejected with validation_failure (data.error_type
+        'console_only_knowledge_base') before anything is created.
 
         Knowledge bases use a DIFFERENT auth model from action connectors.
         auth_type is 'admin_managed' or 'user_managed' (the OAuth app methods used by
@@ -384,8 +387,6 @@ def build_server(tools: OnboardingTools) -> MCPServer:
           - onedrive: secret with client_id, tenant_id, kms_key_arn,
             certificate_thumbprint (REQUIRED, no default name). The server resolves
             the name to its ARN and sends it as Credentials.SecretArn.
-          - confluence: optional client_id/client_secret in a secret; plus
-            config.confluence_url.
 
         If CreateKnowledgeBase fails, or its enabled status cannot be recorded, the
         creation is rolled back: the data source (and the knowledge base, if it may

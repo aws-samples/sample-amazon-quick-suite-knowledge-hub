@@ -63,6 +63,17 @@ _GATE_ANY = "any"
 # only OneDrive remains here.
 _KB_SECRET_REQUIRED_KEYS: frozenset[str] = frozenset({"onedrive"})
 
+# KB connectors whose knowledge base can only be created in the AWS Quick
+# console. The CreateKnowledgeBase API supports S3_KNOWLEDGE_BASE, WEB_CRAWLER,
+# GOOGLE_DRIVE, SHAREPOINT, and ONE_DRIVE only
+# (https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html),
+# and DataSourceCredentials has no member for Confluence's Atlassian admin
+# credentials (API key, organization ID, directory ID). A live CreateDataSource
+# for CONFLUENCE without them fails with InvalidParameterValueException
+# "DataSourceCredentials field is incorrectly set". enable_kb_integration
+# rejects these keys before any secret read or API call.
+_KB_CONSOLE_ONLY_KEYS: frozenset[str] = frozenset({"confluence"})
+
 # KB connectors whose secret-backed credentials are sent INLINE on the data
 # source (NOT as a Credentials.SecretArn): the server resolves the secret and
 # expands specific fields into a typed Credentials member. They must NOT go

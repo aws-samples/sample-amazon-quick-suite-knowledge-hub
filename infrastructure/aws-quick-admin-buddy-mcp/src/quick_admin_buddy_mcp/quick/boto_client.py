@@ -149,6 +149,9 @@ _DATA_SOURCE_TYPE_BY_KEY = {
 # used by analogy and is UNVERIFIED - the ``template`` field is a free-form
 # JSON document type (botocore does not validate its contents), so a wrong
 # value is only caught server-side. Re-verify against a real Confluence KB.
+# The confluence entries here are unreachable through enable_kb_integration,
+# which rejects confluence as a console-only knowledge base
+# (_KB_CONSOLE_ONLY_KEYS in domain/operations/base.py).
 _KB_TEMPLATE_TYPE_BY_KEY = {
     "onedrive": "ONEDRIVEV3",
     "sharepoint": "SHAREPOINTV3",

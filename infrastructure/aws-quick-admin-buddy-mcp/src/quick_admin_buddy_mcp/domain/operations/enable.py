@@ -6,6 +6,7 @@ from quick_admin_buddy_mcp.domain import auth as auth_contract
 from quick_admin_buddy_mcp.domain.operations.base import (
     _DEFAULT_PRINCIPAL,
     _GATE_ANY,
+    _KB_CONSOLE_ONLY_KEYS,
     _KB_INLINE_DEFAULT_SECRET,
     _KB_INLINE_SECRET_SCHEMA,
     _KB_SECRET_REQUIRED_KEYS,
@@ -209,6 +210,26 @@ class _EnableIntegration(Operation):
                     "Use an action connector, or choose another connector."
                 ),
                 dict(base_data),
+                secrets,
+            )
+
+        # 3c. Some knowledge bases can only be created in the AWS Quick console
+        # (see _KB_CONSOLE_ONLY_KEYS). Reject them before reading any secret or
+        # calling the API, so nothing is created and no credential is touched.
+        if (
+            integration_type == IntegrationType.KNOWLEDGE_BASE
+            and key in _KB_CONSOLE_ONLY_KEYS
+        ):
+            return self._ok(
+                ResultStatus.VALIDATION_FAILURE,
+                (
+                    f"A {key!r} knowledge base can't be created through the AWS "
+                    "Quick API: CreateKnowledgeBase does not support this source. "
+                    "Create it in the AWS Quick console instead. The action "
+                    "connector for this connector is still created with "
+                    "enable_action_connector."
+                ),
+                {**base_data, "error_type": "console_only_knowledge_base"},
                 secrets,
             )
 

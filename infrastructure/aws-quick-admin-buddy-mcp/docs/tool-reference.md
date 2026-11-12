@@ -315,7 +315,7 @@ references the new data source by ARN. Both resources get the id
 
 | Name | Type | Required | Meaning |
 |---|---|---|---|
-| `connector_key` | string | required | Catalog key of a connector that supports knowledge bases: `onedrive`, `google_drive`, `sharepoint`, or `confluence`. |
+| `connector_key` | string | required | Catalog key of a connector whose knowledge base the API can create: `onedrive`, `google_drive`, or `sharepoint`. `confluence` is rejected; see the note below the table. |
 | `auth_type` | string | required | `admin_managed` (service credentials; document-level ACLs enforced) or `user_managed` (no credentials; ACLs off). The OAuth app methods of action connectors are not valid here. |
 | `owner` | string | required | Principal who owns the knowledge base. AWS Quick grants it the OWNER role at creation. Without an owner the knowledge base would be visible only to the server's execution role, so the server rejects the call. |
 | `secret_id` | string | depends | Name of the Secrets Manager secret with the source's service credentials. See the table below. |
@@ -331,7 +331,13 @@ references the new data source by ARN. Both resources get the id
 | `sharepoint` | Required. Defaults to `quick-admin-buddy/sharepoint-kb-admin` when `secret_id` is omitted. | `certificate_thumbprint`, `kms_key_arn`, `tenant_id`, `client_id`, `domain_url` | `sites` (list of site URLs to index) | `Credentials.SharePointClientCredentials` (inline) plus `SharePointParameters` |
 | `onedrive` | Required. No default name. | `client_id`, `tenant_id`, `kms_key_arn`, `certificate_thumbprint` | — | `Credentials.SecretArn` (the server resolves the name to its ARN) |
 | `google_drive` | Required. Defaults to `quick-admin-buddy/google-drive-kb-admin` when `secret_id` is omitted. | The downloaded Google service-account JSON (`client_email`, `private_key`, …) plus an added `admin_account_email` | — | `Credentials.ServiceAccountCredentials` (inline) |
-| `confluence` | Optional; required if you use credentials. | `client_id`, `client_secret` | `confluence_url` | `Credentials.OAuthClientCredentials` |
+
+A Confluence knowledge base can only be created in the AWS Quick console.
+`CreateKnowledgeBase` supports `S3_KNOWLEDGE_BASE`, `WEB_CRAWLER`,
+`GOOGLE_DRIVE`, `SHAREPOINT`, and `ONE_DRIVE` only, and `DataSourceCredentials`
+has no member for Confluence's Atlassian admin credentials. The server returns
+`validation_failure` with `data.error_type: "console_only_knowledge_base"` for
+`confluence` before reading any secret or calling the API.
 
 The certificate-based connectors (SharePoint, OneDrive) can't take their
 credentials fully inline: the KMS signing-key ARN and certificate thumbprint
@@ -352,6 +358,7 @@ happens in the AWS Quick console.
 | `validation_failure` | A secret value was passed inline in `auth_params` or `config`. Nothing is read or created. | `error_type` (`inline_secret_not_allowed`), `inline_secret_params` |
 | `validation_failure` | No productivity suite has been set yet. | — |
 | `validation_failure` | Unknown connector key, or the connector doesn't support knowledge bases. | — |
+| `validation_failure` | The connector's knowledge base can only be created in the AWS Quick console (`confluence`). Nothing is read or created. | `error_type` (`console_only_knowledge_base`) |
 | `validation_failure` | Invalid `connector_id_prefix`. | `invalid_connector_id_prefix` |
 | `validation_failure` | The connector is gated to the other suite. | `suite_gate`, `stored_suite` |
 | `validation_failure` | `auth_type` is missing or not valid for a knowledge base. | `invalid_auth_type`, `valid_auth_types` (`user_managed`, `admin_managed`) |
@@ -647,7 +654,7 @@ do not require them.
 | `google_sheets` | Google Sheets | Productivity - spreadsheets | `google_workspace` | productivity connectors | ✓ | — | — |
 | `google_slides` | Google Slides | Productivity - presentations | `google_workspace` | productivity connectors | ✓ | — | — |
 | `sharepoint` | SharePoint | Enterprise knowledge | `microsoft_365` | enterprise knowledge | ✓ | ✓ | `sites` *(+ secret required)* |
-| `confluence` | Confluence | Enterprise knowledge | `any` | enterprise knowledge | ✓ | ✓ | `confluence_url` |
+| `confluence` | Confluence | Enterprise knowledge | `any` | enterprise knowledge | ✓ | ✓ *(console only)* | — |
 | `atlassian` | Jira | Other | `any` | other connectors | ✓ | — | — |
 
 > **Outlook** covers email, calendar, and contacts, so there is no separate
@@ -657,8 +664,8 @@ do not require them.
 >
 > **Google Drive** is a single dual-capability entry (`google_drive`), enabled
 > as an action connector via `enable_action_connector` and as a knowledge base
-> via `enable_kb_integration` — the same single-key pattern as `sharepoint`,
-> `onedrive`, and `confluence`. The former separate `google_drive_kb` key has
+> via `enable_kb_integration` — the same single-key pattern as `sharepoint`
+> and `onedrive`. The former separate `google_drive_kb` key has
 > been **removed**; use `google_drive` for the knowledge base.
 
 **Credential handling.** Credentials are never echoed back: secret-looking

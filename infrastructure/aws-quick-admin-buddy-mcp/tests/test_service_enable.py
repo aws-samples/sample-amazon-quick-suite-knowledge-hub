@@ -320,6 +320,59 @@ def test_enable_kb_missing_connector_config_field_is_reported():
 
 
 # ---------------------------------------------------------------------------
+# Console-only knowledge bases (CreateKnowledgeBase does not support them)
+# ---------------------------------------------------------------------------
+
+
+def test_enable_confluence_kb_is_console_only_and_touches_nothing():
+    # CreateKnowledgeBase supports S3, web crawler, Google Drive, SharePoint,
+    # and OneDrive only, so a Confluence knowledge base is rejected before any
+    # secret read, principal lookup, or API call, and no state is recorded.
+    secrets = InMemorySecretResolver({})
+    service, state, quick = _service(secrets=secrets)
+    state.put_suite(TENANT, Suite.MICROSOFT_365)
+
+    result = service.enable_kb_integration(
+        TENANT,
+        EnableKnowledgeBaseRequest(
+            connector_key="confluence",
+            auth_type="admin_managed",
+            owner=KB_OWNER,
+            secret_id="quick-admin-buddy/confluence-kb-admin-acl",
+            config={"confluence_url": "https://contoso.atlassian.net"},
+        ),
+    )
+
+    assert result.status == ResultStatus.VALIDATION_FAILURE
+    assert result.data["error_type"] == "console_only_knowledge_base"
+    assert result.data["connector_key"] == "confluence"
+    assert "console" in result.message
+    assert quick.calls == []
+    assert (
+        _record_key("confluence", IntegrationType.KNOWLEDGE_BASE)
+        not in state.get(TENANT).connectors
+    )
+
+
+def test_confluence_action_connector_is_still_allowed():
+    # Only the knowledge base is console-only; the action connector still goes
+    # through the backend.
+    service, state, quick = _service()
+    state.put_suite(TENANT, Suite.MICROSOFT_365)
+
+    result = service.enable_action_connector(
+        TENANT,
+        EnableActionConnectorRequest(
+            connector_key="confluence",
+            auth_type="custom_oauth_app",
+            secret_id=CUSTOM_OAUTH_SECRET,
+        ),
+    )
+
+    assert result.status == ResultStatus.SUCCESS
+
+
+# ---------------------------------------------------------------------------
 # Knowledge-base auth types differ from action-connector auth types
 # ---------------------------------------------------------------------------
 
