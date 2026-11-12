@@ -120,27 +120,27 @@ Manager secrets that hold integration auth parameters, and nothing else:
 Action connectors:
 
 - [`CreateActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateActionConnector.html)
-- `DescribeActionConnector`
-- `DescribeActionConnectorPermissions`
-- `ListActionConnectors`
-- `SearchActionConnectors`
-- `DeleteActionConnector`
-- `UpdateActionConnectorPermissions`
+- [`DescribeActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeActionConnector.html)
+- [`DescribeActionConnectorPermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeActionConnectorPermissions.html)
+- [`ListActionConnectors`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_ListActionConnectors.html)
+- [`SearchActionConnectors`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_SearchActionConnectors.html)
+- [`DeleteActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteActionConnector.html)
+- [`UpdateActionConnectorPermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateActionConnectorPermissions.html)
 
 Knowledge bases:
 
 - [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html)
-- `DescribeKnowledgeBase`
-- `ListKnowledgeBases`
-- `DeleteKnowledgeBase`
-- `UpdateKnowledgeBasePermissions`
+- [`DescribeKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeKnowledgeBase.html)
+- [`ListKnowledgeBases`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_ListKnowledgeBases.html)
+- [`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html)
+- [`UpdateKnowledgeBasePermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateKnowledgeBasePermissions.html)
 
 Data sources (a knowledge base is created in two steps: the data source first,
 then the knowledge base that references it):
 
-- `CreateDataSource`
-- `DescribeDataSource`
-- `DeleteDataSource`
+- [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html)
+- [`DescribeDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeDataSource.html)
+- [`DeleteDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteDataSource.html)
 - `PassDataSource`
 
 The AWS Quick actions above are further restricted with an
@@ -148,7 +148,7 @@ The AWS Quick actions above are further restricted with an
 
 Users (read-only lookup):
 
-- `DescribeUser` — on this account's AWS Quick user ARNs only
+- [`DescribeUser`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeUser.html) — on this account's AWS Quick user ARNs only
   (`arn:<partition>:quicksight:*:<account>:user/*`; any Region, because AWS
   Quick users live in the account's identity Region). Before granting a connector or
   knowledge base to `share_with` / `owner`, the server checks the user exists so
@@ -161,7 +161,7 @@ Secrets (auth parameters supplied by reference):
 - `secretsmanager:GetSecretValue` and `secretsmanager:DescribeSecret` — scoped
   by naming convention to admin-supplied auth secrets (`quick-admin-buddy/*`).
   The stack's own Cognito secrets are not readable by the runtime role.
-  `DescribeSecret` returns a secret's ARN without its value, which is all the
+  [`DescribeSecret`](https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_DescribeSecret.html) returns a secret's ARN without its value, which is all the
   server needs where it forwards a secret by reference (OneDrive knowledge
   bases).
 - The tools accept secret values only through these secrets. A secret value

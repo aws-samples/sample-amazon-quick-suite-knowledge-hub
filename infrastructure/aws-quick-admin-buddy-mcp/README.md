@@ -380,7 +380,7 @@ The sample controls access as follows:
   an administrator creates, and the app client issues tokens only through the
   hosted-UI authorization code grant.
 - The Runtime accepts only requests signed with AWS Signature Version 4 by an
-  IAM principal allowed to call `InvokeAgentRuntime`, and the container
+  IAM principal allowed to call [`InvokeAgentRuntime`](https://docs.aws.amazon.com/bedrock-agentcore/latest/APIReference/API_InvokeAgentRuntime.html), and the container
   publishes no port.
 - The runtime role can call only the AWS Quick operations the server uses, in
   this account, and can read only Secrets Manager secrets whose names start

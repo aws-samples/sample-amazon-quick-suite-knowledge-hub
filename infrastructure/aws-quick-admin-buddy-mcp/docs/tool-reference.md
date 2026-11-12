@@ -3,7 +3,7 @@
 The Quick Admin Buddy MCP server exposes **twelve** tools over the Model Context
 Protocol (MCP). They create and share two kinds of AWS Quick integrations,
 **action connectors** ([`CreateActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateActionConnector.html)) and **knowledge bases**
-(`CreateDataSource` + [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html)), and track the client-side AWS
+([`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) + [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html)), and track the client-side AWS
 Quick **extensions**, which have no admin API.
 
 | Tool | Purpose |
@@ -89,9 +89,9 @@ passing the user's **email instead of the AWS Quick username** (the two are
 often different; user names are case-sensitive). When the value looks like an
 email, the message suggests the part before the `@` as a possible username.
 
-The server checks with `DescribeUser`. Group ARNs, users in another account, or
+The server checks with [`DescribeUser`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeUser.html). Group ARNs, users in another account, or
 a lookup that is not permitted (for example a stack that predates the
-`DescribeUser` grant) are not checked, and the request proceeds to AWS Quick
+[`DescribeUser`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeUser.html) grant) are not checked, and the request proceeds to AWS Quick
 as before.
 
 ---
@@ -172,7 +172,7 @@ example `quick-admin-buddy/outlook-custom-oauth`. Never pass a full
 arguments, so the server rejects an ARN with `validation_failure`. If you only
 have the ARN, pass the part after `:secret:`, including the trailing `-xxxxxx`
 suffix. When the server needs the ARN (OneDrive knowledge bases), it resolves
-it from the name with `DescribeSecret`, which returns the ARN without the
+it from the name with [`DescribeSecret`](https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_DescribeSecret.html), which returns the ARN without the
 secret value. The runtime role can read only secrets named
 `quick-admin-buddy/*`.
 
@@ -274,7 +274,7 @@ When the onboarding state table can't be read at the start, the result is
 
 ## `disable_action_connector`
 
-Delete an action connector the server created (`DeleteActionConnector`) and
+Delete an action connector the server created ([`DeleteActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteActionConnector.html)) and
 record it as `not_configured`.
 
 **Inputs:**
@@ -293,7 +293,7 @@ record it as `not_configured`.
 | `validation_failure` | Unknown connector key, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `internal_error` | The onboarding state could not be read. Nothing was deleted. | `state_store_error` |
 | `already_configured` | The action connector is not `enabled` in the onboarding state (never enabled, or already disabled). No API call. | — |
-| `server_error` | `DeleteActionConnector` failed, including when the connector no longer exists in AWS Quick. | — |
+| `server_error` | [`DeleteActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteActionConnector.html) failed, including when the connector no longer exists in AWS Quick. | — |
 | `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | — |
 | `server_error` | The connector was deleted but its `not_configured` status could not be recorded. | `state_store_error` when the state table is the cause |
 | `success` | Connector deleted and recorded `not_configured`. | — |
@@ -306,7 +306,7 @@ delete a connector created in the console or by another deployment.
 ## `enable_kb_integration`
 
 Create an AWS Quick **knowledge base** for a catalog connector and record it
-as `enabled`. A knowledge base is created in two steps: `CreateDataSource` (the
+as `enabled`. A knowledge base is created in two steps: [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) (the
 source connection and service credentials), then [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html), which
 references the new data source by ARN. Both resources get the id
 `<prefix><connector_key>`.
@@ -364,8 +364,8 @@ happens in the AWS Quick console.
 | `already_configured` | This knowledge base is already `enabled` in the onboarding state. No API call. | — |
 | `validation_failure` | `owner` names a Quick user that does not exist. Nothing is created. | `error_type` (`principal_not_found`), `invalid_principal`, `principal_field` |
 | `validation_failure` | OneDrive: the secret name could not be resolved to an ARN. | `secret_id` |
-| `server_error` | `CreateDataSource` failed. Nothing was created, so nothing is rolled back. | — |
-| `internal_error` | Network, timeout, or IAM failure calling `CreateDataSource`. | — |
+| `server_error` | [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) failed. Nothing was created, so nothing is rolled back. | — |
+| `internal_error` | Network, timeout, or IAM failure calling [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html). | — |
 | `server_error` | [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html) failed. The data source is rolled back. | `rollback` |
 | `internal_error` | Network, timeout, or IAM failure calling [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html). The knowledge base (which may exist) and the data source are rolled back. | `rollback` |
 | `internal_error` | Both resources were created, but the `enabled` status could not be recorded, so both were rolled back completely. | `rollback`, plus `state_store_error` when the state table is the cause |
@@ -373,7 +373,7 @@ happens in the AWS Quick console.
 | `success` | Data source and knowledge base created, and recorded `enabled`. | — |
 
 **Rollback.** A failed enable leaves nothing behind in AWS Quick: once
-`CreateDataSource` has succeeded, any later failure deletes what was created
+[`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) has succeeded, any later failure deletes what was created
 (the knowledge base first, when it may exist, then the data source). A
 resource that is already missing counts as deleted. `data.rollback` reports the
 outcome:
@@ -387,7 +387,7 @@ outcome:
 
 When `complete` is `false`, the `message` names the resources to delete in
 AWS Quick before you retry; otherwise the retry fails because the id is
-already taken. A `CreateDataSource` failure is never rolled back, because a
+already taken. A [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) failure is never rolled back, because a
 same-id data source that already existed is not the server's to delete.
 
 ---
@@ -395,7 +395,7 @@ same-id data source that already existed is not the server's to delete.
 ## `disable_kb_integration`
 
 Delete a knowledge base the server created and its data source
-(`DeleteKnowledgeBase`, then `DeleteDataSource`), and record it as
+([`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html), then [`DeleteDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteDataSource.html)), and record it as
 `not_configured`.
 
 **Inputs:**
@@ -414,10 +414,10 @@ Delete a knowledge base the server created and its data source
 | `validation_failure` | Unknown connector key, the connector doesn't support knowledge bases, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `internal_error` | The onboarding state could not be read. Nothing was deleted. | `state_store_error` |
 | `already_configured` | The knowledge base is not `enabled` in the onboarding state. No API call. | — |
-| `server_error` | `DeleteKnowledgeBase` failed (other than "not found"). Nothing was deleted and the state stays `enabled`. | — |
-| `internal_error` | Network, timeout, or IAM failure calling `DeleteKnowledgeBase`. The state stays `enabled`. | — |
+| `server_error` | [`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html) failed (other than "not found"). Nothing was deleted and the state stays `enabled`. | — |
+| `internal_error` | Network, timeout, or IAM failure calling [`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html). The state stays `enabled`. | — |
 | `server_error` | The knowledge base was deleted but its `not_configured` status could not be recorded. | `state_store_error` when the state table is the cause |
-| `server_error` | The knowledge base was deleted and recorded `not_configured`, but `DeleteDataSource` failed. | `data_source_id`, `data_source_deleted` (`false`) |
+| `server_error` | The knowledge base was deleted and recorded `not_configured`, but [`DeleteDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteDataSource.html) failed. | `data_source_id`, `data_source_deleted` (`false`) |
 | `success` | Knowledge base and data source deleted, and recorded `not_configured`. | — |
 
 **State after a delete.** As soon as the knowledge base is deleted, or is
@@ -435,7 +435,7 @@ taken.
 
 Grant a principal owner-equivalent permissions (see, describe, update, delete,
 list, and manage permissions) on an existing action connector
-(`UpdateActionConnectorPermissions`). Use it to share a connector that was
+([`UpdateActionConnectorPermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateActionConnectorPermissions.html)). Use it to share a connector that was
 enabled without `share_with`, or to add another user or group later.
 
 **Inputs:**
@@ -459,7 +459,7 @@ fails and the tool returns `server_error`.
 | `success` | Permissions granted. | `shared_with` |
 | `validation_failure` | Unknown connector key, empty `share_with`, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `validation_failure` | `share_with` names a Quick user that does not exist. Nothing is changed. | `error_type` (`principal_not_found`), `invalid_principal`, `principal_field` |
-| `server_error` | `UpdateActionConnectorPermissions` failed (for example, the connector or principal doesn't exist). | — |
+| `server_error` | [`UpdateActionConnectorPermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateActionConnectorPermissions.html) failed (for example, the connector or principal doesn't exist). | — |
 | `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | — |
 
 ---
@@ -467,7 +467,7 @@ fails and the tool returns `server_error`.
 ## `share_kb_integration`
 
 Grant a principal the **VIEWER** role on an existing knowledge base
-(`UpdateKnowledgeBasePermissions`). AWS Quick only accepts the fixed OWNER
+([`UpdateKnowledgeBasePermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateKnowledgeBasePermissions.html)). AWS Quick only accepts the fixed OWNER
 and VIEWER roles for knowledge bases, so sharing grants read access; full
 management stays with the `owner` set at creation.
 
@@ -491,7 +491,7 @@ As with `share_action_connector`, the knowledge base does not have to be
 | `success` | VIEWER role granted. | `shared_with` |
 | `validation_failure` | Unknown connector key, the connector doesn't support knowledge bases, empty `share_with`, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `validation_failure` | `share_with` names a Quick user that does not exist. Nothing is changed. | `error_type` (`principal_not_found`), `invalid_principal`, `principal_field` |
-| `server_error` | `UpdateKnowledgeBasePermissions` failed (for example, the knowledge base or principal doesn't exist). | — |
+| `server_error` | [`UpdateKnowledgeBasePermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateKnowledgeBasePermissions.html) failed (for example, the knowledge base or principal doesn't exist). | — |
 | `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | — |
 
 ---

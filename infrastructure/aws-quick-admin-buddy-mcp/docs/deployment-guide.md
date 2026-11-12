@@ -20,7 +20,7 @@ tags carries the tag `Project=QuickAdminBuddy` for cost tracking.
   Runtime uses for outbound calls. It can call only the AWS Quick
   action-connector, knowledge-base, and data-source operations the server uses
   (restricted to this account), look up this account's AWS Quick users
-  (`DescribeUser`), read Secrets Manager secrets named `quick-admin-buddy/*`,
+  ([`DescribeUser`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DescribeUser.html)), read Secrets Manager secrets named `quick-admin-buddy/*`,
   and use the stack's AWS KMS key through DynamoDB.
 - The `OnboardingState` Amazon DynamoDB table, which holds the onboarding state
   for the single shared tenant (this deployment does not isolate state per
@@ -252,7 +252,7 @@ aws secretsmanager get-secret-value \
 
 The app client allows only the hosted-UI authorization code grant (and refresh
 tokens), so there is no direct user name and password sign-in
-(`InitiateAuth` with `USER_PASSWORD_AUTH`) that bypasses the hosted UI.
+([`InitiateAuth`](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_InitiateAuth.html) with `USER_PASSWORD_AUTH`) that bypasses the hosted UI.
 
 ### Give other AWS Quick users access to the connector
 
@@ -282,7 +282,7 @@ Runtime by ID against the `DEFAULT` qualifier and doesn't change. CloudFormation
 therefore sees no change to the target and never starts tool discovery, and the
 cached list goes stale until you sync explicitly.
 
-Run `SynchronizeGatewayTargets` after the stack update completes:
+Run [`SynchronizeGatewayTargets`](https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_SynchronizeGatewayTargets.html) after the stack update completes:
 
 ```bash
 # Resolve the gateway ID and target ID from the stack
