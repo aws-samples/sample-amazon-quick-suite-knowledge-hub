@@ -396,6 +396,11 @@ The sample controls access as follows:
   the connector acts on the same AWS Quick account. The skill is meant for
   account setup, when only the administrator uses it; share the connector only
   with the administrators who should onboard the account.
+- The stack creates one shared Cognito sign-in user. The skill and this backend
+  help administrators set up AWS Quick before regular users get access, to
+  speed up the initial deployment, and are meant to be removed once the account
+  is ready to onboard regular users. The user is created so that you can sign
+  in right after the stack is deployed.
 
 This sample uses Amazon Cognito so that it works without an existing identity
 provider. In your own deployment you can point the Gateway's `CUSTOM_JWT`

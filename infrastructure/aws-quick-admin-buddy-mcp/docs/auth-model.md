@@ -87,6 +87,12 @@ can't be obtained with the client credentials and the password alone. See
 the "Sign-in user" section of [deployment-guide.md](./deployment-guide.md) for
 how to read the credentials.
 
+This one user is shared on purpose. The skill and this backend help
+administrators set up AWS Quick before regular users get access, to speed up
+the initial deployment, and are meant to be removed once the account is ready
+to onboard regular users. The user is created so that the backend can be used
+right after the stack is deployed.
+
 ### Shared tenant (no per-user propagation)
 
 Because the gateway does not propagate the end-user identity to the runtime,

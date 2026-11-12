@@ -729,6 +729,12 @@ Resources:
   # generates a policy-compliant random password, sets it as permanent, and
   # stores {username, password} in Secrets Manager. On stack delete it removes
   # the user so the pool is left clean.
+  #
+  # The user is shared on purpose: the skill and this backend help
+  # administrators set up AWS Quick before regular users get access, to speed
+  # up the initial deployment, and are meant to be removed once the account is
+  # ready to onboard regular users. The user is created so the backend can be
+  # used right after the stack is deployed.
   # -------------------------------------------------------------------------
 
   # Secrets Manager secret holding the created user's credentials.

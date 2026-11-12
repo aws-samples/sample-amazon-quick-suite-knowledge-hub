@@ -238,7 +238,15 @@ The stack creates a Cognito user (`quickadminbuddy`, output `CognitoUsername`)
 with a generated permanent password, so an administrator can complete the
 hosted-UI sign-in during the authorization code flow. The credentials are stored
 as JSON in Secrets Manager (output `CognitoUserCredentialsSecretArn`); stack
-outputs and events contain the secret ARN, not the password. Read them with:
+outputs and events contain the secret ARN, not the password.
+
+The user is shared by the administrators who onboard the account. The skill and
+this backend help administrators set up AWS Quick before regular users get
+access, to speed up the initial deployment, and are meant to be removed once the
+account is ready to onboard regular users (see [Teardown](#teardown)). The user is
+created so that you can sign in right after the stack is deployed.
+
+Read the credentials with:
 
 ```bash
 aws secretsmanager get-secret-value \
