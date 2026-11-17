@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # quick-connector-info.sh - print the exact values to register this legal-hold
-# agent as an MCP connector in Amazon Quick (3LO / authorization_code only).
+# agent as an MCP connector in AWS Quick (3LO / authorization_code only).
 #
 # It reads live CloudFormation outputs + retrieves the 3LO client secret from
 # Cognito, so the ONLY manual step left in Quick is pasting these fields into the
@@ -65,7 +65,7 @@ PY
 cat <<INFO
 
 ╔══════════════════════════════════════════════════════════════════════╗
-║   Amazon Quick — Add MCP connector  (OAuth 2.0 authorization_code)     ║
+║   AWS Quick — Add MCP connector  (OAuth 2.0 authorization_code)     ║
 ║   Legal-hold agent (3LO / per-user; no M2M client)                     ║
 ╚══════════════════════════════════════════════════════════════════════╝
 

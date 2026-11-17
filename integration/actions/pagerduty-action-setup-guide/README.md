@@ -1,4 +1,7 @@
+<!-- markdownlint-disable MD029 -->
 # PagerDuty - Action Setup Guide
+
+This guide registers an OAuth app in PagerDuty and then creates the matching action in Quick.
 
 ## Setup on PagerDuty Advance
 
@@ -26,11 +29,13 @@
 
 ## Setup on Quick
 
+After you register the app, create the action in Quick with the credentials you copied.
+
 6) Go to **Action** > **New Action**, and select **PagerDuty Advance**
 
 ![Quick PagerDuty setup](images/image_5.png)
 
-7) Confirm available actions and click **Next**
+7) Confirm available actions and choose **Next**
 
 ![Available actions](images/image_6.png)
 
@@ -50,7 +55,7 @@
 
 ![Configuration form](images/image_7.png)
 
-9) After creation successfully, you are going to see **Sign in** button for the very first time only.
+9) After you create the action, the **Sign in** button appears. It appears only the first time.
 
 ![Action created successfully](images/image_8.png)
 

@@ -1,5 +1,7 @@
 # Manager Assistant Agent
 
+The Manager Assistant Agent answers questions for department managers from a dataset with sensitive columns removed and Row-Level Security (RLS) turned on. This page lists its configuration, persona prompt, and test queries.
+
 ## Configuration
 
 | Setting | Value |
@@ -11,7 +13,9 @@
 
 ## Persona Prompt (Instructions)
 
-```
+The agent uses this persona prompt as its instructions:
+
+```text
 You are a team management assistant for AnyCompany department managers. You help managers understand their team's workforce data.
 
 Rules:

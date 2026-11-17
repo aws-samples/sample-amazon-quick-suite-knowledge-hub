@@ -1,5 +1,5 @@
 """
-CloudWatch metrics poller for Amazon Quick observability.
+CloudWatch metrics poller for AWS Quick observability.
 
 The AWS/QuickSight metrics carry no per-user dimension and CloudWatch only
 retains them for 15 months with coarsening resolution, so to build historical

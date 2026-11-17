@@ -1,6 +1,6 @@
 # Backend
 
-This folder holds the code that runs during a sync: AWS Lambda handlers that read from ServiceNow, and an AWS Glue job that writes Apache Iceberg tables to Amazon S3 Tables. AWS Step Functions calls them in order. The handlers in `src/` share a container image and differ only in their command.
+This folder holds the code that runs during a sync. AWS Lambda handlers read from ServiceNow, and an AWS Glue job writes Apache Iceberg tables to Amazon S3 Tables. AWS Step Functions calls them in order. The handlers in `src/` share a container image and differ only in their command.
 
 - `list_tables_handler.py` reads the table list from Amazon DynamoDB. The CDK app writes that list from [`table-registry-config.ts`](../cdk/lib/common/table-registry-config.ts).
 - `extract_table_handler.py` reads new and changed records and writes them to Amazon S3 as Parquet.

@@ -1,10 +1,11 @@
+<!-- markdownlint-disable MD029 -->
 # ServiceNow - Action Setup Guide
 
 Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page/administer/security/task/t_CreateEndpointforExternalClients.html>
 
-1) For ServiceNow Developer Instance, visit <https://developer.servicenow.com/dev.do#!/home> and click on **Start Building** button
+1) For ServiceNow Developer Instance, visit <https://developer.servicenow.com/dev.do#!/home> and choose **Start Building** button
 
-2) Navigate to **All** > **System OAuth** > **Application Registry** and then click **New**.
+2) Navigate to **All** > **System OAuth** > **Application Registry** and then choose **New**.
 
 ![Application Registry](images/image_1.png)
 
@@ -20,15 +21,15 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 
    **Provide Redirect URL**: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
-   Then click **Submit** button on the bottom:
+   Then choose **Submit** button on the bottom:
 
 ![OAuth endpoint form](images/image_3.png)
 
-5) Re-entering it and click the Lock icon to unlock Client Secret
+5) Reopen it and choose the Lock icon to unlock the Client Secret
 
    Copy the **Client ID** and **Secret** values, as these will be used in next step
 
-6) Go to **AWS** > **Quick** page, and click on **Integration**:
+6) Go to **AWS** > **Quick** page, and choose **Integration**:
 
 ![Quick Integration](images/image_4.png)
 
@@ -48,17 +49,17 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 
 ![ServiceNow configuration](images/image_5.png)
 
-8) Click on **Create and continue**
+8) Choose **Create and continue**
 
 ![Configuration complete](images/image_6.png)
 
-9) Navigate to **Integration** => **Actions** => **ServiceNow Integration** (or your ServiceNow integration name), and click on **Sign in**:
+9) Navigate to **Integration** => **Actions** => **ServiceNow Integration** (or your ServiceNow integration name), and choose **Sign in**:
 
 ![ServiceNow Integration sign in](images/image_7.png)
 
 ![Sign in page](images/image_8.png)
 
-10) Sign in to ServiceNow and click **Allow**:
+10) Sign in to ServiceNow and choose **Allow**:
 
 ![ServiceNow authorization](images/image_9.png)
 

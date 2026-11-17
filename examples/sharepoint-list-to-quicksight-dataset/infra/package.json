@@ -1,7 +1,7 @@
 {
   "name": "quick-sp-export-infra",
   "version": "1.0.0",
-  "description": "CDK infrastructure for SharePoint List Export to Amazon QuickSight",
+  "description": "CDK infrastructure for SharePoint List Export to AWS Quick Sight",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",

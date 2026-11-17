@@ -1,4 +1,4 @@
-name: Amazon Quick Knowledge Hub Issue Management
+name: AWS Quick Knowledge Hub Issue Management
 
 on:
   schedule:
@@ -14,14 +14,14 @@ jobs:
     name: Manage Stale Issues and Pull Requests
     runs-on: ubuntu-latest
     steps:
-      - name: Handle stale issues and PRs for Amazon Quick Knowledge Hub
+      - name: Handle stale issues and PRs for AWS Quick Knowledge Hub
         uses: actions/stale@v9
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Stale issue configuration
           stale-issue-message: |
-            👋 This issue has been automatically marked as stale because it has not had recent activity in the Amazon Quick Knowledge Hub repository.
+            👋 This issue has been automatically marked as stale because it has not had recent activity in the AWS Quick Knowledge Hub repository.
 
             If this issue is still relevant and you would like to continue working on it, please:
             - Add a comment to remove the stale label
@@ -29,18 +29,18 @@ jobs:
 
             If no activity occurs within 7 days, this issue will be automatically closed.
 
-            Thank you for your contribution to the Amazon Quick Knowledge Hub! 🚀
+            Thank you for your contribution to the AWS Quick Knowledge Hub! 🚀
 
           close-issue-message: |
-            🔒 This issue has been automatically closed due to inactivity in the Amazon Quick Knowledge Hub repository.
+            🔒 This issue has been automatically closed due to inactivity in the AWS Quick Knowledge Hub repository.
 
             If you believe this issue is still relevant, please feel free to reopen it or create a new issue with updated information.
 
-            Thank you for your interest in Amazon Quick! 🙏
+            Thank you for your interest in AWS Quick! 🙏
 
           # Stale PR configuration
           stale-pr-message: |
-            👋 This pull request has been automatically marked as stale because it has not had recent activity in the Amazon Quick Knowledge Hub repository.
+            👋 This pull request has been automatically marked as stale because it has not had recent activity in the AWS Quick Knowledge Hub repository.
 
             If this PR is still relevant and you would like to continue working on it, please:
             - Add a comment to remove the stale label
@@ -49,14 +49,14 @@ jobs:
 
             If no activity occurs within 7 days, this PR will be automatically closed.
 
-            Thank you for your contribution to the Amazon Quick Knowledge Hub! 🚀
+            Thank you for your contribution to the AWS Quick Knowledge Hub! 🚀
 
           close-pr-message: |
-            🔒 This pull request has been automatically closed due to inactivity in the Amazon Quick Knowledge Hub repository.
+            🔒 This pull request has been automatically closed due to inactivity in the AWS Quick Knowledge Hub repository.
 
             If you believe this PR is still relevant, please feel free to reopen it or create a new PR with updated changes.
 
-            Thank you for your contribution to Amazon Quick! 🙏
+            Thank you for your contribution to AWS Quick! 🙏
 
           # Timing configuration
           days-before-stale: 60

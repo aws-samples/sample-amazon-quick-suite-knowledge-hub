@@ -1,8 +1,12 @@
 # Architecture Diagram
 
+The GenAI Operations Hub moves Amazon Bedrock invocation logs through Amazon S3, AWS Glue, and Amazon Athena into AWS Quick. In Quick, a dashboard, a space, a custom agent, and flows report on them.
+
 ## High-Level Architecture
 
-```
+The numbers in the diagram match the steps in the Data Flow section.
+
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         GenAI Operations Hub                         │
 └─────────────────────────────────────────────────────────────────────┘
@@ -40,7 +44,7 @@
          │ (5) Connect data source
          ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Amazon QuickSight                              │
+│                    AWS Quick Sight                              │
 │                                                                   │
 │  ┌─────────────────┐  ┌──────────────────┐  ┌─────────────────┐│
 │  │   Data Source   │  │    Datasets      │  │   Q (AI)        ││
@@ -95,12 +99,14 @@
 
 ## Data Flow
 
+Each numbered step in the diagram does the following:
+
 1. **Log Generation**: Bedrock generates invocation logs
 2. **Storage**: Logs stored in S3 bucket
 3. **Cataloging**: Glue Data Catalog defines schema
 4. **Querying**: Athena queries logs using SQL
 5. **Visualization**: Quick Sight connects to Athena
-6. **AI Dashboard**: Q builds visuals from natural language
+6. **AI Dashboard**: Generative BI builds visuals from natural language
 7. **Organization**: Dashboard added to Space
 8. **Intelligence**: Custom agent uses Space as knowledge
 9. **Automation**: Flows schedule reports
@@ -108,7 +114,11 @@
 
 ## Components
 
+The sample has four layers, from the AWS resources that the CDK stack deploys to the integrations that deliver reports.
+
 ### Infrastructure Layer (CDK)
+
+The CDK stack deploys these resources:
 
 - **S3 Buckets**: Log storage and Athena results
 - **Glue Database**: Metadata catalog
@@ -118,12 +128,16 @@
 
 ### Analytics Layer (Quick Sight)
 
+Quick Sight turns the query results into visuals:
+
 - **Data Source**: Athena connection
 - **Datasets**: Structured views of data
-- **Q**: AI-powered query interface
+- **Generative BI**: AI-powered query interface
 - **Dashboard**: Visual analytics
 
-### Intelligence Layer (Quick Sight)
+### Intelligence Layer (AWS Quick)
+
+Quick adds context, chat, and automation on top of the dashboard:
 
 - **Space**: Collaborative workspace
 - **Custom Agent**: AI assistant
@@ -131,13 +145,17 @@
 
 ### Integration Layer
 
+Reports and automation reach people and systems through these integrations:
+
 - **Email**: SES for notifications
 - **Slack**: Webhook integration
 - **API**: Quick Sight APIs for automation
 
 ## Security Architecture
 
-```
+The diagram shows the security controls at each layer.
+
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                      Security Layers                         │
 ├─────────────────────────────────────────────────────────────┤
@@ -160,12 +178,16 @@
 
 ## Scalability
 
-- **S3**: Unlimited storage, auto-scaling
+Each service scales on its own:
+
+- **S3**: Storage that grows with the logs, with no capacity to provision
 - **Athena**: Serverless, parallel query execution
 - **Quick Sight**: Auto-scales with users
 - **SPICE**: In-memory cache for fast queries
 
 ## Cost Optimization
+
+These settings keep storage and query costs down:
 
 1. **S3 Lifecycle**: Move old logs to Glacier
 2. **Athena**: Use partitioning and compression
@@ -173,6 +195,8 @@
 4. **Quick Sight**: Use reader sessions for viewers
 
 ## Monitoring
+
+Use these sources to watch the pipeline:
 
 - **CloudWatch**: Athena query metrics
 - **S3 Metrics**: Storage and request metrics

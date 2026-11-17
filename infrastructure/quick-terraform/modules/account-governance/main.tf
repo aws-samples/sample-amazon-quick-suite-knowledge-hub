@@ -1,5 +1,5 @@
 # Module: account-governance
-# Account-wide Amazon Quick admin controls, each behind its own toggle:
+# Account-wide AWS Quick admin controls, each behind its own toggle:
 #   1. account_settings     - default namespace + termination protection.
 #   2. ip_restriction        - allow/deny console & API access by IP CIDR, VPC, or VPC endpoint.
 #   3. iam_policy_assignment - bind an IAM policy to QuickSight users/groups in a namespace.

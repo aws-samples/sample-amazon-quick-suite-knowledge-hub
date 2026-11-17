@@ -1,10 +1,12 @@
 # Asana - Action Setup Guide
 
-Asana is a web-based work management platform that helps teams organize, collaborate, and plan tasks. If you're an Asana user, you can create an Amazon Quick Action to allow your end users to create and update tasks from within their Quick Assistant chat.
+Asana is a web-based work management platform that helps teams organize, collaborate, and plan tasks. If you're an Asana user, you can create an AWS Quick Action to allow your end users to create and update tasks from within their Quick Assistant chat.
 
-Follow the step by step instructions to set up Asana Action in your Quick.
+Follow the step by step instructions to set up Asana Action in your AWS Quick account.
 
 ## Asana Prerequisites
+
+Before you connect AWS Quick, register an OAuth application in Asana.
 
 ### Step 1: Register Application on Asana
 
@@ -36,21 +38,23 @@ Also make sure to select the workspace you want this app to work with under **Ch
 
 ## Quick Actions Setup
 
+Next, add Asana as an action in Quick and authorize the connection.
+
 ### Step 3: Access Quick Actions
 
-Go to Quick → Go to Left-hand side bar → Under **Connections**, Choose **Actions**
+Go to Quick → Go to Left-hand side bar → Under **Connections**, choose **Actions**
 
-Click **Asana** → Choose **Next**
+Choose **Asana** → choose **Next**
 
 ![Quick Actions selection](images/image_6.png)
 
 ### Step 4: Configure Asana Connection
 
-Fill the necessary details for enabling the Asana connection → Choose **Add**:
+Fill the necessary details for enabling the Asana connection → choose **Add**:
 
 **Name**: Asana Actions
 
-**Base URL**: Asana org URL, For eg.: `https://app.asana.com/api/1.0`
+**Base URL**: Asana org URL, for example `https://app.asana.com/api/1.0`
 
 **Client ID**: The client ID you generated when you create your OAuth 2.0 app in Asana
 
@@ -66,7 +70,7 @@ Fill the necessary details for enabling the Asana connection → Choose **Add**:
 
 ### Step 5: Authorize Connection
 
-Once you add the Asana Action successfully, you are able to view the Summary details. Next, click on **Sign in**. You will be prompted by the Asana application to either grant or deny the application to access to their account.
+Once you add the Asana Action successfully, you are able to view the Summary details. Next, choose **Sign in**. You will be prompted by the Asana application to either grant or deny the application to access to their account.
 
 ![Action summary page](images/image_8.png)
 

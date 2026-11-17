@@ -128,5 +128,5 @@ ok "outputs captured"
 
 log "Deployment complete for stack '$STACK' in $REGION."
 echo "    Quick connector values:  ./scripts/quick-connector-info.sh"
-echo "    Validate:                 register the MCP connector in Amazon Quick, then use the agent in chat"
+echo "    Validate:                 register the MCP connector in AWS Quick, then use the agent in chat"
 echo "    Teardown:                 ./scripts/teardown.sh"

@@ -1,7 +1,7 @@
 {
-  "name": "sample-amazon-quick-on-desktop-oidc-provider",
+  "name": "sample-quick-desktop-oidc-cognito-setup",
   "version": "1.0.0",
-  "description": "CDK stack that deploys a Cognito OIDC provider for Amazon Quick on desktop",
+  "description": "CDK stack that deploys an optional dedicated Cognito OIDC provider for AWS Quick on desktop",
   "scripts": {
     "build": "tsc",
     "cdk": "cdk",

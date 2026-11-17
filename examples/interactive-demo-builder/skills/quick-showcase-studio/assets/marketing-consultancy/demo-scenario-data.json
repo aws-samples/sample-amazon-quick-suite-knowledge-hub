@@ -2,7 +2,7 @@
   "_meta": {
     "description": "AnyCompany SOHO Studio \u2014 SOHO Marketing Consulting Demo. A day-in-the-life demo for a 2-person marketing and brand consultancy (Darla Emiliano, founder + Diego Ram\u00edrez, first hire) on Quick Plus.",
     "date_convention": "All timestamps use relative offsets from load time. Negative values = past. Fields ending in '_offset_seconds' are seconds; '_offset_days' are days. Reconstruct absolute time with: absolute_time = NOW + offset.",
-    "generated_by": "Amazon Quick",
+    "generated_by": "AWS Quick",
     "total_feed_items": 18,
     "total_kg_entities": 40,
     "total_memories": 6,

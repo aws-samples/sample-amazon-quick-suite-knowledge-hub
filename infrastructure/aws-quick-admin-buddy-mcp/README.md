@@ -36,7 +36,7 @@ CloudFormation template.
 
 This project is the backend of the official Quick Admin Onboarding Buddy skill
 (catalog ID `admin-onboarding-buddy`), published in the
-[AWS Quick official skill catalog](https://github.com/Amazon-Quick/Amazon-Quick-official-catalog/tree/main/skills/aws-quick/admin-onboarding-buddy).
+[AWS Quick official skill catalog](https://github.com/Amazon-Quick/Amazon-Quick-official-catalog/tree/main/skills/aws-quick).
 The skill reaches the server through the Admin Onboarding Buddy Endpoint MCP
 action connector, and it can't change anything in AWS Quick unless this backend
 is deployed.
@@ -60,7 +60,7 @@ from the official catalog.
 The following diagram shows how a request from the skill reaches AWS Quick.
 The step labels in the diagram match the table after it.
 
-![AWS Quick desktop application running the skill from the official catalog, a custom MCP action connector with Amazon Cognito inbound auth, the MCP backend on Amazon Bedrock AgentCore with state in Amazon DynamoDB, and the AWS Quick action connectors and knowledge bases it configures.](images/quick-admin-buddy-architecture.png)
+![AWS Quick desktop application running the skill from the official catalog, and a custom MCP action connector with Amazon Cognito inbound auth. The MCP backend runs on Amazon Bedrock AgentCore with state in Amazon DynamoDB and configures the AWS Quick action connectors and knowledge bases.](images/quick-admin-buddy-architecture.png)
 
 | Step | What happens |
 | --- | --- |
@@ -95,11 +95,11 @@ resources. Every resource that supports tags carries the tag
   resources.
 - The `OnboardingState` DynamoDB table, retained when you delete the stack.
 - An AWS Key Management Service (AWS KMS) customer managed key with rotation
-  turned on, retained when you delete the stack. It encrypts the table, the
+  turned on, also retained after stack deletion. It encrypts the table, the
   stack's secrets, and the log groups.
 - Amazon CloudWatch Logs log groups for the Runtime, Gateway, and
   workload-identity logs and for the Lambda functions, each with a 90-day
-  retention period and retained when you delete the stack.
+  retention period and kept after stack deletion.
 - A "Quick Setup Buddy" AWS Quick chat agent, optionally shared with the
   principals you pass in `QuickSetupBuddySharePrincipals`.
 
@@ -225,14 +225,14 @@ aws cloudformation deploy \
   "Quick Setup Buddy" chat agent with. Leave it out to keep the chat agent
   visible only to its creator.
 
-The stack's resource names are fixed, so you can deploy one stack per account
+The stack's resource names are fixed, so you can deploy only one stack per account
 and Region. The [Deployment guide](docs/deployment-guide.md) lists every
 parameter and output.
 
 ## Step 3: Connect the server to AWS Quick
 
-Create an MCP action connector in AWS Quick that points at the Gateway. First,
-read the values from the stack outputs:
+To connect the server, create an MCP action connector in AWS Quick that points
+at the Gateway. First, read the values you need from the stack outputs:
 
 ```bash
 aws cloudformation describe-stacks \
@@ -345,11 +345,11 @@ minimum of 100 Hypothesis examples through the `quick_admin_buddy` profile in
 
 At startup the server writes one JSON log line with the settings it read from
 its environment (see
-[Stack parameters](docs/deployment-guide.md#stack-parameters)), and stops with an error
-that names the variable if a value is invalid. Each tool call then writes one
-JSON log line (tool name, connector or extension key, result status, AWS
-request IDs, and duration, with no arguments or secret values) to the Runtime's
-CloudWatch Logs log group.
+[Stack parameters](docs/deployment-guide.md#stack-parameters)). If a value is
+invalid, it stops with an error that names the variable. Each tool call then
+writes one JSON log line to the Runtime's CloudWatch Logs log group. The line
+holds the tool name, connector or extension key, result status, AWS request IDs,
+and duration, with no arguments or secret values.
 
 ## Cleanup
 
@@ -410,6 +410,8 @@ for the full model.
 
 ## Repository layout
 
+The project folder is organized as follows:
+
 ```text
 aws-quick-admin-buddy-mcp/
 ├── src/quick_admin_buddy_mcp/
@@ -438,5 +440,5 @@ See [How to Contribute](https://aws-samples.github.io/sample-amazon-quick-suite-
 
 ## License
 
-This library is licensed under the MIT-0 License. See the [LICENSE](/LICENSE)
+This library is licensed under the MIT-0 License. See the [LICENSE](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/LICENSE)
 file.

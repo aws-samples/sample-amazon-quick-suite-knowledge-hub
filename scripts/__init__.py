@@ -1,1 +1,1 @@
-"""Build and tooling scripts for the Amazon Quick Knowledge Hub."""
+"""Build and tooling scripts for the AWS Quick Knowledge Hub."""

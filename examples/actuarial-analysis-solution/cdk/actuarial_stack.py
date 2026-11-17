@@ -1,7 +1,7 @@
 """
 Actuarial Analysis Solution MCP Integration Stack
 
-CDK stack that deploys Actuarial Analysis tools with Amazon Quick
+CDK stack that deploys Actuarial Analysis tools with AWS Quick
 using MCP (Model Context Protocol) through native BedrockAgentCore Gateway constructs.
 """
 

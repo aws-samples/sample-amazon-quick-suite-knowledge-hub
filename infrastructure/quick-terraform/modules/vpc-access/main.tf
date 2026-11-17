@@ -14,7 +14,7 @@ data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 # -----------------------------------------------------------------------------
-# Type 1: Interface VPC endpoint (PrivateLink) - restrict access TO Amazon Quick
+# Type 1: Interface VPC endpoint (PrivateLink) - restrict access TO AWS Quick
 # -----------------------------------------------------------------------------
 resource "aws_vpc_endpoint" "quick" {
   count = var.enable_privatelink ? 1 : 0
@@ -30,7 +30,7 @@ resource "aws_vpc_endpoint" "quick" {
 }
 
 # -----------------------------------------------------------------------------
-# Type 2: QuickSight VPC connection - connect Amazon Quick TO private data
+# Type 2: QuickSight VPC connection - connect AWS Quick TO private data
 # -----------------------------------------------------------------------------
 locals {
   create_connection_role = var.enable_vpc_connection && var.vpc_connection_role_arn == ""

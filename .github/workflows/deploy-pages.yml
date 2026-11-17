@@ -1,4 +1,4 @@
-name: Deploy Amazon Quick Knowledge Hub
+name: Deploy AWS Quick Knowledge Hub
 
 on:
   push:
@@ -22,25 +22,25 @@ concurrency:
 
 jobs:
   deploy-documentation:
-    name: Deploy Amazon Quick Knowledge Hub Documentation
+    name: Deploy AWS Quick Knowledge Hub Documentation
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout Amazon Quick Knowledge Hub
+      - name: Checkout AWS Quick Knowledge Hub
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
 
-      - name: Configure Git for Amazon Quick Knowledge Hub
+      - name: Configure Git for AWS Quick Knowledge Hub
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config lfs.allowincompletepush true
 
-      - name: Set up Python for Amazon Quick Knowledge Hub
+      - name: Set up Python for AWS Quick Knowledge Hub
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -59,19 +59,19 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Install Amazon Quick Knowledge Hub dependencies
+      - name: Install AWS Quick Knowledge Hub dependencies
         run: uv sync
 
-      - name: Build Amazon Quick Knowledge Hub documentation
+      - name: Build AWS Quick Knowledge Hub documentation
         run: |
-          echo "📚 Building Amazon Quick Knowledge Hub documentation..."
+          echo "📚 Building AWS Quick Knowledge Hub documentation..."
           uv run mkdocs build --strict --verbose
 
-      - name: Upload Amazon Quick Knowledge Hub pages artifact
+      - name: Upload AWS Quick Knowledge Hub pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/
 
-      - name: Deploy Amazon Quick Knowledge Hub to GitHub Pages
+      - name: Deploy AWS Quick Knowledge Hub to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

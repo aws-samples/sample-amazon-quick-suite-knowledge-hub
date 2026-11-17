@@ -1,4 +1,4 @@
-# Amazon Quick Bootstrap - Variables
+# AWS Quick Bootstrap - Variables
 
 variable "aws_region" {
   description = "AWS region to deploy resources"

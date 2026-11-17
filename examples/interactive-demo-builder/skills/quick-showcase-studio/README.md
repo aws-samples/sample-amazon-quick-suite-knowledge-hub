@@ -1,28 +1,30 @@
 ---
-description: "Human-facing overview, pre-requisites, installation, and getting started for the Amazon Quick Showcase Studio skill."
+description: "Human-facing overview, pre-requisites, installation, and getting started for the AWS Quick Showcase Studio skill."
 last_updated: 2026-10-02
 origin: original
 ---
 
-# Amazon Quick Showcase Studio
+# AWS Quick Showcase Studio
 
 > [!CAUTION]
-> **This skill is destructive by design. Loading or creating a showcase wipes the signed-in user's data before importing: it deletes the user's Knowledge Graph and memories, clears its Activity Feed, and deletes your other conversations. Run it only while signed in as a dedicated demo user, never in your work or personal account.**
+> **This skill is destructive by design. Loading or creating a showcase wipes the signed-in user's data before importing. It deletes the user's Knowledge Graph and memories, clears its Activity Feed, and deletes your other conversations. Run it only while signed in as a dedicated demo user, never in your work or personal account.**
 >
-> - Treat everything cleared as permanent. Amazon Quick documents no restore for the Knowledge Graph or memories.
-> - ✅ Use a dedicated Amazon Quick demo user, or a throwaway account, set up only for demos.
+> - Treat everything cleared as permanent. AWS Quick documents no restore for the Knowledge Graph or memories.
+> - ✅ Use a dedicated AWS Quick demo user, or a throwaway account, set up only for demos.
 > - ⛔ Do **not** connect your real connectors or knowledge bases (mail, chat, drives, data sources) to it.
 > - On the first run, the skill shows how many Knowledge Graph entities, memories, feed items, and other conversations it will delete and asks you to confirm. Every run, nothing is removed until you select **Proceed** and then type `DELETE`.
 
-Loads or creates Amazon Quick showcases: sample workspaces with a populated Knowledge Graph, an Activity Feed with a day plan, memories, and a presenter demo script.
+Loads or creates AWS Quick showcases: sample workspaces with a populated Knowledge Graph, an Activity Feed with a day plan, memories, and a presenter demo script.
 
 ## Overview
 
-A showcase is a ready-to-present demo environment built from one scenario JSON file. Load mode imports the bundled built-in example (a marketing consultancy scenario, no setup) or a showcase you saved earlier. Create mode authors a new showcase for a named customer or an industry, builds a use-case story deck (PPTX and HTML) from it, saves it as its own folder in a Quick-Showcases space, and imports it for preview. It is for anyone who presents Amazon Quick and wants a believable, repeatable demo without seeding data by hand.
+A showcase is a ready-to-present demo environment built from one scenario JSON file. Load mode imports the bundled built-in example (a marketing consultancy scenario, no setup) or a showcase you saved earlier. Create mode authors a new showcase for a named customer or an industry and builds a use-case story deck (PPTX and HTML) from it. It then saves the showcase as its own folder in a Quick-Showcases space and imports it for preview. It is for anyone who presents AWS Quick and wants a believable, repeatable demo without seeding data by hand.
 
 ## Pre-requisites
 
-- Amazon Quick desktop app.
+The skill needs one thing installed:
+
+- AWS Quick desktop app.
 
 Works on any plan, including Free, and uses only Quick's built-in capabilities (Spaces, Presentations, and HTML Design), which are Amazon-owned system skills that are on by default. There is nothing extra to install or connect, and the built-in example needs no Space at all. (If Spaces has been turned off, re-enable it under Customize > Skills.)
 
@@ -30,8 +32,10 @@ Works on any plan, including Free, and uses only Quick's built-in capabilities (
 
 ## Installation
 
-1. Open the Amazon Quick desktop app and go to **Customize > Skills**.
-2. Click **Create > From folder**, select the `quick-showcase-studio` folder, and confirm. Keep the subfolders next to `SKILL.md`; they are all used at runtime.
+Install the skill from its folder in the desktop app:
+
+1. Open the AWS Quick desktop app and go to **Customize > Skills**.
+2. Choose **Create > From folder**, select the `quick-showcase-studio` folder, and confirm. Keep the subfolders next to `SKILL.md`; they are all used at runtime.
 3. Turn the skill's toggle **On**.
 
 That is it. The Spaces, Presentations, and HTML Design capabilities are built in and on by default, so there is no connector to set up.
@@ -39,6 +43,8 @@ That is it. The Spaces, Presentations, and HTML Design capabilities are built in
 More help: [Adding and managing skills](https://docs.aws.amazon.com/quick/latest/userguide/skills-desktop.html)
 
 ## Getting started
+
+With the skill installed and on, try one of these prompts:
 
 - "load the example demo": loads the built-in marketing consultancy showcase (40 Knowledge Graph entities, 18 feed items) and links its demo script and use-case story page.
 - "create a showcase for Acme Corp" or "build a demo for the healthcare industry": authors a new showcase, saves it to the Quick-Showcases space (for example, as `acme-corp-manufacturing`), and imports it for preview.

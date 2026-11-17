@@ -1,4 +1,4 @@
-# Amazon Quick Knowledge Hub — developer commands
+# AWS Quick Knowledge Hub — developer commands
 #
 # The documentation site is built with MkDocs Material from mkdocs.yml at the
 # repo root, with content under docs/. Code projects live at the repository
@@ -49,4 +49,4 @@ clean:  ## Remove generated build output
 	rm -rf site
 	rm -rf docs/_projects docs/infrastructure \
 	       docs/integration \
-	       docs/examples docs/amazon-quick-on-desktop
+	       docs/examples docs/quick-desktop-oidc-cognito-setup

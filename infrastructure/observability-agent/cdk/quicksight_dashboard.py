@@ -2,7 +2,7 @@
 QuickSight dashboard for the Quick observability data lake.
 
 Builds a `CfnDashboard` with a native, interactive visual definition that
-closely mirrors the Amazon Quick "Quick Suite usage metrics" page:
+closely mirrors the AWS Quick "Quick Suite usage metrics" page:
 
 Sheet 1 "Usage overview":
   * KPI tiles — active users, total conversations, total queries, avg queries

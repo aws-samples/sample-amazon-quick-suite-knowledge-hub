@@ -86,7 +86,7 @@ export class ServiceNowIngestionStack extends Stack {
 
     new CfnOutput(this, "TableBucketArn", {
       value: this.tableBucket.bucketArn,
-      description: "S3 table bucket ARN to enter when you create the Amazon Quick data source.",
+      description: "S3 table bucket ARN to enter when you create the AWS Quick data source.",
     });
     new CfnOutput(this, "StateMachineArn", {
       value: this.ingestionWorkflow.stateMachine.stateMachineArn,

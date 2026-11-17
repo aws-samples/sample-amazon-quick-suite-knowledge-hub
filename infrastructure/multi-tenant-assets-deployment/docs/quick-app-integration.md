@@ -1,25 +1,25 @@
-# Building a Quick App on the Migrator MCP Connector
+# Building an App in AWS Quick on the Migrator MCP Connector
 
-This document is the build specification you hand to **Amazon Quick** so it can
+This document is the build specification you hand to **AWS Quick** so it can
 generate a web app on top of the migrator MCP connector. Register the
-migrator MCP connector's five actions — `preview_migration`,
-`migrate_resources`, `list_backups`, `get_backup`, and `restore_backup` — then
-paste the prompt below into Amazon Quick's app builder. The app discovers the
+migrator MCP connector's actions (`preview_migration`,
+`migrate_resources`, `list_backups`, `get_backup`, and `restore_backup`), then
+paste the prompt below into the app builder in AWS Quick. The app discovers the
 connector and action IDs at build time (via `search_action_connectors` /
 `get_action_connector_details`), so there are no IDs to hardcode.
 
 ## Testing with Apps in Quick
 
 You build and test this tool using
-[Apps in Amazon Quick](https://docs.aws.amazon.com/quick/latest/userguide/using-amazon-quick-apps.html),
+[Apps in AWS Quick](https://docs.aws.amazon.com/quick/latest/userguide/using-amazon-quick-apps.html),
 which lets you build interactive web applications by describing what you need in
 natural language. You tell the Apps in Quick agent what your app should do, who
-it is for, and what data it needs, and the agent builds a working app in real
-time while you watch — you then refine it through ongoing conversation, and
+it is for, and what data it needs. The agent builds a working app in real
+time while you watch. You then refine it through ongoing conversation, and
 publish and share it for daily use across your organization.
 
 Apps in Quick bridge the gap between data visualization and custom application
-development: whether you need a dashboard, an internal tool, a data entry
+development. Whether you need a dashboard, an internal tool, a data entry
 interface, or a document viewer, you can create it conversationally and publish
 it for your team in minutes.
 
@@ -27,15 +27,15 @@ For this migrator that means you don't hand-write the front end. Once the MCP
 action connector is registered, you:
 
 1. Open Apps in Quick and start a new app.
-2. Paste the prompt below (it uses the five migrator actions:
+2. Paste the prompt below (it uses the migrator actions
    `preview_migration`, `migrate_resources`, `list_backups`, `get_backup`,
    and `restore_backup`).
 3. When prompted, register/select the migrator MCP action connector so the app
    can discover its connector and action IDs.
-4. Watch the agent build the app, then test it live — run **Preview** to scan
+4. Watch the agent build the app, then test it live. Run **Preview** to scan
    the source and target accounts (agents, connectors, knowledge bases, spaces,
    and flows) with the CREATE/UPDATE mapping, select assets and run **Migrate**
-   to promote them (the queue is dependency-ordered — connectors → KBs → flows →
+   to promote them (the queue is dependency-ordered: connectors → KBs → flows →
    agents → spaces), review past runs and the analytics dashboard under
    **History**, and browse/restore pre-update snapshots under **Backups**.
 5. Iterate conversationally to refine, then publish and share the app.

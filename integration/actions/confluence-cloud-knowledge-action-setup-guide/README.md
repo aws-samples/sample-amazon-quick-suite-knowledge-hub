@@ -1,14 +1,15 @@
+<!-- markdownlint-disable MD029 -->
 # Confluence Cloud - Knowledge + Action Setup Guide
 
 1) Visit <https://developer.atlassian.com/console/myapps/> and login with your account and go to **My apps** page
 
-2) Click **Create**, and select **OAuth 2.0 Integration**
+2) Choose **Create**, and select **OAuth 2.0 Integration**
 
 ![Create OAuth 2.0 Integration](images/image_1.png)
 
-3) Insert the Name and click **Create**
+3) Insert the Name and choose **Create**
 
-4) Once created, click on **Permissions** to edit
+4) Once created, choose **Permissions** to edit
 
 ![Permissions tab](images/image_2.png)
 
@@ -26,7 +27,7 @@ From **Confluence API**, add:
 - write:page:confluence
 - read:space:confluence
 
-5.2) Navigate to **Authorization** => **Configure** and add this Callback URL (e.g. for us-east-1 region):
+5.2) Navigate to **Authorization** => **Configure** and add this Callback URL (for example, for the us-east-1 Region):
 
 `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
@@ -36,7 +37,7 @@ From **Confluence API**, add:
 
 ![Settings with credentials](images/image_4.png)
 
-7) Go to **AWS** > **Quick** page, and click on **Integration**:
+7) Go to **AWS** > **Quick** page, and choose **Integration**:
 
 ![Quick Integration](images/image_5.png)
 
@@ -81,11 +82,11 @@ cloudId returned is the Instance ID
 
 ![Configuration complete](images/image_9.png)
 
-10) Click on **Sign in** and pop-up window will display
+10) Choose **Sign in** and pop-up window will display
 
 ![Sign in popup](images/image_10.png)
 
-11) Click on **Accept**, and confirm the pop-up screen closing.
+11) Choose **Accept**, and confirm the pop-up screen closing.
 
 12) Now the action summary page should show as '**Signed in**'
 

@@ -76,7 +76,7 @@ export class QuickChatEmbeddingStack extends cdk.Stack {
     const cognitoDomain = template.getOutput("CognitoDomain").value;
 
     // Get a resource from the CloudFormation template to reference its stack
-    const apiGateway = template.getResource("QuickChatEmbeddingAPI");
+    const apiGateway = template.getResource("QuickChatEmbeddingHttpApi");
 
     // Outputs
     // CDK-specific outputs (not duplicated in CloudFormation template)

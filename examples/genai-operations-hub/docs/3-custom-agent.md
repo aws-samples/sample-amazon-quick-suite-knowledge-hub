@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD029 -->
 # Task 3: Custom Agent
 
 Build a custom AI chat agent connected to your Quick Sight Space for conversational analytics.
@@ -19,21 +20,25 @@ A custom agent is an AI-powered chat interface that can:
 
 ## Part 1: Create and Configure Agent
 
+In this part, you create the agent, give it a persona, and link it to your Space.
+
 ### Step 1: Navigate to Chat Agents
 
-1. Go to the **Amazon Quick Sight Console**
-2. Click **Chat agents** in the left navigation menu
+Open the chat agents page:
+
+1. Go to the **AWS Quick Sight Console**
+2. Choose **Chat agents** in the left navigation menu
 3. This opens the chat agents interface
 
 ### Step 2: Create Your Custom Agent
 
-Quick Sight offers two ways to create an agent. Choose the method that works best for you:
+Quick offers two ways to create an agent. Choose the method that works best for you:
 
 #### Option A: Using Natural Language Prompt (Recommended)
 
 This is the fastest way to create an agent:
 
-1. Click **Create chat agent**
+1. Choose **Create chat agent**
 2. In the text input box, enter:
 
 ```text
@@ -42,10 +47,10 @@ The agent should help users understand model performance, usage trends,
 latency metrics, and token consumption patterns.
 ```
 
-3. Click **Generate**
+3. Choose **Generate**
 4. Review the auto-generated configuration
-5. Click **Update preview** to test
-6. When satisfied, click **Launch chat agent**
+5. Choose **Update preview** to test
+6. When satisfied, choose **Launch chat agent**
 
 **Success!** The AI will automatically configure the agent's persona, communication style, and suggested prompts based on your description!
 
@@ -53,8 +58,8 @@ latency metrics, and token consumption patterns.
 
 For more control over the agent's behavior:
 
-1. Click **Create chat agent**
-2. Click **Skip** to open builder mode
+1. Choose **Create chat agent**
+2. Choose **Skip** to open builder mode
 3. Configure basic details:
    - **Agent name**: `GenAI Ops Assistant`
    - **Description**: `AI assistant for Bedrock operations insights`
@@ -92,9 +97,7 @@ Always reference specific data from dashboards and provide actionable insights.
 
 ### Step 4: Configure Communication Style (Manual Configuration Only)
 
-Define how the agent communicates with users.
-
-In the **Communication style** section:
+In the **Communication style** section, define how the agent communicates with users:
 
 1. **Pick a response style preset**: Choose **Technical**
 2. Customize the preset:
@@ -109,9 +112,9 @@ In the **Communication style** section:
 Connect your agent to the Space you created:
 
 1. In the **Knowledge sources** section, select **Link specific existing spaces**
-2. Click **Link**
+2. Choose **Link**
 3. Select: `GenAI Operations Hub`
-4. Click **Link**
+4. Choose **Link**
 
 **Critical:** The agent needs access to your Space to answer questions about your data. Without this link, it won't have context about your Bedrock operations.
 
@@ -119,7 +122,7 @@ Connect your agent to the Space you created:
 
 Help users get started with pre-written questions:
 
-1. In the **Suggested prompts** section, click **Add prompt**
+1. In the **Suggested prompts** section, choose **Add prompt**
 2. Add these example prompts:
 
 ```text
@@ -138,11 +141,13 @@ How have invocations trended over time?
 Are there any models with high max_tokens stop reasons?
 ```
 
-3. Click **Save** after adding each prompt
+3. Choose **Save** after adding each prompt
 
 ---
 
 ## Part 2: Test and Launch Agent
+
+In this part, you check the agent's answers in the preview panel before you launch and share it.
 
 ### Step 1: Test with Sample Questions
 
@@ -184,28 +189,28 @@ Are there any models with high max_tokens stop reasons?
 
 - Ask follow-up questions to test conversation continuity
 - Try vague questions to see how the agent handles ambiguity
-- Test edge cases (e.g., "What about yesterday's data?")
+- Test edge cases (for example, "What about yesterday's data?")
 
 ### Step 2: Launch Your Agent
 
-Once testing is complete:
+Once testing is complete, launch the agent:
 
-1. Click **Launch chat agent**
+1. Choose **Launch chat agent**
 2. Your agent is now live and ready to use!
 
-**Congratulations!** Your custom agent is now available to analyze Bedrock operations.
+**Congratulations!** Your custom agent is now available to analyze Bedrock operations, and you can share it with your team in the next step.
 
 ### Step 3: Share Agent (Optional)
 
 To share your agent with team members:
 
 1. From the **Chat agents** page, find your agent
-2. Click the menu icon (three dots) → **Share**
+2. Choose the menu icon (three dots) → **Share**
 3. Add team members by email or username
 4. Set permissions:
    - **Owner**: Can edit, share, and delete the agent
    - **Viewer**: Can view and use the agent
-5. Click **Share**
+5. Choose **Share**
 
 ---
 
@@ -251,6 +256,8 @@ Here are example conversations you can have with your agent:
 
 ## Validation Checklist
 
+Before you continue, confirm each item:
+
 - ✓ Agent created with appropriate name and description
 - ✓ Agent persona configured (if using manual configuration)
 - ✓ Communication style set to match audience
@@ -264,12 +271,14 @@ Here are example conversations you can have with your agent:
 
 ## What You've Accomplished
 
-✅ Created a custom AI chat agent  
-✅ Configured agent persona and communication style  
-✅ Connected agent to your Quick Sight Space  
-✅ Tested agent with operational questions  
-✅ Launched agent for team use  
-✅ Enabled conversational analytics for Bedrock operations
+In this task, you completed the following:
+
+- ✅ Created a custom AI chat agent
+- ✅ Configured agent persona and communication style
+- ✅ Connected agent to your Quick Sight Space
+- ✅ Tested agent with operational questions
+- ✅ Launched agent for team use
+- ✅ Enabled conversational analytics for Bedrock operations
 
 ---
 

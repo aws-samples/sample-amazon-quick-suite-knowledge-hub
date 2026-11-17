@@ -55,7 +55,7 @@ class ObservabilityDataLake(Construct):
             catalog_id=stack.account,
             database_input=glue.CfnDatabase.DatabaseInputProperty(
                 name=self.database_name,
-                description="Amazon Quick observability data lake",
+                description="AWS Quick observability data lake",
             ),
         )
 

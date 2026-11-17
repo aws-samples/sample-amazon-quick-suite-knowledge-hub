@@ -1,5 +1,5 @@
 # Module: quick-account
-# Native Terraform provisioning of the Amazon Quick (QuickSight) account subscription
+# Native Terraform provisioning of the AWS Quick (QuickSight) account subscription
 # and (optionally) a namespace. Replaces the earlier Lambda-based bootstrap with the
 # first-class aws_quicksight_account_subscription resource.
 

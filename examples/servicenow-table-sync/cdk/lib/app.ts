@@ -33,7 +33,7 @@ const solutionStack = new ServiceNowIngestionStack(
     region,
     scheduleEnabled: resolveScheduleEnabled(getContext("enableSchedule")),
     env,
-    description: "ServiceNow table sync for Amazon Quick",
+    description: "ServiceNow table sync for AWS Quick",
   },
 );
 

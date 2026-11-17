@@ -99,13 +99,13 @@ def _check_member_names(names, space_name, folder_name):
     rows = "\n".join(f"| `{p['current']}` | `{p['rename_to']}` |" for p in plan)
     msg = (
         f"The showcase **{folder_name}** can't be loaded yet. Some of its files don't have the "
-        f"folder name (`{folder_name}`) in their file names. Amazon Quick finds files by name "
+        f"folder name (`{folder_name}`) in their file names. AWS Quick finds files by name "
         f"across the whole space, so without the folder name in each file name it can't be sure "
         f"it's reading this showcase's files rather than another one's.\n\n"
         f"Files in **{space_name}** > **{folder_name}**:\n\n"
         f"| Current name | Rename to |\n|---|---|\n{rows}\n\n"
         f"To fix this:\n"
-        f"1. In Amazon Quick on the web, open the **{space_name}** space and go to the "
+        f"1. In AWS Quick on the web, open the **{space_name}** space and go to the "
         f"**{folder_name}** folder.\n"
         f"2. Download the files listed above.\n"
         f"3. Delete those files from the **{folder_name}** folder.\n"

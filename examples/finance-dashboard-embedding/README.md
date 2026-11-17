@@ -1,15 +1,17 @@
 ---
 category: Financial Services
-description: "Finance dashboard with embedded QuickSight analytics and QuickChat AI assistant using Cognito + IAM Identity Center authentication"
+description: "Finance dashboard with embedded Quick Sight analytics and Quick chat AI assistant using Cognito + IAM Identity Center authentication"
 ---
 
-# Finance Dashboard with QuickSight & QuickChat Embedding
+# Finance Dashboard with Quick Sight and Quick Chat Embedding
 
-A web-based financial analytics dashboard for AnyCompany that embeds Amazon QuickSight dashboards and QuickChat AI assistant into a React application, using Cognito and IAM Identity Center for authentication.
+A web-based financial analytics dashboard for AnyCompany that embeds Quick Sight dashboards and the Quick chat AI assistant from AWS Quick into a React application. Users sign in through Amazon Cognito and IAM Identity Center (IDC).
 
-This solution demonstrates how to build a custom branded analytics experience that combines your own React UI with embedded QuickSight visuals and conversational AI — all secured through a Cognito → IDC → QuickSight identity chain.
+This solution shows how to build a custom branded analytics experience that combines your own React UI with embedded Quick Sight visuals and conversational AI. Every embed request is authenticated through a Cognito → IDC → Quick Sight identity chain.
 
 ## Architecture
+
+The React frontend gets an ID token from Cognito and exchanges it for embed URLs through the embedding API. A separate metrics API serves the KPI data.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -47,25 +49,33 @@ This solution demonstrates how to build a custom branded analytics experience th
 
 ### Components
 
-- **Frontend**: React 18 (CRA) with Chart.js visualizations and QuickSight Embedding SDK
+The solution has these parts:
+
+- **Frontend**: React 18 (CRA) with Chart.js visualizations and Quick Sight Embedding SDK
 - **Metrics API**: Lambda (Node.js 18) + DynamoDB + API Gateway REST
 - **Embedding API**: Lambda (Python 3.11) + API Gateway HTTP API with JWT auth
-- **Auth Chain**: Cognito → IAM Identity Center (Trusted Token Issuer) → STS AssumeRole → QuickSight
-- **Infrastructure**: AWS CDK v2 (JavaScript) — S3, CloudFront (OAC), DynamoDB, Lambda, API Gateway
-- **QuickSight**: Embedded dashboard + QuickChat AI assistant via `GenerateEmbedUrlForRegisteredUser`
+- **Auth Chain**: Cognito → IAM Identity Center (Trusted Token Issuer) → STS AssumeRole → Quick Sight
+- **Infrastructure**: AWS CDK v2 (JavaScript): S3, CloudFront (OAC), DynamoDB, Lambda, API Gateway
+- **Quick Sight**: Embedded dashboard + Quick chat AI assistant via `GenerateEmbedUrlForRegisteredUser`
 
 ## Features
 
+The dashboard includes:
+
 - 4 KPI cards with trend indicators (Revenue, Expenses, Net Profit, Profit Margin)
 - 5 interactive charts (Revenue trends, Profit margin, Cash flow, Expense breakdown, Quarterly comparison)
-- Embedded QuickSight dashboard with full interactivity
-- QuickChat AI assistant for natural language queries against dashboard data
+- Embedded Quick Sight dashboard with full interactivity
+- Quick chat AI assistant for natural language queries against dashboard data
 - Single API call returns both dashboard and chat embed URLs (avoids JWT reuse errors)
 - Mock data fallback for local development without AWS backend
 
 ## Quick Start
 
+Deploy the backend first, then the embedding API, then the frontend.
+
 ### 1. Clone Repository (Sparse Checkout)
+
+Clone only this use case's files:
 
 ```bash
 git clone --filter=blob:none --sparse https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub.git
@@ -74,6 +84,8 @@ git sparse-checkout set docs/use-cases/finance-dashboard-embedding
 ```
 
 ### 2. Deploy Infrastructure
+
+Deploy the CDK stack from the `infrastructure` folder:
 
 ```bash
 cd docs/use-cases/finance-dashboard-embedding/infrastructure
@@ -86,7 +98,7 @@ This deploys: DynamoDB table, metrics Lambda, API Gateway, S3 bucket, CloudFront
 
 ### 3. Deploy Embedding API
 
-The QuickChat embedding Lambda and API Gateway are deployed via a separate CDK stack. See the [Finance Agent Setup Guide](./quicksuite-setup/FINANCE_AGENT_SETUP_GUIDE.md) for full instructions on:
+The Quick chat embedding Lambda and API Gateway are deployed via a separate CDK stack. See the [Finance Agent Setup Guide](./quicksuite-setup/FINANCE_AGENT_SETUP_GUIDE.md) for full instructions on:
 
 - Cognito User Pool creation
 - IAM Identity Center configuration
@@ -94,6 +106,8 @@ The QuickChat embedding Lambda and API Gateway are deployed via a separate CDK s
 - Embedding Lambda deployment
 
 ### 4. Configure and Deploy Frontend
+
+Set the environment values, build the app, and upload it to the S3 bucket:
 
 ```bash
 cd frontend
@@ -107,7 +121,7 @@ aws cloudfront create-invalidation --distribution-id YOUR_DIST_ID --paths "/*"
 
 ## Identity Chain Setup
 
-The QuickSight embedding requires a 3-service identity chain:
+The Quick Sight embedding requires an identity chain across Cognito, IAM Identity Center, and Quick Sight:
 
 ```text
 Cognito User Pool ──(email claim)──► IAM Identity Center ──(group)──► QuickSight
@@ -115,7 +129,7 @@ Cognito User Pool ──(email claim)──► IAM Identity Center ──(group)
 
 ### Adding Users
 
-Each user must exist in all three services with the same email:
+Each user must exist in Cognito, IAM Identity Center, and Quick Sight with the same email:
 
 ```bash
 # 1. Cognito
@@ -142,6 +156,8 @@ aws identitystore create-group-membership \
 
 ## Configuration
 
+The frontend and the embedding Lambda each read their own environment variables.
+
 ### Frontend Environment Variables (`frontend/.env`)
 
 | Variable | Description |
@@ -151,20 +167,20 @@ aws identitystore create-group-membership \
 | `REACT_APP_COGNITO_USER_POOL_ID` | Cognito User Pool ID |
 | `REACT_APP_COGNITO_CLIENT_ID` | Cognito App Client ID |
 | `REACT_APP_COGNITO_DOMAIN` | Cognito Hosted UI domain |
-| `REACT_APP_QUICKSUITE_AGENT_ID` | QuickChat Agent ID |
-| `REACT_APP_QUICKSIGHT_DASHBOARD_ID` | QuickSight Dashboard ID |
+| `REACT_APP_QUICKSUITE_AGENT_ID` | Quick chat agent ID |
+| `REACT_APP_QUICKSIGHT_DASHBOARD_ID` | Quick Sight Dashboard ID |
 
 ### Embedding Lambda Environment Variables
 
 | Variable | Description |
 |----------|-------------|
 | `IDC_APP_CLIENT_ID` | IAM Identity Center application ARN |
-| `QUICKSUITE_ROLE_ARN` | IAM role for QuickSight API calls |
-| `QUICKSIGHT_USER_ARN` | QuickSight registered user ARN |
+| `QUICKSUITE_ROLE_ARN` | IAM role for Quick Sight API calls |
+| `QUICKSIGHT_USER_ARN` | Quick Sight registered user ARN |
 | `ALLOWED_DOMAINS` | Comma-separated allowed embedding domains |
-| `DASHBOARD_ID` | QuickSight dashboard ID |
+| `DASHBOARD_ID` | Quick Sight dashboard ID |
 | `AWS_ACCOUNT_ID` | AWS account ID |
-| `COGNITO_ISSUER` | Cognito user pool issuer URL used to verify the incoming ID token's signature, e.g. `https://cognito-idp.<region>.amazonaws.com/<userPoolId>`. **Required** — the ID token is rejected when unset. |
+| `COGNITO_ISSUER` | Cognito user pool issuer URL used to verify the incoming ID token's signature, for example `https://cognito-idp.<region>.amazonaws.com/<userPoolId>`. **Required**: the ID token is rejected when unset. |
 | `COGNITO_APP_CLIENT_ID` | Cognito app client id the ID token's `aud`/`client_id` claim must match (audience check). |
 
 ## Troubleshooting
@@ -173,10 +189,12 @@ aws identitystore create-group-membership \
 |-------|-------|-----|
 | CORS preflight 500 | API Gateway missing Lambda invoke permission | Add `lambda:InvokeFunction` resource policy |
 | JWT is already redeemed | Same token used for multiple `CreateTokenWithIAM` calls | Use `embedType: 'both'` for single API call |
-| User does not exist | Email mismatch across Cognito/IDC/QuickSight | Verify email matches in all three services |
+| User does not exist | Email mismatch across Cognito, IDC, and Quick Sight | Verify the email matches in Cognito, IDC, and Quick Sight |
 | AccessDenied on AssumeRole | Wrong role ARN or missing `sts:SetContext` | Check Lambda env vars and IAM policies |
 
 ## Project Structure
+
+The folder separates the frontend, the metrics and embedding APIs, and the CDK stack:
 
 ```text
 finance-dashboard-embedding/

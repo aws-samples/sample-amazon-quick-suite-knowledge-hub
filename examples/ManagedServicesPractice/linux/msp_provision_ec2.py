@@ -1,6 +1,6 @@
 """Combined EC2 MCP Server - Lambda Handler
 Provisions EC2 instances for MSP clients with JIT hook via User Data.
-via Amazon QuickSight MCP Action Connector
+via AWS Quick Sight MCP Action Connector
 """
 
 import base64

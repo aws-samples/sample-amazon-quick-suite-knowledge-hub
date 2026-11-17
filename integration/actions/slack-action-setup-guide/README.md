@@ -1,10 +1,11 @@
+<!-- markdownlint-disable MD029 -->
 # Slack - Action Setup Guide
 
 1) Go to Slack (<https://api.slack.com/apps>)
 
 ![Slack API Apps page](images/image_1.png)
 
-2) Click on **Create New App**, choose **From scratch**
+2) Choose **Create New App**, choose **From scratch**
 
 ![Create New App](images/image_2.png)
 
@@ -16,11 +17,11 @@
 
 ![App credentials](images/image_4.png)
 
-5) Click on **OAuth & Permissions**
+5) Choose **OAuth & Permissions**
 
 ![OAuth & Permissions](images/image_5.png)
 
-6) (Optional.) Click on **Add an OAuth Scope** under Bot Token Scopes:
+6) (Optional.) Choose **Add an OAuth Scope** under Bot Token Scopes:
 
 ![OAuth Scopes](images/image_6.png)
 
@@ -28,7 +29,7 @@
 
    `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
-   **Note**: You MUST click on **Save URLs** button.
+   **Note**: You MUST choose **Save URLs** button.
 
 8) Go to Quick and choose Integration
 
@@ -56,10 +57,10 @@
 
 ![Slack configuration form](images/image_9.png)
 
-11) Once Action is added, you are taken to this page. Click on **Sign-in**
+11) Once Action is added, you are taken to this page. Choose **Sign-in**
 
 ![Action added successfully](images/image_10.png)
 
-12) Pop up window will display, click on **Allow**
+12) Pop up window will display, choose **Allow**
 
 ![Authorization popup](images/image_11.png)

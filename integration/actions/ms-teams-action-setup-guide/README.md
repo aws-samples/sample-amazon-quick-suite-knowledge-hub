@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD029 -->
 # MS Teams - Action Setup Guide
 
 1) Sign in to the Microsoft Entra admin center as at least an Application Developer.
@@ -6,7 +7,7 @@
 
    Choose **Single tenant** and provide optional Redirect URI: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
-   Click **Register** button:
+   Choose **Register** button:
 
 ![App registration form](images/image_1.png)
 
@@ -32,7 +33,7 @@
    - `ChannelMessage.Send`
    - `ChatMessage.Send`
 
-   Then click on **Grant admin consent for <XXXX>**, you'll see a total of 13 permissions as:
+   Then choose **Grant admin consent for `<XXXX>`**, you'll see a total of 13 permissions as:
 
 ![API permissions](images/image_2.png)
 
@@ -52,7 +53,7 @@
 
 ![Authentication redirect URI](images/image_5.png)
 
-7) Go to **AWS** > **Quick** page, and click on **Integration**:
+7) Go to **AWS** > **Quick** page, and choose **Integration**:
 
 ![Quick Integration](images/image_6.png)
 
@@ -78,11 +79,11 @@
 
 ![Configuration complete](images/image_9.png)
 
-9) Click on **Create and continue**
+9) Choose **Create and continue**
 
-10) Navigate to **Integration** => **Actions** => **Microsoft Teams Integration** (or your MS Teams integration name), and click on **Sign in**:
+10) Navigate to **Integration** => **Actions** => **Microsoft Teams Integration** (or your MS Teams integration name), and choose **Sign in**:
 
-11) Check **Consent on behalf of your organization** and click **Accept**:
+11) Check **Consent on behalf of your organization** and choose **Accept**:
 
 ![Authorization consent](images/image_10.png)
 

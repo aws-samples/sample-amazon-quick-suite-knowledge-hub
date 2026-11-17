@@ -1,5 +1,5 @@
 # Blueprint: minimal
-# Just the Amazon Quick account subscription (+ default namespace). No IDC, no VPC,
+# Just the AWS Quick account subscription (+ default namespace). No IDC, no VPC,
 # no KMS, no custom permissions. Good for a quick evaluation account.
 # Implemented as a thin preset over the modules so behavior stays consistent.
 

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD029 -->
 # Salesforce - Action Setup Guide
 
 1) Log in to your Salesforce Online Developer Edition account at <https://login.salesforce.com>
@@ -32,13 +33,13 @@
 
    Check the following checkboxes:
 
-   1) Enable OAuth Settings
-   2) Require Secret for Web Server Flow
-   3) Require Secret for Refresh Token Flow
-   4) Enable Authorization Code and Credentials Flow
-   5) Enable Token Exchange Flow
-   6) Require Secret for Token Exchange Flow
-   7) Introspect All Tokens
+   - Enable OAuth Settings
+   - Require Secret for Web Server Flow
+   - Require Secret for Refresh Token Flow
+   - Enable Authorization Code and Credentials Flow
+   - Enable Token Exchange Flow
+   - Require Secret for Token Exchange Flow
+   - Introspect All Tokens
 
    And select the following OAuth scopes:
 
@@ -59,7 +60,7 @@
 
 7) Get Consumer Key (Client ID) and Consumer Secret (Client Secret)
 
-   From the Manage Connected Apps page (if re-entering, click on the **View** button on the right
+   From the Manage Connected Apps page (if re-entering, choose the **View** button on the right
 
 ![Manage Connected Apps](images/image_6.png)
 
@@ -75,7 +76,7 @@
 
 ![Key and secret mapping](images/image_8.png)
 
-   **Note**: Please wait for at least 10 minutes for Salesforce to be ready.
+   **Note**: Wait at least 10 minutes for Salesforce to be ready.
 
 8) Go to Quick and choose Integration, Select **Salesforce** and choose **Next**
 
@@ -105,10 +106,10 @@
 
 ![Configuration form](images/image_10.png)
 
-9) Once Action is added, you are taken to this page. Click on **Sign-in**
+9) Once Action is added, you are taken to this page. Choose **Sign-in**
 
-   Pop up window will display, click on **Allow**
+   Pop up window will display, choose **Allow**
 
 ![Authorization popup](images/image_11.png)
 
-   Once added, click **Sign-in**
+   Once added, choose **Sign-in**

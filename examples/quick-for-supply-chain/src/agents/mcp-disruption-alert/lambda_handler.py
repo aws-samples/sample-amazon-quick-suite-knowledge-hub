@@ -5,7 +5,7 @@ Impact assessment, severity classification, mitigation recommendations,
 and escalation chain for supply chain disruptions.
 
 Called DIRECTLY by Quick (not via Agent) for real-time disruption triage.
-Quick passes disruption context + affected data from the database via Amazon Quick/web search.
+Quick passes disruption context + affected data from the database via AWS Quick/web search.
 
 Tools:
 - assess_disruption_impact: Calculate revenue/orders/customers at risk
@@ -191,7 +191,7 @@ def assess_disruption_impact(
 ) -> dict:
     """
     Calculate the business impact of a disruption.
-    Quick passes context (from the database via Amazon Quick + Salesforce + web search).
+    Quick passes context (from the database via AWS Quick + Salesforce + web search).
     MCP applies impact scoring logic.
 
     Tolerant of PARTIAL input: if the caller only passes the disruption alert fields
@@ -335,7 +335,7 @@ def recommend_mitigation(
     """
     # If only disruption_id provided, require disruption_type from the orchestrator
     if disruption_id and not disruption_type:
-        disruption_type = "natural_disaster"  # Default — orchestrator should pass disruption_type from the database via Amazon Quick
+        disruption_type = "natural_disaster"  # Default — orchestrator should pass disruption_type from the database via AWS Quick
     if not disruption_type:
         disruption_type = "natural_disaster"
 
@@ -395,7 +395,7 @@ def get_active_disruptions(
     """List current active supply chain disruptions with severity and impact.
 
     Args:
-        disruptions: Active disruption data from the database via Amazon Quick (list of disruption objects).
+        disruptions: Active disruption data from the database via AWS Quick (list of disruption objects).
                      Each must have: disruption_id, type, title, region, severity, status.
         severity: Optional filter by severity level
         region: Optional filter by region
@@ -425,7 +425,7 @@ def assess_impact(
 
     Args:
         disruption_id: The disruption to assess
-        affected_orders: Orders impacted (from the database via Amazon Quick query filtered by disruption)
+        affected_orders: Orders impacted (from the database via AWS Quick query filtered by disruption)
         affected_shipments: Shipments impacted
         inventory_data: Current inventory levels for affected SKUs
     """
@@ -470,7 +470,7 @@ TOOLS = {
 TOOL_SCHEMAS = [
     {
         "name": "assess_disruption_impact",
-        "description": "Calculate business impact of a disruption — revenue at risk, affected orders/customers/shipments, inventory coverage. Quick passes all context from the database via Amazon Quick + Salesforce.",
+        "description": "Calculate business impact of a disruption — revenue at risk, affected orders/customers/shipments, inventory coverage. Quick passes all context from the database via AWS Quick + Salesforce.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -480,7 +480,7 @@ TOOL_SCHEMAS = [
                 },
                 "affected_orders": {
                     "type": "array",
-                    "description": "Orders potentially impacted (from the database via Amazon Quick)",
+                    "description": "Orders potentially impacted (from the database via AWS Quick)",
                 },
                 "affected_shipments": {
                     "type": "array",
@@ -531,7 +531,7 @@ TOOL_SCHEMAS = [
                 "impact_assessment": {"type": "object"},
                 "available_alternatives": {
                     "type": "array",
-                    "description": "Alternate suppliers/routes (from the database via Amazon Quick)",
+                    "description": "Alternate suppliers/routes (from the database via AWS Quick)",
                 },
             },
             "required": ["disruption_type", "impact_assessment"],

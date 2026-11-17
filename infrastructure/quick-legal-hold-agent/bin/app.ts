@@ -15,7 +15,7 @@ new QuickLegalholdMcpStack(app, 'QuickLegalholdMcpStack', {
     region: process.env.CDK_DEFAULT_REGION || process.env.AWS_REGION || 'us-east-1',
   },
   description:
-    'MCP control path (AgentCore Gateway) for Amazon Quick legal-hold management. Self-contained stack.',
+    'MCP control path (AgentCore Gateway) for AWS Quick legal-hold management. Self-contained stack.',
 });
 
 cdk.Tags.of(app).add('Project', 'quick-legal-hold-agent');

@@ -34,7 +34,7 @@ jobs:
     name: Node.js Security Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Amazon Quick Knowledge Hub
+      - name: Checkout AWS Quick Knowledge Hub
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -118,4 +118,4 @@ jobs:
 
       - name: Skip message
         if: steps.changed-files.outputs.any_changed == 'false' && github.event_name != 'schedule'
-        run: echo "⏭️ No Node.js files changed - skipping Node.js security scan for Amazon Quick Knowledge Hub"
+        run: echo "⏭️ No Node.js files changed - skipping Node.js security scan for AWS Quick Knowledge Hub"

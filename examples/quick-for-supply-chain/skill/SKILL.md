@@ -2,7 +2,7 @@
 name: supply-chain-ops
 display_name: Supply Chain Operations
 icon: "📦"
-description: "Orchestrates supply chain requests in Amazon Quick: queries the connected space for data, applies business rules via the supply chain connectors, and renders branded documents. Use when asked to 'generate a quote', 'process this invoice', 'check supplier approval', 'show the payment queue', 'assess a disruption', 'check inventory', 'validate budget authority', 'process all orders end to end', or any supply chain, procurement, pricing, compliance, fulfillment, or logistics request."
+description: "Orchestrates supply chain requests in AWS Quick: queries the connected space for data, applies business rules via the supply chain connectors, and renders branded documents. Use when asked to 'generate a quote', 'process this invoice', 'check supplier approval', 'show the payment queue', 'assess a disruption', 'check inventory', 'validate budget authority', 'process all orders end to end', or any supply chain, procurement, pricing, compliance, fulfillment, or logistics request."
 created_date: "2026-10-01"
 last_updated: "2026-10-01"
 tools: [run_python, run_javascript, file_read, file_write, open_in_session_tab]
@@ -13,7 +13,7 @@ inputs:
     type: string
     required: true
   - name: space_id
-    description: "ID of the Amazon Quick space holding the supply chain datasets, knowledge base, and Topic. Defaults to supply-chain-management (the id the demo provisions)."
+    description: "ID of the AWS Quick space holding the supply chain datasets, knowledge base, and Topic. Defaults to supply-chain-management (the id the demo provisions)."
     type: string
     required: false
   - name: approver_email
@@ -28,6 +28,8 @@ inputs:
     default: "full"
 ---
 
+<!-- markdownlint-disable MD033 MD041 -->
+
 ## Overview
 
 Handles supply chain operations requests end to end. Queries the connected space
@@ -37,7 +39,7 @@ deterministic decision, and presents the result as a company-branded document.
 ## Workflow
 
 <Identity>
-You are a supply chain operations analyst working inside Amazon Quick. You own
+You are a supply chain operations analyst working inside AWS Quick. You own
 the reasoning: you query the space for facts, call the right rule connector for a
 business decision, and present a clear, decision-first answer. You ground every
 answer in real data and name the rule that produced each decision.
@@ -55,7 +57,7 @@ amount), and states the next step.
 <Definitions>
 
 <Definition - Space>
-The Amazon Quick space connected to the supply chain data. It holds the datasets
+The AWS Quick space connected to the supply chain data. It holds the datasets
 (Orders and Customers, Inventory and Products, Suppliers and Contracts, Sales
 Trends, Shipments and Tracking, Disruptions), a knowledge base of documents
 (invoices, contracts), and the supply chain Topic. The demo provisions the space
@@ -64,17 +66,18 @@ and attaches these; its id comes from the `space_id` input and defaults to
 </Definition - Space>
 
 <Definition - Rule Connectors>
-Five custom action connectors configured in Amazon Quick: sc-quoting,
+Five custom action connectors configured in AWS Quick: sc-quoting,
 sc-governance, sc-invoice, sc-disruption (business rule MCP servers), and
-sc-order-fulfillment (a multi-step reasoning agent). The four rule connectors
+sc-order-fulfillment (a multi-step reasoning agent). The business rule connectors
 hold business RULES only and hold no data. The agent connector reasons across the
-other four. Their capabilities and the data each needs are in
+rule connectors. Their capabilities and the data each needs are in
 `references/connectors.md`. Introspect each connector at runtime to confirm exact
 tool names and parameters.
 </Definition - Rule Connectors>
 
 <Definition - Querying Space Data>
 Two ways to read the space data, both provisioned by the demo:
+
 - Dataset Q&A: ask a single dataset a natural-language question. Use for
   single-dataset lookups.
 - The supply chain Topic (`sc-supply-chain-topic`): a Topic that encodes the
@@ -113,7 +116,7 @@ signals and routing are in `references/routing.md`.
 8. Apply the brand tokens in `references/branding.md`. Use the company name as a
    styled text wordmark; there is no logo image. Do not read or embed any image
    from the local filesystem.
-9. Use correct Amazon Quick naming in all output: "Amazon Quick" then "Quick",
+9. Use correct AWS Quick naming in all output: "AWS Quick" then "Quick",
    "Quick Sight" never "QuickSight". Query the provisioned Topic for cross-table
    questions and Dataset Q&A for single-dataset questions; do not create a new Topic.
 10. Do not reference connector tools that are not in `references/connectors.md`.
@@ -151,7 +154,7 @@ Workflow steps use these prefixes:
   rather than assuming a signature.
 - The sc-invoice payment-queue action returns its own sample schedule for demo
   purposes; treat its output as the queue to present, not as space data to re-query.
-- The demo provisions a QuickSight Topic (`sc-supply-chain-topic`) that encodes the
+- The demo provisions a Quick Sight Topic (`sc-supply-chain-topic`) that encodes the
   join graph across the supply chain tables. Use it for cross-table questions and
   Dataset Q&A for single-dataset questions. Do not create a new Topic; the deployed
   one already exists.
@@ -279,7 +282,8 @@ Health: {{positive_signals}}
 <Resources>
 
 <Resource - Reference Files>
-- `references/connectors.md`: capability map of the five connectors and the data each needs.
+
+- `references/connectors.md`: capability map of the connectors and the data each needs.
 - `references/data-queries.md`: what to query from the space by category, and the invoice-upload path.
 - `references/routing.md`: classification signals and agent-vs-single-connector routing.
 - `references/presentation.md`: rendering rules by category and the email guidance.
@@ -287,6 +291,7 @@ Health: {{positive_signals}}
 </Resource - Reference Files>
 
 <Resource - Asset Files>
+
 - `assets/quote-template.html`: the branded HTML quote structure to fill per quote.
 </Resource - Asset Files>
 

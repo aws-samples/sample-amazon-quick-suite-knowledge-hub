@@ -1,5 +1,5 @@
 """
-CloudTrail poller for Amazon Quick observability.
+CloudTrail poller for AWS Quick observability.
 
 CloudTrail has no vended-log delivery to S3 for Quick events, and
 LookupEvents only serves a rolling 90-day window, so this Lambda runs on a

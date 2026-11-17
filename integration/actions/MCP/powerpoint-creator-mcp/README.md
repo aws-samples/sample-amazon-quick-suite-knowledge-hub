@@ -1,22 +1,27 @@
-# Build Custom MCP Server Integration with Amazon Quick to create Power Point Presentations
+# Build Custom MCP Server Integration with AWS Quick to create Power Point Presentations
 
-This guide demonstrates how to build a custom Model Context Protocol (MCP) server integration that enables Amazon Quick to generate PowerPoint presentations directly from chat conversations. By creating this integration, users can leverage Quick AI capabilities to transform their ideas, data, and content into professional presentations without leaving their workflow. The MCP server acts as a bridge between the Quick conversational interface and PowerPoint generation functionality, allowing users to simply describe their presentation needs in natural language and receive fully-formatted slides complete with titles, content, and structured layouts. This integration showcases the extensibility of the Amazon Quick platform and provides a practical template for building custom actions that enhance workplace productivity.
+This guide demonstrates how to build a custom Model Context Protocol (MCP) server integration that enables AWS Quick to generate PowerPoint presentations directly from chat conversations. With this integration, users can turn their ideas, data, and content into presentations without leaving Quick. The MCP server connects the Quick conversational interface to PowerPoint generation. Users describe their presentation needs in natural language and receive formatted slides with titles, content, and layouts. You can also use the guide as a template for other custom actions.
 
 ## Architecture Overview
 
 ![Architecture Diagram](images/arch_diagram.png)
 
-This MCP (Model Context Protocol) server integration leverages a serverless architecture on AWS to enable PowerPoint presentation generation from the Amazon Quick chat interface. The solution is designed for scalability, reliability, and seamless integration with the Quick action framework.
-Components
+This MCP (Model Context Protocol) server integration uses a serverless architecture on AWS to generate PowerPoint presentations from the AWS Quick chat interface. The solution is designed for scalability and reliability, and it works with the Quick action framework.
+
+The components are:
 
 ## AWS Lambda Function
+
+The Lambda function:
 
     - Core processing engine that handles presentation generation requests
     - Utilizes Lambda Layers for shared dependencies and PowerPoint manipulation libraries
     - Processes incoming requests from Quick and orchestrates the presentation creation workflow
-    - Executes business logic to transform user input into structured slide content
+    - Executes business logic to convert user input into structured slide content
 
 ## Amazon API Gateway
+
+API Gateway provides the endpoint:
 
     - Serves as the RESTful API endpoint for the MCP server
     - Provides secure, scalable access to the Lambda function
@@ -26,10 +31,14 @@ Components
 
 ## Amazon Cognito
 
-    - Issues OAuth 2.0 access tokens to Amazon Quick using the client credentials flow
+Cognito handles authentication:
+
+    - Issues OAuth 2.0 access tokens to AWS Quick using the client credentials flow
     - Provides the client ID, client secret, and token URL used for Quick service authentication
 
 ## Amazon S3
+
+S3 stores templates and results:
 
     - Stores PowerPoint templates used as base files for presentation generation
     - Hosts generated presentation files (.pptx) after creation
@@ -40,7 +49,9 @@ Components
 
 ## Integration Flow
 
-    1. User initiates a presentation request through Amazon Quick chat
+A presentation request follows these steps:
+
+    1. User initiates a presentation request through AWS Quick chat
     2. Quick obtains an OAuth 2.0 access token from Amazon Cognito and invokes the MCP server action via API Gateway
     3. API Gateway validates the access token and scope, then invokes the Lambda function with the presentation parameters (title, content, slides)
     4. Lambda retrieves the template from the `templates/` prefix in S3
@@ -49,11 +60,15 @@ Components
     7. A short-lived S3 pre-signed URL is created for the presentation
     8. URL is returned to Quick and displayed to the user in the chat interface
 
-This architecture ensures a responsive, scalable solution that integrates seamlessly with the Amazon Quick conversational AI capabilities while maintaining security and performance standards.
+This architecture keeps the solution responsive and scalable, and it connects to the Quick chat interface.
 
 ## Deployment Guide
 
+Deploy the solution with Terraform after you meet the prerequisites.
+
 ## Prerequisites
+
+You need the following:
 
 - AWS CLI configured with appropriate credentials
 - Terraform >= 1.0
@@ -61,6 +76,8 @@ This architecture ensures a responsive, scalable solution that integrates seamle
 - pip
 
 ## Quick Start
+
+Follow these steps:
 
 1. **Clone the repository**
 
@@ -98,19 +115,23 @@ Place your PowerPoint template at `templates/template.pptx`. Additional template
 
 ## MCP Server Integration
 
-1. Go to Amazon Quick --> Integrations --> Actions --> Model Context Protocol
+Add the MCP server in AWS Quick as follows:
+
+1. Go to AWS Quick --> Integrations --> Actions --> Model Context Protocol
 
     ![MCP Integration](images/mcp_action_integration.png)
 
-2. Enter a name, description and api_gateway_url from terraform output to MCP server endpoint and click Next
+2. Enter a name, description and api_gateway_url from terraform output to MCP server endpoint and choose **Next**
 
-3. Select **Service authentication** and enter the `cognito_client_id`, `cognito_client_secret` and `cognito_token_url` values from the Terraform outputs, then click Next
+3. Select **Service authentication** and enter the `cognito_client_id`, `cognito_client_secret` and `cognito_token_url` values from the Terraform outputs, then choose **Next**
 
-4. Click Next and Finish
+4. Choose **Next** and then **Finish**
 
 ## Testing
 
-1. Ask any question to the Chat Agent in Amazon Quick. Ex: "Where is the Agentic AI market heading in 2026?"
+Test the integration in Quick chat:
+
+1. Ask any question to the Chat Agent in AWS Quick. For example: "Where is the Agentic AI market heading in 2026?"
 ![Prompt](images/prompt.png)
 
 2. Ask the Chat Agent to create a powerpoint presentation based on the output from previous prompt. Review the information in the pop up window and submit.
@@ -121,9 +142,13 @@ Place your PowerPoint template at `templates/template.pptx`. Additional template
 
 ## Unit Tests
 
+Run the unit tests with this command:
+
     uv run --no-project --python 3.11 --with pytest --with "moto[s3]" --with boto3 --with python-pptx pytest tests
 
 ## Security
+
+The integration protects the endpoint and the generated files as follows:
 
 - The MCP endpoint rejects requests without a valid Amazon Cognito access token that has the `ppt-creator/invoke` scope.
 - Generated presentations are never publicly readable. They are only downloadable through a time-limited pre-signed URL, stored under random keys, and deleted after the retention period.
@@ -135,7 +160,7 @@ Place your PowerPoint template at `templates/template.pptx`. Additional template
 Earlier versions of this sample exposed the MCP endpoint without authentication and served generated presentations through a public CloudFront distribution. Running `terraform apply` with this version:
 
 - Removes the CloudFront distribution, so previously issued CloudFront download links stop working.
-- Requires updating the Amazon Quick MCP integration to use **Service authentication** with the new Cognito outputs. Requests without a token will receive `401 Unauthorized`.
+- Requires updating the AWS Quick MCP integration to use **Service authentication** with the new Cognito outputs. Requests without a token will receive `401 Unauthorized`.
 - Applies the retention lifecycle rule, which deletes existing objects under `presentations/` that are older than `presentation_retention_days`.
 
 ## Cleanup
@@ -150,6 +175,8 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 ## Authors and Acknowledgment
 
+Credits for this sample:
+
 - **Primary Developer**: Leo Mentis
-- **AWS Services**: Amazon Quick, AWS Lambda, Amazon S3, Amazon API Gateway, Amazon Cognito
+- **AWS Services**: AWS Quick, AWS Lambda, Amazon S3, Amazon API Gateway, Amazon Cognito
 - **Protocol**: Model Context Protocol (MCP) specification

@@ -36,13 +36,13 @@ authenticated caller to a **single shared tenant**, resolved from the
 `ONBOARDING_TENANT` environment variable (set from the `TenantId` template
 parameter, default `shared`). The AgentCore Gateway's Cognito CUSTOM_JWT
 authorizer gates access (a valid Quick admin token is required to call the
-server), but the caller's identity is not propagated to the backend — so there
+server), but the caller's identity is not propagated to the backend. So there
 is exactly one tenant and no tool can select or spoof another. See
 [auth-model.md](./auth-model.md).
 
 ## Result_Status values
 
-Every Tool_Result carries exactly one of these seven statuses:
+Every Tool_Result carries exactly one of these statuses:
 
 | Result_Status | Meaning |
 |---|---|
@@ -52,7 +52,7 @@ Every Tool_Result carries exactly one of these seven statuses:
 | `suite_conflict` | Switching the productivity suite would invalidate one or more enabled connectors. No state change. |
 | `authorization_required` | The connector needs a third-party (OAuth-style) authorization grant that has not been completed. The authorization URL is returned verbatim. |
 | `server_error` | A failure **returned by** a Quick Admin API action, or a state-persistence failure after a successful API call. Actionable message; credentials and stack detail stripped. |
-| `internal_error` | A failure **within** the MCP server itself — including network failures, timeouts, and IAM authentication failures. No fallback credentials are attempted. |
+| `internal_error` | A failure **within** the MCP server itself, including network failures, timeouts, and IAM authentication failures. No fallback credentials are attempted. |
 
 When the failure is the backend's own state store (the Onboarding_State DynamoDB
 table is missing, not accessible to the execution role, its KMS key is
@@ -85,7 +85,7 @@ bases) names a Quick user that does not exist, the server returns
 `validation_failure` before creating or changing anything, with
 `data.error_type = "principal_not_found"`, `data.invalid_principal` and
 `data.principal_field` (`share_with` or `owner`). The most common cause is
-passing the user's **email instead of the AWS Quick username** (the two are
+passing the user's **email instead of the AWS Quick username** (they are
 often different; user names are case-sensitive). When the value looks like an
 email, the message suggests the part before the `@` as a possible username.
 
@@ -109,8 +109,8 @@ tenant and touches no state.
 
 **Success payload (`data`)**
 
-- No filter: `{ "connectors": [ { "key", "display_name", "category", "suite_gate" }, ... ] }` — all 14 entries.
-- With a valid filter: `{ "suite": "<suite>", "connectors": [ ... ] }` — entries whose `suite_gate` equals the filter **or** is `any`.
+- No filter: `{ "connectors": [ { "key", "display_name", "category", "suite_gate" }, ... ] }`, with all 14 entries.
+- With a valid filter: `{ "suite": "<suite>", "connectors": [ ... ] }`, with the entries whose `suite_gate` equals the filter **or** is `any`.
 
 **Result_Status values:**
 
@@ -250,22 +250,22 @@ The secret is a JSON object with these keys, for example:
 
 | Status | When | Extra `data` |
 |---|---|---|
-| `validation_failure` | `secret_id` is an ARN. | — |
+| `validation_failure` | `secret_id` is an ARN. | None |
 | `validation_failure` | A secret value was passed inline in `auth_params` or `config`. Nothing is read or created. | `error_type` (`inline_secret_not_allowed`), `inline_secret_params` |
-| `validation_failure` | No productivity suite has been set yet. | — |
-| `validation_failure` | Unknown connector key. | — |
+| `validation_failure` | No productivity suite has been set yet. | None |
+| `validation_failure` | Unknown connector key. | None |
 | `validation_failure` | Invalid `connector_id_prefix`. | `invalid_connector_id_prefix` |
 | `validation_failure` | The connector is gated to the other suite. | `suite_gate`, `stored_suite` |
 | `validation_failure` | `auth_type` is missing or not valid for an action connector. | `invalid_auth_type`, `valid_auth_types` |
 | `validation_failure` | The referenced secret does not exist or is not a JSON object. | `secret_id` |
-| `internal_error` | The secret could not be read (for example, access denied). | — |
+| `internal_error` | The secret could not be read (for example, access denied). | None |
 | `validation_failure` | Required auth parameters are missing. | `auth_type`, `missing_params`, `missing_config_fields`, `required_params`, `secret_contract` |
-| `already_configured` | This action connector is already `enabled` in the onboarding state. No API call. | — |
+| `already_configured` | This action connector is already `enabled` in the onboarding state. No API call. | None |
 | `validation_failure` | `share_with` names a Quick user that does not exist. Nothing is created. | `error_type` (`principal_not_found`), `invalid_principal`, `principal_field` |
-| `server_error` | [`CreateActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateActionConnector.html) failed. The sanitized API error is in `message`. | — |
-| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | — |
+| `server_error` | [`CreateActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateActionConnector.html) failed. The sanitized API error is in `message`. | None |
+| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | None |
 | `server_error` | The connector was created but its `enabled` status could not be recorded. | `state_store_error` when the state table is the cause |
-| `success` | Connector created and recorded `enabled`. | — |
+| `success` | Connector created and recorded `enabled`. | None |
 
 When the onboarding state table can't be read at the start, the result is
 `internal_error` with `data.state_store_error` and nothing is created.
@@ -292,11 +292,11 @@ record it as `not_configured`.
 |---|---|---|
 | `validation_failure` | Unknown connector key, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `internal_error` | The onboarding state could not be read. Nothing was deleted. | `state_store_error` |
-| `already_configured` | The action connector is not `enabled` in the onboarding state (never enabled, or already disabled). No API call. | — |
-| `server_error` | [`DeleteActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteActionConnector.html) failed, including when the connector no longer exists in AWS Quick. | — |
-| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | — |
+| `already_configured` | The action connector is not `enabled` in the onboarding state (never enabled, or already disabled). No API call. | None |
+| `server_error` | [`DeleteActionConnector`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteActionConnector.html) failed, including when the connector no longer exists in AWS Quick. | None |
+| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | None |
 | `server_error` | The connector was deleted but its `not_configured` status could not be recorded. | `state_store_error` when the state table is the cause |
-| `success` | Connector deleted and recorded `not_configured`. | — |
+| `success` | Connector deleted and recorded `not_configured`. | None |
 
 The tool only deletes connectors this server recorded as `enabled`. It does not
 delete a connector created in the console or by another deployment.
@@ -329,8 +329,8 @@ references the new data source by ARN. Both resources get the id
 | Connector | Secret | Secret JSON keys | Required `config` | Sent to AWS Quick as |
 |---|---|---|---|---|
 | `sharepoint` | Required. Defaults to `quick-admin-buddy/sharepoint-kb-admin` when `secret_id` is omitted. | `certificate_thumbprint`, `kms_key_arn`, `tenant_id`, `client_id`, `domain_url` | `sites` (list of site URLs to index) | `Credentials.SharePointClientCredentials` (inline) plus `SharePointParameters` |
-| `onedrive` | Required. No default name. | `client_id`, `tenant_id`, `kms_key_arn`, `certificate_thumbprint` | — | `Credentials.SecretArn` (the server resolves the name to its ARN) |
-| `google_drive` | Required. Defaults to `quick-admin-buddy/google-drive-kb-admin` when `secret_id` is omitted. | The downloaded Google service-account JSON (`client_email`, `private_key`, …) plus an added `admin_account_email` | — | `Credentials.ServiceAccountCredentials` (inline) |
+| `onedrive` | Required. No default name. | `client_id`, `tenant_id`, `kms_key_arn`, `certificate_thumbprint` | None | `Credentials.SecretArn` (the server resolves the name to its ARN) |
+| `google_drive` | Required. Defaults to `quick-admin-buddy/google-drive-kb-admin` when `secret_id` is omitted. | The downloaded Google service-account JSON (`client_email`, `private_key`, …) plus an added `admin_account_email` | None | `Credentials.ServiceAccountCredentials` (inline) |
 
 A Confluence knowledge base can only be created in the AWS Quick console.
 `CreateKnowledgeBase` supports `S3_KNOWLEDGE_BASE`, `WEB_CRAWLER`,
@@ -354,30 +354,30 @@ happens in the AWS Quick console.
 
 | Status | When | Extra `data` |
 |---|---|---|
-| `validation_failure` | `secret_id` is an ARN. | — |
+| `validation_failure` | `secret_id` is an ARN. | None |
 | `validation_failure` | A secret value was passed inline in `auth_params` or `config`. Nothing is read or created. | `error_type` (`inline_secret_not_allowed`), `inline_secret_params` |
-| `validation_failure` | No productivity suite has been set yet. | — |
-| `validation_failure` | Unknown connector key, or the connector doesn't support knowledge bases. | — |
+| `validation_failure` | No productivity suite has been set yet. | None |
+| `validation_failure` | Unknown connector key, or the connector doesn't support knowledge bases. | None |
 | `validation_failure` | The connector's knowledge base can only be created in the AWS Quick console (`confluence`). Nothing is read or created. | `error_type` (`console_only_knowledge_base`) |
 | `validation_failure` | Invalid `connector_id_prefix`. | `invalid_connector_id_prefix` |
 | `validation_failure` | The connector is gated to the other suite. | `suite_gate`, `stored_suite` |
 | `validation_failure` | `auth_type` is missing or not valid for a knowledge base. | `invalid_auth_type`, `valid_auth_types` (`user_managed`, `admin_managed`) |
 | `validation_failure` | The referenced (or default) secret does not exist or is not a JSON object. | `secret_id` |
-| `internal_error` | The secret could not be read (for example, access denied). | — |
+| `internal_error` | The secret could not be read (for example, access denied). | None |
 | `validation_failure` | Required `config` fields are missing. | `auth_type`, `missing_params`, `missing_config_fields`, `required_params`, `secret_contract` |
 | `validation_failure` | OneDrive `admin_managed` without a `secret_id`. | `auth_type`, `required_secret_schema` |
 | `validation_failure` | SharePoint or Google Drive `admin_managed`, and the secret lacks required keys. | `auth_type`, `secret_id`, `missing_secret_fields`, `required_secret_schema` |
-| `validation_failure` | `owner` is missing. | — |
-| `already_configured` | This knowledge base is already `enabled` in the onboarding state. No API call. | — |
+| `validation_failure` | `owner` is missing. | None |
+| `already_configured` | This knowledge base is already `enabled` in the onboarding state. No API call. | None |
 | `validation_failure` | `owner` names a Quick user that does not exist. Nothing is created. | `error_type` (`principal_not_found`), `invalid_principal`, `principal_field` |
 | `validation_failure` | OneDrive: the secret name could not be resolved to an ARN. | `secret_id` |
-| `server_error` | [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) failed. Nothing was created, so nothing is rolled back. | — |
-| `internal_error` | Network, timeout, or IAM failure calling [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html). | — |
+| `server_error` | [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) failed. Nothing was created, so nothing is rolled back. | None |
+| `internal_error` | Network, timeout, or IAM failure calling [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html). | None |
 | `server_error` | [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html) failed. The data source is rolled back. | `rollback` |
 | `internal_error` | Network, timeout, or IAM failure calling [`CreateKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateKnowledgeBase.html). The knowledge base (which may exist) and the data source are rolled back. | `rollback` |
 | `internal_error` | Both resources were created, but the `enabled` status could not be recorded, so both were rolled back completely. | `rollback`, plus `state_store_error` when the state table is the cause |
 | `server_error` | As above, but the rollback was incomplete. | `rollback`, plus `state_store_error` when the state table is the cause |
-| `success` | Data source and knowledge base created, and recorded `enabled`. | — |
+| `success` | Data source and knowledge base created, and recorded `enabled`. | None |
 
 **Rollback.** A failed enable leaves nothing behind in AWS Quick: once
 [`CreateDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_CreateDataSource.html) has succeeded, any later failure deletes what was created
@@ -420,12 +420,12 @@ Delete a knowledge base the server created and its data source
 |---|---|---|
 | `validation_failure` | Unknown connector key, the connector doesn't support knowledge bases, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `internal_error` | The onboarding state could not be read. Nothing was deleted. | `state_store_error` |
-| `already_configured` | The knowledge base is not `enabled` in the onboarding state. No API call. | — |
-| `server_error` | [`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html) failed (other than "not found"). Nothing was deleted and the state stays `enabled`. | — |
-| `internal_error` | Network, timeout, or IAM failure calling [`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html). The state stays `enabled`. | — |
+| `already_configured` | The knowledge base is not `enabled` in the onboarding state. No API call. | None |
+| `server_error` | [`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html) failed (other than "not found"). Nothing was deleted and the state stays `enabled`. | None |
+| `internal_error` | Network, timeout, or IAM failure calling [`DeleteKnowledgeBase`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteKnowledgeBase.html). The state stays `enabled`. | None |
 | `server_error` | The knowledge base was deleted but its `not_configured` status could not be recorded. | `state_store_error` when the state table is the cause |
 | `server_error` | The knowledge base was deleted and recorded `not_configured`, but [`DeleteDataSource`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_DeleteDataSource.html) failed. | `data_source_id`, `data_source_deleted` (`false`) |
-| `success` | Knowledge base and data source deleted, and recorded `not_configured`. | — |
+| `success` | Knowledge base and data source deleted, and recorded `not_configured`. | None |
 
 **State after a delete.** As soon as the knowledge base is deleted, or is
 already missing in AWS Quick, the integration is recorded as
@@ -466,8 +466,8 @@ fails and the tool returns `server_error`.
 | `success` | Permissions granted. | `shared_with` |
 | `validation_failure` | Unknown connector key, empty `share_with`, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `validation_failure` | `share_with` names a Quick user that does not exist. Nothing is changed. | `error_type` (`principal_not_found`), `invalid_principal`, `principal_field` |
-| `server_error` | [`UpdateActionConnectorPermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateActionConnectorPermissions.html) failed (for example, the connector or principal doesn't exist). | — |
-| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | — |
+| `server_error` | [`UpdateActionConnectorPermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateActionConnectorPermissions.html) failed (for example, the connector or principal doesn't exist). | None |
+| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | None |
 
 ---
 
@@ -498,17 +498,17 @@ As with `share_action_connector`, the knowledge base does not have to be
 | `success` | VIEWER role granted. | `shared_with` |
 | `validation_failure` | Unknown connector key, the connector doesn't support knowledge bases, empty `share_with`, or invalid `connector_id_prefix`. | `invalid_connector_id_prefix` for a bad prefix |
 | `validation_failure` | `share_with` names a Quick user that does not exist. Nothing is changed. | `error_type` (`principal_not_found`), `invalid_principal`, `principal_field` |
-| `server_error` | [`UpdateKnowledgeBasePermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateKnowledgeBasePermissions.html) failed (for example, the knowledge base or principal doesn't exist). | — |
-| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | — |
+| `server_error` | [`UpdateKnowledgeBasePermissions`](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_UpdateKnowledgeBasePermissions.html) failed (for example, the knowledge base or principal doesn't exist). | None |
+| `internal_error` | Network, timeout, or IAM failure calling AWS Quick. | None |
 
 ---
 
 ## `get_tenant_configuration`
 
-Return the tenant's current onboarding state — the stored suite plus the status
+Return the tenant's current onboarding state: the stored suite plus the status
 of every catalog connector.
 
-**Inputs** — none.
+**Inputs**: none.
 
 **Success payload (`data`)**
 
@@ -544,7 +544,7 @@ of every catalog connector.
 Return a stage-grouped recap of the onboarding for writing a plain-language
 summary of enabled versus skipped connectors.
 
-**Inputs** — none.
+**Inputs**: none.
 
 **Success payload (`data`)**
 
@@ -563,7 +563,7 @@ summary of enabled versus skipped connectors.
 - `stages` always carries all four stages. The `productivity suite` stage is
   reported separately (it is not a catalog entry) and carries the stored suite.
 - Every one of the 14 catalog entries appears under exactly one of the other
-  three stages — none omitted or duplicated.
+  three stages, with none omitted or duplicated.
 - Each connector's final status is one of `{enabled, skipped, not_configured}`.
   A stored `enabled` maps to `enabled`; `not_configured` and `error` both map to
   `not_configured`.
@@ -598,10 +598,10 @@ AWS Quick API is called; extensions have none.
 
 | Status | When | Extra `data` |
 |---|---|---|
-| `success` | Extensions returned. | — |
+| `success` | Extensions returned. | None |
 | `validation_failure` | `suite` is not a valid suite. | `invalid_suite`, `valid_suites` |
 | `internal_error` | The onboarding state could not be read. | `state_store_error` |
-| `server_error` | Any other failure reading the onboarding state. | — |
+| `server_error` | Any other failure reading the onboarding state. | None |
 
 ---
 
@@ -642,20 +642,20 @@ do not require them.
 
 | Connector Key | Display Name | Category | Suite Gate | Stage | Action | KB | Required config (KB) |
 |---|---|---|---|---|---|---|---|
-| `outlook` | Outlook | Productivity - email | `microsoft_365` | productivity connectors | ✓ | — | — |
-| `ms_teams` | Microsoft Teams | Productivity - messaging | `microsoft_365` | productivity connectors | ✓ | — | — |
-| `onedrive` | OneDrive | Productivity - cloud storage | `microsoft_365` | productivity connectors | ✓ | ✓ | — *(secret required)* |
-| `gmail` | Gmail | Productivity - email | `google_workspace` | productivity connectors | ✓ | — | — |
-| `google_chat` | Google Chat | Productivity - messaging | `google_workspace` | productivity connectors | ✓ | — | — |
-| `google_drive` | Google Drive | Productivity - cloud storage | `google_workspace` | productivity connectors | ✓ | ✓ | — |
-| `google_calendar` | Google Calendar | Productivity - calendar | `google_workspace` | productivity connectors | ✓ | — | — |
-| `google_docs` | Google Docs | Productivity - documents | `google_workspace` | productivity connectors | ✓ | — | — |
-| `google_meet` | Google Meet | Productivity - meetings | `google_workspace` | productivity connectors | ✓ | — | — |
-| `google_sheets` | Google Sheets | Productivity - spreadsheets | `google_workspace` | productivity connectors | ✓ | — | — |
-| `google_slides` | Google Slides | Productivity - presentations | `google_workspace` | productivity connectors | ✓ | — | — |
+| `outlook` | Outlook | Productivity - email | `microsoft_365` | productivity connectors | ✓ | No | None |
+| `ms_teams` | Microsoft Teams | Productivity - messaging | `microsoft_365` | productivity connectors | ✓ | No | None |
+| `onedrive` | OneDrive | Productivity - cloud storage | `microsoft_365` | productivity connectors | ✓ | ✓ | None *(secret required)* |
+| `gmail` | Gmail | Productivity - email | `google_workspace` | productivity connectors | ✓ | No | None |
+| `google_chat` | Google Chat | Productivity - messaging | `google_workspace` | productivity connectors | ✓ | No | None |
+| `google_drive` | Google Drive | Productivity - cloud storage | `google_workspace` | productivity connectors | ✓ | ✓ | None |
+| `google_calendar` | Google Calendar | Productivity - calendar | `google_workspace` | productivity connectors | ✓ | No | None |
+| `google_docs` | Google Docs | Productivity - documents | `google_workspace` | productivity connectors | ✓ | No | None |
+| `google_meet` | Google Meet | Productivity - meetings | `google_workspace` | productivity connectors | ✓ | No | None |
+| `google_sheets` | Google Sheets | Productivity - spreadsheets | `google_workspace` | productivity connectors | ✓ | No | None |
+| `google_slides` | Google Slides | Productivity - presentations | `google_workspace` | productivity connectors | ✓ | No | None |
 | `sharepoint` | SharePoint | Enterprise knowledge | `microsoft_365` | enterprise knowledge | ✓ | ✓ | `sites` *(+ secret required)* |
-| `confluence` | Confluence | Enterprise knowledge | `any` | enterprise knowledge | ✓ | ✓ *(console only)* | — |
-| `atlassian` | Jira | Other | `any` | other connectors | ✓ | — | — |
+| `confluence` | Confluence | Enterprise knowledge | `any` | enterprise knowledge | ✓ | ✓ *(console only)* | None |
+| `atlassian` | Jira | Other | `any` | other connectors | ✓ | No | None |
 
 > **Outlook** covers email, calendar, and contacts, so there is no separate
 > Microsoft Calendar entry (unlike Google Calendar, which is its own AWS
@@ -664,7 +664,7 @@ do not require them.
 >
 > **Google Drive** is a single dual-capability entry (`google_drive`), enabled
 > as an action connector via `enable_action_connector` and as a knowledge base
-> via `enable_kb_integration` — the same single-key pattern as `sharepoint`
+> via `enable_kb_integration`, the same single-key pattern as `sharepoint`
 > and `onedrive`. The former separate `google_drive_kb` key has
 > been **removed**; use `google_drive` for the knowledge base.
 
@@ -677,7 +677,7 @@ bases are listed under [`enable_kb_integration`](#enable_kb_integration).
 
 **Extensions** are client-side AWS Quick add-ins the user installs in their
 Office app or browser. They have **no AWS Quick admin API**, so the backend
-records an **admin-attested** status only — `list_extensions` returns the
+records an **admin-attested** status only. `list_extensions` returns the
 suite-gated set and `set_extension_status` persists the admin's declaration
 (`installed` / `skipped` / `not_configured`). The set is suite-gated exactly
 like connectors.

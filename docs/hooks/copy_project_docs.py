@@ -3,7 +3,7 @@ MkDocs build hook — dynamic project documentation publishing.
 
 Code projects live at the repository root, grouped under high-level section
 folders (infrastructure/, examples/, integration/, and
-the standalone amazon-quick-on-desktop/). This hook, at build time:
+the standalone quick-desktop-oidc-cognito-setup/). This hook, at build time:
 
   1. AUTO-DISCOVERS every project (any folder containing a README.md) under the
      configured section roots — so adding a new project folder makes it appear
@@ -55,7 +55,11 @@ INTEGRATION = {
 }
 # Standalone single-project sections (project folder == section).
 STANDALONE = [
-    ("Amazon Quick on desktop", "amazon-quick-on-desktop", "amazon-quick-on-desktop"),
+    (
+        "AWS Quick on desktop",
+        "quick-desktop-oidc-cognito-setup",
+        "quick-desktop-oidc-cognito-setup",
+    ),
 ]
 # Folders to ignore during discovery (grouping shells, not projects themselves).
 _IGNORE_DIRS = {"MCP", "images", "img", "assets", "node_modules", "docs"}
@@ -65,15 +69,26 @@ _CODE_SUFFIXES = {".py", ".ts", ".js", ".tsx", ".jsx", ".java", ".go", ".sh"}
 _IMG_DIRS = ("images", "img", "assets", "diagrams", "screenshots")
 _IMG_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp")
 _EXTRA_MD = ("enable_ssl.md", "guide.md", "mcp_3LO_auth_flow.md", "EMBEDDING_SETUP.md")
+# Infrastructure-as-code files and local state/vars excluded from staged folders.
+_IAC_IGNORE = shutil.ignore_patterns(
+    "*.tf",
+    "*.tf.json",
+    "*.tfvars",
+    "*.tfvars.*",
+    "*.tfstate",
+    "*.tfstate.*",
+    ".terraform",
+    ".terraform.lock.hcl",
+)
 
 _staged: list[Path] = []
 
 # Optional friendly nav labels for folders whose auto-title reads awkwardly
 # (acronyms etc.). Anything not listed is auto-titled from its folder name.
 _LABEL_OVERRIDES = {
-    "multi-tenant-assets-deployment": "Amazon Quick Assets Deployment",
+    "multi-tenant-assets-deployment": "AWS Quick Assets Deployment",
     "aws-quick-admin-buddy-mcp": "AWS Quick Admin Buddy MCP",
-    "quick-legal-hold-agent": "Amazon Quick Legal Hold Agent",
+    "quick-legal-hold-agent": "AWS Quick Legal Hold Agent",
     "observability-agent": "Observability",
     "compliance-assistant-mcp": "Compliance Assistant MCP",
     "genai-operations-hub": "GenAI Operations Hub",
@@ -85,7 +100,7 @@ _LABEL_OVERRIDES = {
     "powerpoint-creator-mcp": "PowerPoint Creator MCP",
     "testing-mcp-oauth-flow": "Testing MCP OAuth Flow",
     "sharepoint-list-to-quicksight-dataset": "Export SharePoint Lists to Quick Sight",
-    "servicenow-table-sync": "Sync ServiceNow Tables to Amazon Quick Sight Using OAuth",
+    "servicenow-table-sync": "Sync ServiceNow Tables to AWS Quick Sight Using OAuth",
     "salesforce-chat-embed": "Embed Quick Chat Agent in Salesforce",
     "quick-chat-agent-embedding-demo": "Quick Chat Agent Embedding Demo",
     "document-generation-mcp-agentcore-runtime": "Document Generation MCP (AgentCore Runtime)",
@@ -249,6 +264,8 @@ def _register_card(proj: Path, slug: str, url: str, group: str) -> None:
 
 # Category buckets shown in the "Browse the hub" row, in display order.
 # (group key used in _register_card, display name, blurb)
+_ROW_ITEM_LIMIT = 6
+
 _CATEGORY_ORDER = [
     (
         "integration-actions",
@@ -283,8 +300,8 @@ _CATEGORY_ORDER = [
     (
         "standalone",
         "Desktop",
-        "Deploy Amazon Cognito as an OIDC provider for the Amazon Quick desktop "
-        "app in enterprise environments.",
+        "Enterprise sign-in for the AWS Quick desktop app, with an optional "
+        "Amazon Cognito OIDC provider for a dedicated configuration.",
     ),
 ]
 
@@ -318,16 +335,30 @@ def _render_stats() -> str:
 def _render_categories() -> str:
     out = []
     for group, name, blurb in _CATEGORY_ORDER:
-        count = sum(1 for c in _CARDS if c["group"] == group)
-        if not count:
+        cards = [c for c in _CARDS if c["group"] == group]
+        if not cards:
             continue
         url = _first_url_for_group(group)
+        items = "".join(
+            f'<a class="qh-row__item" href="{c["url"]}">{c["title"]}</a>'
+            for c in cards[:_ROW_ITEM_LIMIT]
+        )
+        more = len(cards) - _ROW_ITEM_LIMIT
+        more_html = (
+            f'<span class="qh-row__more">+{more} more</span>' if more > 0 else ""
+        )
         out.append(
-            f'<a class="qh-cat" href="{url}">'
-            f'<span class="qh-cat__count">{count}</span>'
-            f'<span class="qh-cat__name">{name}</span>'
-            f'<span class="qh-cat__desc">{blurb}</span>'
-            f'<span class="qh-cat__go">Explore →</span></a>'
+            f'<section class="qh-row">'
+            f'<div class="qh-row__text">'
+            f'<h3 class="qh-row__title">{name}</h3>'
+            f'<p class="qh-row__desc">{blurb}</p>'
+            f'<a class="md-button qh-row__cta" href="{url}">Explore {name}</a>'
+            f"</div>"
+            f'<div class="qh-row__panel">'
+            f'<div class="qh-row__card">'
+            f'<span class="qh-row__label">{len(cards)} in this section</span>'
+            f'<div class="qh-row__items">{items}{more_html}</div>'
+            f"</div></div></section>"
         )
     return "\n".join(out)
 
@@ -395,7 +426,9 @@ def _copy_project(src: Path, dest: Path) -> None:
         files = [f for f in sub.rglob("*") if f.is_file()]
         md_files = [f for f in files if f.suffix == ".md"]
         if md_files and not any(f.suffix in _CODE_SUFFIXES for f in files):
-            shutil.copytree(sub, dest / sub.name, dirs_exist_ok=True)
+            shutil.copytree(
+                sub, dest / sub.name, dirs_exist_ok=True, ignore=_IAC_IGNORE
+            )
     _copy_images(src, dest)
     for name in _EXTRA_MD:
         f = src / name

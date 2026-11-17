@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD029 -->
 # MS Outlook - Action Setup Guide
 
 1) Sign in to the Microsoft Entra admin center as at least an Application Developer.
@@ -8,7 +9,7 @@
 
    `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
-   Click **Register** button:
+   Choose **Register** button:
 
 ![App registration form](images/image_1.png)
 
@@ -22,7 +23,7 @@
    - `Mail.Send`
    - `Calendars.ReadWrite`
 
-   Then click on **Grant admin consent for <XXXX>**, you'll see a total of 4 permissions as below:
+   Then choose **Grant admin consent for `<XXXX>`**, you'll see a total of 4 permissions as below:
 
 ![API permissions](images/image_2.png)
 
@@ -42,7 +43,7 @@
 
 ![Authentication redirect URI](images/image_5.png)
 
-7) Go to **AWS** > **Quick** page, and click on **Integration**:
+7) Go to **AWS** > **Quick** page, and choose **Integration**:
 
 ![Quick Integration](images/image_6.png)
 
@@ -68,13 +69,13 @@
 
 ![Configuration complete](images/image_9.png)
 
-9) Click on **Create and continue**
+9) Choose **Create and continue**
 
-10) Navigate to **Integration** => **Actions** => **Microsoft Outlook Integration** (or your MS Outlook integration name), and click on **Sign in**:
+10) Navigate to **Integration** => **Actions** => **Microsoft Outlook Integration** (or your MS Outlook integration name), and choose **Sign in**:
 
 ![MS Outlook Integration sign in](images/image_10.png)
 
-11) Check **Consent on behalf of your organization** and click **Accept**:
+11) Check **Consent on behalf of your organization** and choose **Accept**:
 
 ![Authorization consent](images/image_11.png)
 

@@ -6,11 +6,11 @@
 #   1. `cdk deploy`      — data lake, Firehose, pollers, Gateway, Cognito,
 #                          MCP Lambda, QuickSight data source + 9 datasets.
 #   2. `setup_quick.sh`  — share the datasets with your QuickSight user(s)/
-#                          group(s), create the Q Topic, create the Quick
+#                          group(s), create the Topic, create the Quick
 #                          Space, and attach + share it.
 #
 # After this finishes there is ONE remaining manual step that has no API:
-# register the MCP connector in Amazon Quick (Integrations -> Actions) and
+# register the MCP connector in AWS Quick (Integrations -> Actions) and
 # create the agent — see the README "Quick Integration" section.
 #
 # Non-interactive use (CI): pass everything as flags and the prompts are
@@ -59,7 +59,7 @@ fi
 # QuickSight principals to share with (unless --skip-share). Prompt if none given.
 if [[ "${SKIP_SHARE}" -eq 0 && "${#PRINCIPAL_ARGS[@]}" -eq 0 ]]; then
   echo ""
-  echo "Who should see the datasets, Topic, and Space in Amazon Quick?"
+  echo "Who should see the datasets, Topic, and Space in AWS Quick?"
   echo "Enter QuickSight usernames and/or group names (space-separated)."
   echo "Prefix a group with 'group:' — e.g.  alice bob group:observability-admins"
   read -r -p "Principals: " -a _principals

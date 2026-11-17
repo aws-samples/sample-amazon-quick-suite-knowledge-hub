@@ -88,7 +88,7 @@ NEXT_PUBLIC_COGNITO_REDIRECT_URI=http://localhost:3000
 NEXT_PUBLIC_COGNITO_RESPONSE_TYPE=token
 NEXT_PUBLIC_COGNITO_SCOPE=openid email profile
 
-# Amazon Quick Configuration
+# AWS Quick Configuration
 NEXT_PUBLIC_QUICKSUITE_AGENT_ID=REPLACE_WITH_YOUR_AGENT_ID
 
 # Deployment Configuration
@@ -104,9 +104,9 @@ echo "📋 User Pool ID: ${USER_POOL_ID}"
 echo "📋 Client ID: ${CLIENT_ID}"
 echo "📋 Cognito Domain: ${COGNITO_DOMAIN}"
 echo ""
-echo "⚠️  IMPORTANT: Update the Amazon Quick Agent ID in fe/.env.local"
+echo "⚠️  IMPORTANT: Update the AWS Quick Agent ID in fe/.env.local"
 echo "   Replace REPLACE_WITH_YOUR_AGENT_ID with your actual agent ID"
-echo "   See README.md for steps to get your agent ID from the Amazon Quick console"
+echo "   See README.md for steps to get your agent ID from the AWS Quick console"
 
 echo ""
 echo "🚀 Installing frontend dependencies..."
@@ -117,7 +117,7 @@ echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "🎯 Next steps:"
-echo "   1. Update Amazon Quick Agent ID in fe/.env.local (see README.md)"
+echo "   1. Update AWS Quick Agent ID in fe/.env.local (see README.md)"
 echo "   2. Create Cognito and Identity Center users (see README.md)"
 echo "   3. Start the frontend: cd fe && npm run dev"
 echo "   4. Test the embedded chat functionality"

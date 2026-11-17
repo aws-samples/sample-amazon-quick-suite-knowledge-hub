@@ -1,12 +1,14 @@
 # CDK Infrastructure for Amazon Bedrock Knowledge Base MCP Integration
 
-This directory contains the AWS CDK infrastructure code for deploying the Amazon Bedrock Knowledge Base MCP integration with Amazon Quick.
+This directory contains the AWS CDK infrastructure code for deploying the Amazon Bedrock Knowledge Base MCP integration with AWS Quick.
 
 ## Architecture Overview
 
 The CDK stack deploys the following AWS resources:
 
 ### Core Components
+
+The stack has four main parts.
 
 - **Amazon Bedrock AgentCore Gateway**: MCP protocol gateway for Quick integration
 - **AWS Lambda Function**: Processes knowledge base queries and retrieval operations
@@ -15,7 +17,9 @@ The CDK stack deploys the following AWS resources:
 
 ## File Structure
 
-```
+This directory holds the stack definition and this guide.
+
+```text
 cdk/
  bedrock_kb_mcp_stack.py   # Main CDK stack definition
  README.md                 # This file
@@ -23,6 +27,8 @@ cdk/
 ```
 
 ## Stack Resources
+
+The `BedrockKBNativeStack` stack creates the resources below.
 
 ### BedrockKBNativeStack
 
@@ -54,6 +60,8 @@ The main CDK stack creates:
 
 ## Deployment
 
+Deploy the stack from your own AWS account after you meet the prerequisites.
+
 ### Prerequisites
 
 Ensure you have the following installed and configured:
@@ -63,6 +71,8 @@ Ensure you have the following installed and configured:
 - Python 3.9 or later
 
 ### Deploy the Stack
+
+Run these steps in order.
 
 1. **Navigate to the project root**:
 
@@ -105,6 +115,8 @@ cdk destroy
 
 ## Configuration
 
+You can adjust the stack through CDK context values and by editing the stack code.
+
 ### Environment Variables
 
 The stack uses the following CDK context values:
@@ -122,6 +134,8 @@ You can customize the deployment by modifying `bedrock_kb_stack.py`:
 
 ## Security Considerations
 
+The stack applies least privilege and uses OAuth 2.0 for access.
+
 ### IAM Permissions
 
 The stack implements least-privilege access:
@@ -132,11 +146,15 @@ The stack implements least-privilege access:
 
 ### Authentication
 
+The gateway authenticates callers as follows:
+
 - OAuth 2.0 client credentials flow
 - JWT tokens with configurable expiration
 - Cognito-managed client secrets
 
 ## Monitoring and Troubleshooting
+
+Use CloudWatch to monitor the stack and diagnose problems.
 
 ### CloudWatch Integration
 
@@ -176,7 +194,11 @@ aws cloudformation describe-stack-events --stack-name BedrockKBNativeStack
 
 ## Best Practices
 
+Apply these practices as you develop and run the stack.
+
 ### Development
+
+During development:
 
 - Use CDK context for environment-specific configuration
 - Implement proper error handling in Lambda functions
@@ -184,12 +206,16 @@ aws cloudformation describe-stack-events --stack-name BedrockKBNativeStack
 
 ### Production
 
+For production use:
+
 - Enable CloudTrail for audit logging
 - Configure backup and disaster recovery
 - Implement monitoring and alerting
 - Use AWS Secrets Manager for sensitive configuration
 
 ## Additional Resources
+
+These AWS documents cover the services used here.
 
 - [AWS CDK Developer Guide](https://docs.aws.amazon.com/cdk/)
 - [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock/)

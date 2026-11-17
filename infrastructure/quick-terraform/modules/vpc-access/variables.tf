@@ -1,10 +1,10 @@
 # Module: vpc-access
 # Two independent VPC capabilities from the governance guidance:
-#   Type 1 - restrict access TO Amazon Quick via an interface VPC endpoint (PrivateLink).
-#   Type 2 - connect Amazon Quick TO private data sources via a QuickSight VPC connection.
+#   Type 1 - restrict access TO AWS Quick via an interface VPC endpoint (PrivateLink).
+#   Type 2 - connect AWS Quick TO private data sources via a QuickSight VPC connection.
 
 variable "enable_privatelink" {
-  description = "Type 1: create an interface VPC endpoint (PrivateLink) that restricts access TO Amazon Quick."
+  description = "Type 1: create an interface VPC endpoint (PrivateLink) that restricts access TO AWS Quick."
   type        = bool
   default     = false
 }
@@ -34,7 +34,7 @@ variable "security_group_ids" {
 }
 
 variable "privatelink_service_name" {
-  description = "Service name for the Amazon Quick interface endpoint (region-specific)."
+  description = "Service name for the AWS Quick interface endpoint (region-specific)."
   type        = string
   default     = ""
 }

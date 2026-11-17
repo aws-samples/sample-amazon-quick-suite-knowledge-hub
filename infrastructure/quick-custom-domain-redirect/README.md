@@ -1,13 +1,13 @@
-# Custom Domain for Amazon Quick Sign-In
+# Custom Domain for AWS Quick Sign-In
 
-Point a custom domain at your Amazon Quick sign-in URL. This CDK app deploys
-an AWS Certificate Manager (ACM) certificate for your domain, an Amazon
-CloudFront distribution whose viewer-request function returns an HTTP `301` to
-your sign-in URL, and Amazon Route 53 alias records. Your domain and target URL
+Point a custom domain at your AWS Quick sign-in URL. This CDK app deploys
+an AWS Certificate Manager (ACM) certificate for your domain and Amazon Route 53
+alias records. It also deploys an Amazon CloudFront distribution whose
+viewer-request function returns an HTTP `301` to your sign-in URL. Your domain and target URL
 are passed as [CDK context](https://docs.aws.amazon.com/cdk/v2/guide/context.html)
 at deploy time.
 
-See the [Amazon Quick documentation](https://docs.aws.amazon.com/quick/latest/userguide/)
+See the [AWS Quick documentation](https://docs.aws.amazon.com/quick/latest/userguide/)
 for more on Quick itself.
 
 ## Architecture
@@ -24,7 +24,7 @@ sequenceDiagram
     participant R53 as Route 53<br/>(hosted zone)
     participant CF as CloudFront distribution<br/>(ACM cert: quick.example.com)
     participant Fn as CloudFront Function<br/>(viewer-request)
-    participant Quick as Amazon Quick<br/>(sign-in page)
+    participant Quick as AWS Quick<br/>(sign-in page)
 
     Browser->>R53: Resolve quick.example.com
     R53-->>Browser: A/AAAA alias to distribution
@@ -34,7 +34,7 @@ sequenceDiagram
     Note over CF: The function answers every request,<br/>so the origin is never contacted
     CF-->>Browser: 301 Moved Permanently
     Browser->>Quick: GET redirectTargetUrl
-    Quick-->>Browser: Amazon Quick sign-in page
+    Quick-->>Browser: AWS Quick sign-in page
 ```
 
 Each numbered step:
@@ -53,9 +53,9 @@ Each numbered step:
    `Cache-Control`, so repeat visitors skip straight to step 7. The
    distribution's origin is never contacted.
 6. CloudFront passes that `301` back to the browser.
-7. The browser follows the `Location` header and requests your Amazon Quick
+7. The browser follows the `Location` header and requests your AWS Quick
    sign-in URL.
-8. Amazon Quick serves its sign-in page and the visitor logs in as usual.
+8. AWS Quick serves its sign-in page and the visitor signs in as usual.
 
 The stack deploys to `us-east-1` because CloudFront requires the ACM
 certificate for a custom domain to be issued in US East (N. Virginia), per the
@@ -68,8 +68,8 @@ everywhere.
 
 **Why not just a DNS record?** DNS has no way to express a path or query
 string. A CNAME or alias record can point `quick.example.com` at another host,
-but it cannot deliver a visitor to `/sn/auth/signin?directory_alias=...`, and
-the Amazon Quick endpoint presents a TLS certificate for its own hostname
+but it cannot deliver a visitor to `/sn/auth/signin?directory_alias=...`.
+The AWS Quick endpoint also presents a TLS certificate for its own hostname
 rather than yours, so a bare DNS pointer fails with certificate errors in
 every browser.
 
@@ -81,6 +81,8 @@ served by something holding a valid certificate for your domain, which is what
 this stack provides.
 
 ## Glossary
+
+These terms appear throughout this README:
 
 - **Hosted zone**: the container in Route 53 that holds the DNS records for a
   domain. This stack looks up your existing public hosted zone and never
@@ -110,14 +112,16 @@ this stack provides.
 - **HSTS preload**: a list shipped inside browsers of domains that must only be
   reached over HTTPS. Entire TLDs like `.dev` are on it. See
   [hstspreload.org](https://hstspreload.org/).
-- **Directory alias**: the identifier of your Amazon Quick instance, visible as
-  the `directory_alias` query parameter in your sign-in URL and in the Amazon
+- **Directory alias**: the identifier of your AWS Quick instance, visible as
+  the `directory_alias` query parameter in your sign-in URL and in the AWS
   Quick admin console.
 - **CDK context**: key/value input passed to a CDK app at synth time with `-c`
   flags or `cdk.context.json`. See
   [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html).
 
 ## Prerequisites
+
+Before you deploy, you need the following:
 
 - A Route 53 **public hosted zone** for your domain, already created and
   delegated in the target AWS account. This stack does not create the zone. It
@@ -129,7 +133,7 @@ this stack provides.
 ## Get the code
 
 The source lives in this repository under
-[`docs/infrastructure as code/quick-custom-domain-redirect`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/tree/main/docs/infrastructure%20as%20code/quick-custom-domain-redirect).
+[`infrastructure/quick-custom-domain-redirect`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/tree/main/infrastructure/quick-custom-domain-redirect).
 
 ```bash
 git clone https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub.git
@@ -137,6 +141,8 @@ cd 'sample-amazon-quick-suite-knowledge-hub/docs/infrastructure as code/quick-cu
 ```
 
 ## Deploy
+
+Install the dependencies, then deploy with your domain and sign-in URL as context:
 
 ```bash
 npm install
@@ -151,11 +157,13 @@ To keep resources on stack deletion, add `-c retain=true`. Required context is
 validated at synth time and fails with a message naming the missing key, or
 rejecting a `redirectTargetUrl` that is not an `https://` URL.
 
-To find your Quick account name, open the Amazon Quick admin console. The
+To find your Quick account name, open the AWS Quick admin console. The
 account name (directory alias) is the account-name segment in your sign-in URL.
 Substitute it for `your-quick-account-name` in `redirectTargetUrl`.
 
 ## Verify
+
+Request your domain and check the response headers:
 
 ```bash
 curl -sI https://quick.example.com/
@@ -171,6 +179,8 @@ balancer or bucket. See [Amazon CloudFront pricing](https://aws.amazon.com/cloud
 for current rates.
 
 ## Cleanup
+
+Destroy the stack with the same context values you deployed with:
 
 ```bash
 npx cdk destroy \

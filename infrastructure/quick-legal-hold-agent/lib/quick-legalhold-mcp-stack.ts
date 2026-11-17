@@ -20,7 +20,7 @@ const SCOPE_NAME = 'invoke';
 const RESOURCE_SERVER_ID = 'holds-api';
 const FULL_SCOPE = `${RESOURCE_SERVER_ID}/${SCOPE_NAME}`; // holds-api/invoke
 
-// Amazon Quick's MCP OAuth redirect URI (resolved from existing Quick connectors).
+// AWS Quick's MCP OAuth redirect URI (resolved from existing Quick connectors).
 const DEFAULT_QUICK_REDIRECT_URI = 'https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback';
 const LOCAL_CALLBACK = 'http://localhost:8765/callback';
 
@@ -697,7 +697,7 @@ export class QuickLegalholdMcpStack extends cdk.Stack {
       type: 'AWS::BedrockAgentCore::Gateway',
       properties: {
         Name: 'quick-legalhold-mcp-gw',
-        Description: 'TEST: standalone MCP gateway for Amazon Quick legal-hold management tools.',
+        Description: 'TEST: standalone MCP gateway for AWS Quick legal-hold management tools.',
         ProtocolType: 'MCP',
         RoleArn: gatewayRole.roleArn,
         AuthorizerType: 'CUSTOM_JWT',

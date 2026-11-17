@@ -22,7 +22,7 @@ Documents available: invoices and contracts.
 
 When a query spans multiple of these tables (for example orders joined to
 shipments and products), ask the question against the Topic rather than a single
-dataset so the relationships resolve. If a lookup or a disruption scan returns no
+dataset. The Topic resolves the relationships between them. If a lookup or a disruption scan returns no
 match, or nothing above the user's threshold, report that plainly and do not
 invent findings.
 
@@ -38,7 +38,7 @@ When the user attaches a PDF or text invoice:
 4. Synthesize one recommendation: APPROVE, REVIEW, or REJECT, with the reason from each check.
 
 Worked example (from the sample documents): invoice SUP-INV-40003 totals
-$15,582.00 against PO-2026-41003 approved at $14,700.00, a 6.0 percent variance
-that exceeds the 5 percent tolerance, so invoice approval returns DIRECTOR_REVIEW
+$15,582.00 against PO-2026-41003 approved at $14,700.00. That 6.0 percent variance
+exceeds the 5 percent tolerance, so invoice approval returns DIRECTOR_REVIEW
 while the supplier passes approval and compliance. Invoice SUP-INV-40001 is the
 clean auto-approve case.

@@ -1,11 +1,11 @@
 ---
 category: Capability
-description: "Amazon Redshift MCP integration for database operations with Amazon Quick"
+description: "Amazon Redshift MCP integration for database operations with AWS Quick"
 ---
 
 # Redshift Data Query MCP - Amazon Redshift Database Integration
 
-**Amazon Redshift Data Query MCP integration** with Amazon Quick. This solution creates an MCP integration that enables read-only access to Amazon Redshift clusters through Quick using MCP Actions with AWS LAB Redshift MCP Server.
+**Amazon Redshift Data Query MCP integration** with AWS Quick. This solution creates an MCP integration that enables read-only access to Amazon Redshift clusters through Quick using MCP Actions with AWS LAB Redshift MCP Server.
 
 ## Architecture
 
@@ -30,6 +30,8 @@ This MCP integration enables:
 
 ## Project Structure
 
+The project is laid out as follows.
+
 ```text
 redshift-data-query-mcp/
  app.py                              # CDK deployment entry point
@@ -48,7 +50,11 @@ redshift-data-query-mcp/
 
 ## Quick Start
 
+The steps below deploy the gateway and collect the values you need for Quick.
+
 ### Prerequisites
+
+You need the following:
 
 - **AWS CLI** configured with appropriate permissions
 - **Node.js** (for AWS CDK)
@@ -56,6 +62,8 @@ redshift-data-query-mcp/
 - **Docker** (required for Lambda dependency bundling)
 
 ### 1. Clone Repository (Sparse Checkout)
+
+Clone only the folder for this integration.
 
 ```bash
 # Clone repository with sparse checkout
@@ -69,6 +77,8 @@ cd docs/integration/actions/MCP/redshift-data-query-mcp
 
 ### 2. Deploy AgentCore Gateway
 
+Install the CDK, sync the dependencies, and deploy the stack.
+
 ```bash
 npm install -g aws-cdk
 uv sync
@@ -77,11 +87,15 @@ cdk deploy --require-approval never
 
 ### 3. Get Outputs
 
+You can read the stack outputs from the console or the CLI.
+
 #### Option 1: AWS Console (Recommended)
+
+Use these steps in the console.
 
 1. Go to **AWS CloudFormation** in the AWS Console
 2. Find the **RedshiftAgentCoreStack** stack
-3. Click on the **Outputs** tab
+3. Choose the **Outputs** tab
 4. Copy the required values for Quick integration
 
 #### Option 2: CLI Commands
@@ -97,6 +111,8 @@ Key outputs for Quick Actions:
 - `ClientSecret` - OAuth2 client secret
 
 ## Available Tools
+
+The Lambda function exposes six tools.
 
 ### Redshift Tools (redshift_agentcore_lambda.py)
 
@@ -167,7 +183,7 @@ Key outputs for Quick Actions:
 
 ## Quick Integration
 
-Complete guide to integrate Amazon Redshift with Amazon Quick using MCP Actions.
+Complete guide to integrate Amazon Redshift with AWS Quick using MCP Actions.
 
 ### Integration Prerequisites
 
@@ -178,11 +194,15 @@ From your CDK deployment, you'll need:
 - `ClientSecret` - Cognito Client Secret
 - `CognitoTokenUrl` - OAuth2 token endpoint
 
-### Configure MCP Action in Amazon Quick
+### Configure MCP Action in AWS Quick
+
+Follow these steps in AWS Quick.
 
 #### Step 1: Access Integrations
 
-1. Navigate to **Integrations** in Amazon Quick
+Open the MCP setup page.
+
+1. Navigate to **Integrations** in AWS Quick
 2. Select **Actions**
 3. Select the **+** button for **Model Context Protocol**
 
@@ -196,6 +216,8 @@ Complete the MCP configuration:
 
 #### Step 3: Configure Authentication
 
+Set up service authentication with the values from your deployment outputs.
+
 1. For Authentication, select **Service Authentication**
 2. Keep **Service-to-service OAuth** within the Authentication type field
 3. Enter the authentication values from your AWS CDK deployment outputs:
@@ -206,11 +228,13 @@ Complete the MCP configuration:
 
 #### Step 4: Complete Setup
 
+Finish the setup in this order.
+
 1. Select **Create and Continue**
 2. Select **Next**
 3. Select **Next**
 
-### Usage in Amazon Quick
+### Usage in AWS Quick
 
 Example queries:
 
@@ -226,7 +250,7 @@ Example queries:
 
 **MCP Authentication Issues:**
 
-- Verify OAuth2 credentials in Amazon Quick MCP Actions
+- Verify OAuth2 credentials in AWS Quick MCP Actions
 - Check Amazon Cognito token endpoint configuration
 - Ensure client secret is correctly copied without extra spaces
 
@@ -240,7 +264,7 @@ Example queries:
 
 - Monitor Amazon Bedrock Agent Runtime throttling limits
 - Check AWS Lambda timeout and memory settings
-- Review Cross-Origin Resource Sharing (CORS) configuration for Amazon Quick
+- Review Cross-Origin Resource Sharing (CORS) configuration for AWS Quick
 
 **Deployment Issues:**
 
@@ -251,12 +275,14 @@ Example queries:
 
 ## Documentation
 
+These links give more detail.
+
 - [AWS CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/redshift-data-query-mcp/cdk/README.md) - Infrastructure deployment details
 - [AWS LAB Redshift MCP Server](https://awslabs.github.io/mcp/servers/redshift-mcp-server) - Official MCP server documentation
 
 ## Security
 
-See [CONTRIBUTING](/HOW-TO-CONTRIBUTE.md) for more information.
+See [CONTRIBUTING](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/HOW-TO-CONTRIBUTE/) for more information.
 
 ## License
 

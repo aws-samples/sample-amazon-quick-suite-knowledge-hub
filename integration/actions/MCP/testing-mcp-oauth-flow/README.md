@@ -1,6 +1,6 @@
 # MCP OAuth Tester
 
-Interactive Jupyter notebooks for testing OAuth authorization flows on remote [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers before integrating with Amazon QuickSight or any other MCP client.
+Interactive Jupyter notebooks for testing OAuth authorization flows on remote [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers before integrating with AWS Quick or any other MCP client.
 
 ## Table of Contents
 
@@ -9,7 +9,7 @@ Interactive Jupyter notebooks for testing OAuth authorization flows on remote [M
 - [Getting Started](#getting-started)
 - [Usage](#usage)
   - [3LO (Three-Legged OAuth)](#3lo-three-legged-oauth)
-  - [2LO (Two-Legged OAuth / Client Credentials)](#2lo-two-legged-oauth--client-credentials)
+  - [2LO (Two-Legged OAuth with Client Credentials)](#2lo-two-legged-oauth-with-client-credentials)
 - [Troubleshooting](#troubleshooting)
 - [Repository Structure](#repository-structure)
 - [Security](#security)
@@ -19,10 +19,10 @@ Interactive Jupyter notebooks for testing OAuth authorization flows on remote [M
 
 The [MCP authorization spec](https://modelcontextprotocol.io/specification/draft/basic/authorization) layers several RFCs on top of each other:
 
-- [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html) — Protected Resource Metadata
-- [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html) — Authorization Server discovery
-- [RFC 7591](https://www.rfc-editor.org/rfc/rfc7591.html) — Dynamic Client Registration
-- [OAuth 2.1](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-12) with [PKCE (RFC 7636)](https://www.rfc-editor.org/rfc/rfc7636.html) — Token exchange
+- [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html): Protected Resource Metadata
+- [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html): Authorization Server discovery
+- [RFC 7591](https://www.rfc-editor.org/rfc/rfc7591.html): Dynamic Client Registration
+- [OAuth 2.1](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-12) with [PKCE (RFC 7636)](https://www.rfc-editor.org/rfc/rfc7636.html): Token exchange
 
 Every MCP server implements a slightly different subset of these standards. Some advertise metadata in `WWW-Authenticate` headers, some don't. Some support Dynamic Client Registration, others require manual credentials. Some only expose [OpenID Connect discovery](https://openid.net/specs/openid-connect-discovery-1_0.html) instead of RFC 8414.
 
@@ -30,12 +30,16 @@ Rather than discovering these differences in production, these notebooks let you
 
 ## Prerequisites
 
+You need the following:
+
 - Python 3.9+
 - A remote MCP server URL
 - Client credentials if the server doesn't support Dynamic Client Registration (3LO)
 - Client ID and secret for machine-to-machine flows (2LO)
 
 ## Getting Started
+
+Set up the notebooks with these steps:
 
 1. Clone the repository:
 
@@ -66,19 +70,19 @@ Rather than discovering these differences in production, these notebooks let you
 
 ## Usage
 
-### For details on the 3LO notebook tester see [MCP 3LO auth flow test notebook guide](guide.md)
+For details on the 3LO notebook tester, see the [MCP 3LO auth flow test notebook guide](guide.md).
 
 ### 3LO (Three-Legged OAuth)
 
 Use `mcp_test-3LO.ipynb` for flows where a human user authenticates in a browser. The notebook walks through the full [MCP authorization spec](https://modelcontextprotocol.io/specification/draft/basic/authorization) step by step:
 
-1. **Probe the MCP endpoint** — Send a HEAD request, look for `WWW-Authenticate` with a `resource_metadata` URL
-2. **Fetch Protected Resource Metadata** — Discover the authorization server, available scopes, and resource identifier ([RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html))
-3. **Fetch Authorization Server Metadata** — Find the `authorization_endpoint`, `token_endpoint`, and `registration_endpoint` ([RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html))
-4. **Register a client** — Attempt Dynamic Client Registration, fall back to manual credentials ([RFC 7591](https://www.rfc-editor.org/rfc/rfc7591.html))
-5. **Authorize** — Open the browser, capture the callback with a local HTTP server, get an authorization code
-6. **Exchange for a token** — Trade the code + PKCE verifier for an access token
-7. **Test the connection** — Send MCP `initialize` and `tools/list` JSON-RPC requests
+1. **Probe the MCP endpoint**: Send a HEAD request, look for `WWW-Authenticate` with a `resource_metadata` URL
+2. **Fetch Protected Resource Metadata**: Discover the authorization server, available scopes, and resource identifier ([RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html))
+3. **Fetch Authorization Server Metadata**: Find the `authorization_endpoint`, `token_endpoint`, and `registration_endpoint` ([RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html))
+4. **Register a client**: Attempt Dynamic Client Registration, fall back to manual credentials ([RFC 7591](https://www.rfc-editor.org/rfc/rfc7591.html))
+5. **Authorize**: Open the browser, capture the callback with a local HTTP server, get an authorization code
+6. **Exchange for a token**: Trade the code + PKCE verifier for an access token
+7. **Test the connection**: Send MCP `initialize` and `tools/list` JSON-RPC requests
 
 Set your MCP endpoint in the first cell:
 
@@ -90,7 +94,7 @@ The default OAuth redirect URI is `http://localhost:8888/callback`. If your iden
 
 For a detailed explanation of the 3LO auth flow, see [mcp_3LO_auth_flow.md](mcp_3LO_auth_flow.md).
 
-### 2LO (Two-Legged OAuth / Client Credentials)
+### 2LO (Two-Legged OAuth with Client Credentials)
 
 Use `mcp_test-2LO.ipynb` for server-to-server integrations, background services, CI/CD pipelines, and daemon processes where no end user is present. This flow follows the [MCP OAuth Client Credentials extension](https://modelcontextprotocol.io/extensions/auth/oauth-client-credentials):
 
@@ -110,6 +114,8 @@ Use `mcp_test-2LO.ipynb` for server-to-server integrations, background services,
 | Token exchange returns `invalid_grant` | Code expired, PKCE mismatch, or wrong redirect URI | Re-run the authorization cell; check that `REDIRECT_URI` matches exactly |
 
 ## Repository Structure
+
+The folder contains these files:
 
 ```text
 ├── mcp_test-3LO.ipynb       # Interactive 3LO OAuth testing notebook

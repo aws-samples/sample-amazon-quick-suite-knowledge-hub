@@ -4,6 +4,8 @@ Complete guide to deploy the GenAI Operations Hub infrastructure.
 
 ## Prerequisites
 
+You need the following before you deploy:
+
 - AWS Account
 - AWS CLI configured
 - Python 3.8+
@@ -12,6 +14,8 @@ Complete guide to deploy the GenAI Operations Hub infrastructure.
 
 ## Step 1: Clone Repository
 
+Clone the repository and change to the sample folder:
+
 ```bash
 git clone <repository-url>
 cd genai-operations-hub
@@ -19,11 +23,15 @@ cd genai-operations-hub
 
 ## Step 2: Install CDK
 
+Install the AWS CDK CLI globally:
+
 ```bash
 npm install -g aws-cdk
 ```
 
 ## Step 3: Set Up Python Environment
+
+Create a virtual environment and install the requirements:
 
 ```bash
 cd infrastructure
@@ -34,6 +42,8 @@ pip install -r requirements.txt
 
 ## Step 4: Configure AWS Credentials
 
+Set the credentials and Region the AWS CLI and CDK use:
+
 ```bash
 aws configure
 # Enter your AWS Access Key ID, Secret Access Key, and Region
@@ -41,21 +51,27 @@ aws configure
 
 ## Step 5: Bootstrap CDK (First Time Only)
 
+Bootstrap the account and Region once before the first deployment:
+
 ```bash
 cdk bootstrap aws://ACCOUNT-ID/REGION
 ```
 
-Replace `ACCOUNT-ID` with your AWS account ID and `REGION` with your target region.
+Replace `ACCOUNT-ID` with your AWS account ID and `REGION` with your target Region.
 
 ## Step 6: Review Stack
+
+Synthesize the stack:
 
 ```bash
 cdk synth
 ```
 
-This generates CloudFormation template. Review the output.
+This generates the CloudFormation template. Review the output before you deploy.
 
 ## Step 7: Deploy Infrastructure
+
+Deploy the stack:
 
 ```bash
 cdk deploy
@@ -91,6 +107,8 @@ You'll need:
 
 ## Step 9: Upload Sample Data
 
+Look up the logs bucket, generate the sample logs, and upload them:
+
 ```bash
 # Get bucket name
 BUCKET_NAME=$(aws cloudformation describe-stacks \
@@ -106,6 +124,8 @@ aws s3 cp bedrock-logs/ s3://${BUCKET_NAME}/ --recursive
 ```
 
 ## Step 10: Verify Deployment
+
+Check the bucket contents and the Glue table, then run a test query in Athena:
 
 ```bash
 # Check S3 bucket
@@ -126,13 +146,19 @@ aws athena start-query-execution \
 
 ## Step 11: Enable Quick Sight
 
-1. Go to [QuickSight Console](https://quicksight.aws.amazon.com/)
+Quick Sight reads the logs through Athena:
+
+1. Go to [Quick Sight Console](https://quicksight.aws.amazon.com/)
 2. Sign up for Enterprise Edition (if not already)
 3. Follow Task 2 guide to connect to Athena
 
 ## Troubleshooting
 
+Each entry below lists commands that help you find the cause of a failure.
+
 ### CDK Bootstrap Fails
+
+Check which identity you're using, then retry with an explicit Region:
 
 ```bash
 # Ensure you have admin permissions
@@ -143,6 +169,8 @@ cdk bootstrap aws://ACCOUNT-ID/us-east-1
 ```
 
 ### Deployment Fails
+
+Read the latest stack events, or rerun the deployment with verbose output:
 
 ```bash
 # Check CloudFormation events
@@ -156,6 +184,8 @@ cdk deploy --verbose
 
 ### S3 Upload Fails
 
+Confirm that the bucket exists and check its policy:
+
 ```bash
 # Check bucket exists
 aws s3 ls | grep genai-ops
@@ -165,6 +195,8 @@ aws s3api get-bucket-policy --bucket ${BUCKET_NAME}
 ```
 
 ### Athena Query Fails
+
+Check the table and the workgroup:
 
 - Verify Glue table schema matches log structure
 - Check S3 path in table location
@@ -194,6 +226,8 @@ Monthly costs (approximate):
 **Total**: ~$20-30/month (excluding Quick Sight user fees)
 
 ## Security Best Practices
+
+Apply these practices before you use the sample with real logs:
 
 1. **Encrypt S3 buckets**: Enable default encryption
 2. **Restrict IAM roles**: Use least privilege

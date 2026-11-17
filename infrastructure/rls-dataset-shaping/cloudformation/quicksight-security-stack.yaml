@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  Amazon Quick Security Blog - QuickSight Resources
+  AWS Quick Security Blog - QuickSight Resources
   Creates datasets, groups, and supporting infrastructure for the
-  "Secure Amazon Quick from POC to Production" blog walkthrough.
+  "Secure AWS Quick from POC to Production" blog walkthrough.
 
 Parameters:
   AwsAccountId:

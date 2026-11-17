@@ -1,10 +1,12 @@
 ---
 name: "Bug Report 🐛"
-about: Report a bug in Amazon Quick Knowledge Hub
+about: Report a bug in AWS Quick Knowledge Hub
 title: "[BUG] "
 labels: bug
 assignees: '@aws-samples/quick-suite-team'
 ---
+
+<!-- markdownlint-disable MD036 -->
 
 **Describe the bug**
 A clear and concise description of what the bug is.
@@ -31,7 +33,7 @@ A clear and concise description of what you expected to happen.
 
 **Error Output**
 
-```
+```text
 Paste any error messages or logs here
 ```
 
@@ -39,7 +41,7 @@ Paste any error messages or logs here
 
 - OS: [e.g. macOS 14, Windows 11, Ubuntu 22.04]
 - Browser: [e.g. Chrome 120, Safari 17]
-- Amazon Quick Region: [e.g. us-east-1]
+- AWS Quick Region: [e.g. us-east-1]
 
 **Additional context**
 Add any other context about the problem here.

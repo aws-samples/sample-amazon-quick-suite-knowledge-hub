@@ -1,7 +1,7 @@
 [project]
 name = "service-now-ingestion-backend"
 version = "0.1.0"
-description = "ServiceNow → Amazon Quick ingestion — backend extraction services"
+description = "ServiceNow → AWS Quick ingestion — backend extraction services"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "pydantic>=2.9,<3",

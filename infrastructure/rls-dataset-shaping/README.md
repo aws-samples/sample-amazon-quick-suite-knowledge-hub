@@ -1,32 +1,36 @@
 ---
 category: Security
-description: "Row-Level Security & Dataset Shaping - Secure Amazon Quick from POC to Production"
+description: "Row-Level Security & Dataset Shaping - Secure AWS Quick from POC to Production"
 ---
+
+<!-- markdownlint-disable MD029 -->
 
 # Row-Level Security & Dataset Shaping
 
-**Secure Amazon Quick from POC to Production** using dataset shaping, Row-Level Security (RLS), purpose-built Chat Agents, human-in-the-loop Flows, and CloudTrail auditing.
+**Secure AWS Quick from POC to Production** using dataset shaping, Row-Level Security (RLS), purpose-built Chat Agents, human-in-the-loop Flows, and CloudTrail auditing.
 
-Many organizations build successful AI-powered analytics proofs of concept with Amazon Quick but encounter security gaps when scaling to production. Permissions alone are not enough — a chat agent that connects to a dataset with salary columns can surface that data regardless of dashboard-level restrictions, and a Flow that sends automated notifications without review can leak sensitive information to the wrong audience.
+Many organizations build successful AI-powered analytics proofs of concept with AWS Quick but encounter security gaps when scaling to production. Permissions alone are not enough. A chat agent that connects to a dataset with salary columns can surface that data regardless of dashboard-level restrictions. A Flow that sends automated notifications without review can leak sensitive information to the wrong audience.
 
-This sample demonstrates a **data-architecture-first approach** to closing those gaps. Using a fictional 5,000-employee company (AnyCompany), we walk through six security controls that scale with adoption.
+This sample demonstrates a **data-architecture-first approach** to closing those gaps. Using a fictional 5,000-employee company (AnyCompany), it walks through six security controls that scale with adoption.
 
 ## Purpose
 
 This solution demonstrates how to:
 
-- **Shape datasets to match authorization** — one source dataset split into three audience-aligned views
-- **Apply Row-Level Security (RLS)** — restrict data so users only see rows they're authorized for
-- **Configure purpose-built Chat Agents** — each scoped to a single dataset with explicit boundaries
-- **Gate outbound actions with Flows** — human-in-the-loop approval before any automated notification
-- **Classify documents before upload** — exclude sensitive data from shared Knowledge Bases
-- **Audit with CloudTrail** — capture all agent queries, dataset access, and permission changes
+- **Shape datasets to match authorization**: one source dataset split into three audience-aligned views
+- **Apply Row-Level Security (RLS)**: restrict data so users only see rows they're authorized for
+- **Configure purpose-built Chat Agents**: each scoped to a single dataset with explicit boundaries
+- **Gate outbound actions with Flows**: human-in-the-loop approval before any automated notification
+- **Classify documents before upload**: exclude sensitive data from shared Knowledge Bases
+- **Audit with CloudTrail**: capture all agent queries, dataset access, and permission changes
 
 The core principle: **security enforced by data architecture (column removal, dataset separation) is structurally stronger than security by permissions alone.**
 
 ## Project Structure
 
-```
+The sample folder is organized as follows:
+
+```text
 rls-dataset-shaping/
 ├── README.md
 ├── datasets/
@@ -57,21 +61,25 @@ rls-dataset-shaping/
 
 ## Prerequisites
 
-- An AWS account with Amazon Quick enabled (Enterprise plan)
-- At least three Amazon Quick user accounts representing different personas (or one user that can switch roles)
+Before you start, you need the following:
+
+- An AWS account with AWS Quick enabled (Enterprise plan)
+- At least three AWS Quick user accounts representing different personas (or one user that can switch roles)
 - AWS CLI v2 configured with appropriate permissions
 - AWS CloudTrail trail configured in your account
 - AWS Secrets Manager access if your Flows connect to external systems
 - Python 3.8+ (only if regenerating datasets)
 
 !!! note
-    This walkthrough uses QuickSight-managed identity (non-IDC). If your account uses AWS Identity Center (IDC) for identity federation, group management is handled in the Identity Center console rather than within QuickSight. The security patterns (dataset shaping, RLS, agent isolation) still apply, but group assignment steps will differ.
+    This walkthrough uses Quick Sight-managed identity (non-IDC). If your account uses AWS IAM Identity Center (IDC) for identity federation, group management is handled in the Identity Center console rather than within Quick Sight. The security patterns (dataset shaping, RLS, agent isolation) still apply, but group assignment steps will differ.
 
 ## Quick Start
 
+Work through these steps in order. Each step builds on the resources the previous one created.
+
 ### Step 1: Upload Datasets
 
-Upload the three datasets from the `datasets/` folder to Amazon Quick:
+Upload the datasets from the `datasets/` folder to AWS Quick:
 
 | Dataset | File | Audience | Rows |
 |---------|------|----------|------|
@@ -79,24 +87,26 @@ Upload the three datasets from the `datasets/` folder to Amazon Quick:
 | anycompany-employees-manager | `employee_data_manager.csv` | Department Managers | 5,000 (RLS-filtered) |
 | anycompany-employees-aggregated | `employee_data_aggregated.csv` | All Employees | 25 |
 
-Navigate to **Datasets > New dataset > Upload a file** in the Amazon Quick console.
+Navigate to **Datasets > New dataset > Upload a file** in the AWS Quick console.
 
 ### Step 2: Apply Row-Level Security
+
+Attach the RLS rules to the manager dataset:
 
 1. Upload `datasets/rls-rules.csv` as a new dataset named `anycompany-rls-rules`
 2. Open the `anycompany-employees-manager` dataset
 3. Go to the **Row-level security** tab
 4. Select `anycompany-rls-rules` as the permissions dataset
-5. Map `UserName` to the QuickSight username field and `Department` to the Department column
+5. Map `UserName` to the Quick Sight username field and `Department` to the Department column
 
 !!! tip "Finding your username"
-    Log in > create any analysis > add calculated field `username()` > place on a KPI visual. The displayed string is your RLS username. Use the exact string — even one character mismatch returns zero rows.
+    Sign in > create any analysis > add calculated field `username()` > place on a KPI visual. The displayed string is your RLS username. Use the exact string, because even one character mismatch returns zero rows.
 
-**Update `rls-rules.csv`** with your actual QuickSight usernames before uploading.
+**Update `rls-rules.csv`** with your actual Quick Sight usernames before uploading.
 
 ### Step 3: Create Groups
 
-Create three groups in **Manage Amazon Quick > Manage Groups**:
+Create three groups in **Manage AWS Quick > Manage Groups**:
 
 | Group | Members | Dataset Access |
 |-------|---------|----------------|
@@ -105,6 +115,8 @@ Create three groups in **Manage Amazon Quick > Manage Groups**:
 | all-employees | All other users | aggregated only |
 
 ### Step 4: Create a Space and Upload Knowledge Base Documents
+
+Create the Space, add only the documents that are safe to share, and then share it:
 
 1. Navigate to **Spaces > Create Space** and name it `AnyCompany HR`
 2. Upload the following documents from the `documents/` folder:
@@ -141,6 +153,8 @@ See `agents/*.md` for the full persona prompts and test queries.
 Test each agent with queries that should succeed and queries that should be refused. See the test tables in each agent's markdown file under `agents/`.
 
 ### Step 7: Create the Weekly Attrition Risk Alert Flow
+
+Build the Flow with its approval gate:
 
 1. Navigate to **Flows > Create Flow**
 2. Name: `Weekly Attrition Risk Alert`
@@ -204,12 +218,16 @@ Run through this before any new asset goes to production:
 
 ### Datasets
 
+Check each dataset:
+
 - [ ] Dataset is scoped to a single audience
 - [ ] Sensitive columns are removed from the dataset, not just hidden
 - [ ] RLS is applied and tested with at least two user accounts
 - [ ] Permissions assigned to groups, not individuals
 
 ### Chat Agents
+
+Check each chat agent:
 
 - [ ] Agent connects to exactly one dataset
 - [ ] Topic excludes columns that should not be queryable
@@ -218,12 +236,16 @@ Run through this before any new asset goes to production:
 
 ### Spaces and Knowledge Bases
 
+Check each Space and its documents:
+
 - [ ] Every document classified before upload
 - [ ] No document contains individual PII unless required for the audience
 - [ ] View, query, and upload permissions set separately
 - [ ] Upload restricted to content owners only
 
 ### Flows
+
+Check each Flow:
 
 - [ ] Flow uses an RLS-protected, column-pruned dataset
 - [ ] Human approval step exists before any outbound action
@@ -250,7 +272,7 @@ To avoid ongoing charges, delete these resources when no longer needed:
 - Knowledge Base documents
 - The AnyCompany HR Space
 - Three employee datasets + RLS rules dataset
-- QuickSight groups
+- Quick Sight groups
 - CloudTrail trail (if created only for this walkthrough)
 
 ## License

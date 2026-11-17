@@ -12,17 +12,16 @@ Parameters:
     Default: ""
   AllowedDomains:
     Type: CommaDelimitedList
-    Description: Comma-separated list of allowed domains for Amazon Quick embedding
+    Description: Comma-separated list of allowed domains for AWS Quick embedding
     Default: "http://localhost:3000,https://localhost:3000"
 
 Resources:
-  QuickChatEmbeddingAPI:
+  QuickChatEmbeddingHttpApi:
     Type: AWS::ApiGatewayV2::Api
     Properties:
       Description: QuickChat Embedding API
       Name: quickchat-embedding-api
       ProtocolType: HTTP
-      Target: !GetAtt TTELambda.Arn
       CorsConfiguration:
         AllowOrigins:
           - "*"
@@ -34,25 +33,42 @@ Resources:
           - Content-Type
           - Authorization
 
+  TTELambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref QuickChatEmbeddingHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt TTELambda.Arn
+      PayloadFormatVersion: "2.0"
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref QuickChatEmbeddingHttpApi
+      StageName: $default
+      AutoDeploy: true
+
   PostRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:
-      ApiId: !Ref QuickChatEmbeddingAPI
+      ApiId: !Ref QuickChatEmbeddingHttpApi
       RouteKey: POST /
       AuthorizationType: JWT
       AuthorizerId: !Ref JWTAuthorizer
+      Target: !Sub integrations/${TTELambdaIntegration}
 
   OptionsRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:
-      ApiId: !Ref QuickChatEmbeddingAPI
+      ApiId: !Ref QuickChatEmbeddingHttpApi
       RouteKey: OPTIONS /
       AuthorizationType: NONE
+      Target: !Sub integrations/${TTELambdaIntegration}
 
   JWTAuthorizer:
     Type: AWS::ApiGatewayV2::Authorizer
     Properties:
-      ApiId: !Ref QuickChatEmbeddingAPI
+      ApiId: !Ref QuickChatEmbeddingHttpApi
       AuthorizerType: JWT
       IdentitySource:
         - "$request.header.Authorization"
@@ -114,7 +130,11 @@ Resources:
           def lambda_handler(event, context):
             logger.info("IDC_APP_CLIENT_ID: %s" % IDC_APP_CLIENT_ID)
             logger.info("ROLE_ARN: %s" % ROLE_ARN)
-            logger.info("Received event: %s" % json.dumps(event))
+            logger.info("Received request: method=%s route=%s requestId=%s" % (
+              event.get("requestContext", {}).get("http", {}).get("method"),
+              event.get("routeKey"),
+              event.get("requestContext", {}).get("requestId")
+            ))
             if (event["version"] == "1.0"):
               httpMethod = event['httpMethod']
             elif (event["version"] == "2.0"):
@@ -131,13 +151,27 @@ Resources:
               }
             elif httpMethod == 'POST':
               logger.info('Handling POST event')
-              post_string = event['body']
+              if not event.get("requestContext", {}).get("authorizer", {}).get("jwt"):
+                logger.warning("Rejecting POST without JWT authorizer context")
+                return {
+                  'statusCode': 401,
+                  'headers': CORS_HEADERS,
+                  "body": json.dumps({'embedUrl': '', 'status': 'ERROR: Unauthorized'})
+                }
+              auth_header = (event.get("headers") or {}).get("authorization", "")
+              header_token = auth_header[7:] if auth_header.lower().startswith("bearer ") else auth_header
+              post_string = event.get('body') or ''
               if len(post_string) > 0:
                 post_json = json.loads(post_string)
-                logger.info("Received post json: %s" % json.dumps(post_json))
                 if ('idToken' in post_json):
                   id_token = post_json['idToken']
-                  logger.info("ID Token received (first 50 chars): %s" % id_token[:50])
+                  if id_token != header_token:
+                    logger.warning("Rejecting POST: body idToken does not match authorized bearer token")
+                    return {
+                      'statusCode': 401,
+                      'headers': CORS_HEADERS,
+                      "body": json.dumps({'embedUrl': '', 'status': 'ERROR: Unauthorized'})
+                    }
                   logger.info("IDC_APP_CLIENT_ID being used: %s" % IDC_APP_CLIENT_ID)
 
                   try:
@@ -147,7 +181,6 @@ Resources:
                         "aud": cognito_claims.get("aud"),
                         "exp": cognito_claims.get("exp"),
                         "sub": cognito_claims.get("sub"),
-                        "email": cognito_claims.get("email"),
                         "token_use": cognito_claims.get("token_use")
                     })
                   except Exception as decode_error:
@@ -157,7 +190,6 @@ Resources:
                     logger.info("=== CALLING OIDC CREATE TOKEN ===")
                     logger.info("Using clientId: %s" % IDC_APP_CLIENT_ID)
                     logger.info("Using grantType: urn:ietf:params:oauth:grant-type:jwt-bearer")
-                    logger.info("Using assertion (first 100 chars): %s" % id_token[:100])
 
                     oidc_token_response = oidc_client.create_token_with_iam(
                       clientId = IDC_APP_CLIENT_ID,
@@ -183,7 +215,6 @@ Resources:
                   else:
                     logger.info("=== DECODING OIDC TOKEN ===")
                     claims = jwt.decode(oidc_token_response["idToken"], options={"verify_signature": False})
-                    logger.info("oidc_token_response claims: %s" % claims)
                     logger.info("=== ASSUMING ROLE ===")
                     x = datetime.datetime.now()
                     try:
@@ -236,7 +267,6 @@ Resources:
                             SessionLifetimeInMinutes=600  # 10 hours
                         )
                         logger.info("Embed URL generated successfully")
-                        logger.info("Generated embed URL: %s" % response['EmbedUrl'])
                         result = {
                           'embedUrl': response['EmbedUrl'],
                           'status': 'SUCCESS'
@@ -298,7 +328,7 @@ Resources:
       FunctionName: !Ref TTELambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuickChatEmbeddingAPI}/$default/$default
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuickChatEmbeddingHttpApi}/$default/*/
 
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -638,7 +668,7 @@ Outputs:
 
   ApiEndpoint:
     Description: API Endpoint to be used to get the embed URL
-    Value: !Sub https://${QuickChatEmbeddingAPI}.execute-api.${AWS::Region}.amazonaws.com
+    Value: !Sub https://${QuickChatEmbeddingHttpApi}.execute-api.${AWS::Region}.amazonaws.com
 
   UserPoolClientId:
     Description: Client ID of the User Pool
@@ -653,5 +683,5 @@ Outputs:
     Value: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
 
   QuickSuiteRole:
-    Description: Role to be assumed to invoke Amazon Quick embedding
+    Description: Role to be assumed to invoke AWS Quick embedding
     Value: !GetAtt QuickSuiteRole.Arn

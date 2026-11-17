@@ -7,10 +7,10 @@
 # and are NOT visible to a human user until explicitly shared. This script:
 #   1. Resolves a QuickSight principal (user OR group) you pass in.
 #   2. Grants that principal CO_OWNER on the Athena data source + 9 datasets.
-#   3. Creates a Q Topic over the datasets and shares it.
+#   3. Creates a Topic over the datasets and shares it.
 #   4. Creates a Quick Space, attaches the datasets + Topic, and shares it.
 #
-# Why a script and not CDK: Amazon Quick Spaces and Topic ownership are not
+# Why a script and not CDK: AWS Quick Spaces and Topic ownership are not
 # fully expressible in CloudFormation, and the owning principal is per-account
 # input — matching the quick-for-supply-chain example's setup_quick.sh.
 #
@@ -157,7 +157,7 @@ for ds_id in "${DATASET_IDS[@]}"; do
   fi
 done
 
-# ── Step 3: Create a Q Topic over the datasets and share it ────────────────
+# ── Step 3: Create a Topic over the datasets and share it ────────────────
 echo "=== Step 3: Topic ${TOPIC_ID} ==="
 TOPIC_ARN=""
 if qs_supports "create-topic-v2"; then
@@ -172,7 +172,7 @@ if qs_supports "create-topic-v2"; then
   # map dataset id -> whether it was shared/present
   _present() { case " ${PRESENT_DATASETS[*]} " in *" $1 "*) return 0;; *) return 1;; esac; }
   {
-    printf '{"Name":"%s","Description":"Amazon Quick observability datasets + relationships.","DataSets":[' "${TOPIC_NAME}"
+    printf '{"Name":"%s","Description":"AWS Quick observability datasets + relationships.","DataSets":[' "${TOPIC_NAME}"
     first=1
     for ds_id in "${PRESENT_DATASETS[@]}"; do
       [[ $first -eq 0 ]] && printf ','
@@ -229,7 +229,7 @@ elif qs_supports "create-space"; then
   aws quicksight create-space \
     --aws-account-id "${ACCOUNT_ID}" --space-id "${SPACE_ID}" \
     --name "${TOPIC_NAME}" \
-    --description "Amazon Quick observability — datasets, Topic, and metrics." \
+    --description "AWS Quick observability — datasets, Topic, and metrics." \
     --region "${REGION}" >/dev/null 2>&1 \
     && echo "  Created Space '${SPACE_ID}'." \
     || echo "  WARN create-space failed — continuing."
@@ -293,5 +293,5 @@ fi
 
 echo ""
 echo "Done. Shared with: ${PRINCIPAL_LABELS[*]}"
-echo "Open Amazon Quick as any of those principals: the datasets, Topic,"
+echo "Open AWS Quick as any of those principals: the datasets, Topic,"
 echo "dashboard, and Space '${SPACE_ID}' should now be visible."

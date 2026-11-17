@@ -236,6 +236,6 @@ echo "════════════════════════�
 echo ""
 echo "✅ AgentCore deployed. Next:"
 echo "   1) ./generate_and_upload.sh   (generate synthetic data + upload to S3)"
-echo "   2) [MANUAL in AWS console] add the S3 bucket to Amazon Quick AWS resources, AND enable/link the Agent Registry in Quick + create the MCP connectors (see README)"
+echo "   2) [MANUAL in AWS console] add the S3 bucket to AWS Quick AWS resources, AND enable/link the Agent Registry in Quick + create the MCP connectors (see README)"
 echo "   3) ./setup_quick.sh --s3-bucket <bucket> (--quicksight-user <u> | --quicksight-group <g>)   (datasets + KB + Space + agent)"
 echo ""

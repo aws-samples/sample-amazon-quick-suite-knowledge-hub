@@ -1,8 +1,8 @@
 # Connector Capability Map
 
-Lookup data describing the five supply chain connectors this skill orchestrates
+Lookup data describing the supply chain connectors this skill orchestrates
 and the actions each exposes. These are custom action connectors configured in
-Amazon Quick (four business rule MCP servers plus one order fulfillment agent).
+AWS Quick (four business rule MCP servers plus one order fulfillment agent).
 Introspect each connector at runtime to confirm the exact tool names and
 required parameters before calling. Names below are the business capability, not
 a hardcoded function signature.
@@ -13,6 +13,8 @@ connector as parameters.
 
 ## sc-quoting (quoting rules)
 
+The quoting connector prices quotes and checks them against policy:
+
 - Generate a quote: takes account id, customer tier, line items, and the product
   catalog data (sku, name, list price, cost, minimum margin). Returns line
   pricing, tier and volume discounts, margins, totals, validity.
@@ -20,6 +22,8 @@ connector as parameters.
 - Validate a quote: checks a draft quote against margin floors and approval thresholds.
 
 ## sc-governance (compliance and authority rules)
+
+The governance connector checks suppliers, spending authority, and regulations:
 
 - Check supplier approval: takes the supplier record (approval status, risk tier,
   categories, next audit date) plus optional category and PO value. Returns an
@@ -34,12 +38,16 @@ Note: there is no audit-logging tool on this connector. Do not reference one.
 
 ## sc-invoice (approval rules)
 
+The invoice connector decides invoice approvals and reports the payment queue:
+
 - Apply approval rules: takes invoice data and PO data (plus optional goods
   receipt and vendor contract). Returns a decision (auto-approve, manager review,
   director review, VP review, reject) with per-line results and reasoning.
 - Get payment queue: returns the AP aging report and payment schedule.
 
 ## sc-disruption (impact and mitigation rules)
+
+The disruption connector sizes a disruption and plans the response:
 
 - Assess disruption impact: takes the disruption plus affected orders, shipments,
   inventory, and customer accounts. Returns revenue at risk and impact counts.
@@ -51,7 +59,7 @@ Note: there is no audit-logging tool on this connector. Do not reference one.
 
 ## sc-order-fulfillment (multi-step reasoning agent)
 
-A single agent connector that reasons across the four rule connectors above.
+A single agent connector that reasons across the rule connectors above.
 Send it a natural-language instruction plus any space data as context. It has no
 direct data connections, so pre-fetch the data and include it in the request.
 Use it only for requests that span three or more domains or need combined

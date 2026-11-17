@@ -107,7 +107,7 @@ class ExportListActivity:
                 exported_at=datetime.now(UTC),
                 instructions=(
                     f"To create a Quick Sight dataset: "
-                    f"1) Open Amazon Quick and choose Datasets. "
+                    f"1) Open AWS Quick and choose Datasets. "
                     f"2) Choose Create dataset, then Create data source, then select Amazon S3. "
                     f"3) Choose Next. "
                     f"4) Enter a data source name (e.g. '{list_name}'). "

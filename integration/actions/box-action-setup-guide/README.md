@@ -1,12 +1,13 @@
+<!-- markdownlint-disable MD029 -->
 # Box - Action Setup Guide
 
-Quick users can connect to 3P agents using the custom MCP connector in Quick. The steps below explain how a user can connect to Box's agents from Quick.
+AWS Quick users can connect to third-party agents using the custom MCP connector in Quick. The steps below explain how a user can connect to Box's agents from Quick.
 
 ## Step 1: Access Integrations
 
-1) From the Quick Home screen, select **Integrations** from the Connections section on the left navigation panel
-2) Select the **Actions** tab in the main panel
-3) Select the plus (+) sign in the **Model Context Protocol** tile in the Set up a new integration section
+1) From the Quick Home screen, select **Integrations** from the Connections section on the left navigation panel.
+2) Select the **Actions** tab in the main panel.
+3) Select the plus (+) sign in the **Model Context Protocol** tile in the Set up a new integration section.
 
 ![Quick Integrations](images/image_1.png)
 
@@ -14,7 +15,7 @@ Quick users can connect to 3P agents using the custom MCP connector in Quick. Th
 
 4) On the Create integration screen, enter the **Name** and **Description** for the Box integration
 5) For MCP server endpoint, enter Box's remote MCP server: `https://mcp.box.com`
-6) Click **Next**
+6) Choose **Next**
 
 ![Create integration form](images/image_2.png)
 
@@ -22,17 +23,9 @@ Quick users can connect to 3P agents using the custom MCP connector in Quick. Th
 
 7) Select the authentication method: **User authentication** for Box
 
-8) Enter the following details:
+8) Enter the **Client ID**, **Client secret**, **Token URL**, and **Authorization URL**.
 
-   a. **Client ID**
-
-   b. **Client secret**
-
-   c. **Token URL**
-
-   d. **Authorization URL**
-
-9) Click **Create and continue**
+9) Choose **Create and continue**
 
 This allows the underlying OAuth security framework to verify the identity of the client application and establish a secure, authenticated connection.
 
@@ -40,8 +33,8 @@ This allows the underlying OAuth security framework to verify the identity of th
 
 ## Step 4: Grant Authorization
 
-10) A pop-up window from Box MCP server will appear with a request to approve authorization for the Amazon Quick MCP client
-11) Click **Grant Access to Box**
+10) A pop-up window from Box MCP server will appear with a request to approve authorization for the AWS Quick MCP client
+11) Choose **Grant Access to Box**
 
 ![Box authorization popup](images/image_4.png)
 

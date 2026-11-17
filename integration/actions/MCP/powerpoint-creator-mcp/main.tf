@@ -40,7 +40,7 @@ variable "presentation_retention_days" {
 }
 
 variable "access_token_validity_minutes" {
-  description = "Lifetime in minutes of the OAuth access tokens issued to Amazon Quick"
+  description = "Lifetime in minutes of the OAuth access tokens issued to AWS Quick"
   type        = number
   default     = 60
 
@@ -291,7 +291,7 @@ resource "aws_lambda_function" "ppt_creator" {
   depends_on = [aws_iam_role_policy.lambda_policy]
 }
 
-# Amazon Cognito: OAuth 2.0 client credentials for Amazon Quick service authentication
+# Amazon Cognito: OAuth 2.0 client credentials for AWS Quick service authentication
 resource "aws_cognito_user_pool" "ppt_pool" {
   name = "ppt-creator-${random_id.bucket_suffix.hex}"
 
@@ -443,17 +443,17 @@ output "api_gateway_url" {
 }
 
 output "cognito_token_url" {
-  description = "OAuth 2.0 token endpoint to configure in Amazon Quick service authentication"
+  description = "OAuth 2.0 token endpoint to configure in AWS Quick service authentication"
   value       = "https://${aws_cognito_user_pool_domain.ppt_domain.domain}.auth.${data.aws_region.current.name}.amazoncognito.com/oauth2/token"
 }
 
 output "cognito_client_id" {
-  description = "OAuth 2.0 client ID to configure in Amazon Quick service authentication"
+  description = "OAuth 2.0 client ID to configure in AWS Quick service authentication"
   value       = aws_cognito_user_pool_client.quick_client.id
 }
 
 output "cognito_client_secret" {
-  description = "OAuth 2.0 client secret to configure in Amazon Quick service authentication"
+  description = "OAuth 2.0 client secret to configure in AWS Quick service authentication"
   value       = aws_cognito_user_pool_client.quick_client.client_secret
   sensitive   = true
 }
