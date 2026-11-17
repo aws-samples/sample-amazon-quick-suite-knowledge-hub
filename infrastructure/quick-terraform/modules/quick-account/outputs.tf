@@ -1,7 +1,7 @@
 # Module: quick-account - outputs
 
 output "account_name" {
-  description = "Name of the Amazon Quick account subscription."
+  description = "Name of the AWS Quick account subscription."
   value       = aws_quicksight_account_subscription.this.account_name
 }
 

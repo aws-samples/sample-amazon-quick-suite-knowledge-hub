@@ -11,7 +11,7 @@ set -euo pipefail
 #   - creates one SPICE dataset per Glue table (all through that Athena source),
 #   - creates an S3 knowledge base over s3://$BUCKET/knowledge-base/,
 #   - attaches all datasets + KB to the Space,
-#   - creates/updates the Amazon Quick agent (attached to the Space),
+#   - creates/updates the AWS Quick agent (attached to the Space),
 #   - shares every resource (as owner) with a QuickSight user OR group.
 #
 # NO bucket creation, NO upload, NO interactive pause — granting Quick access
@@ -702,8 +702,8 @@ if qs_supports "update-space-permissions"; then
 fi
 echo ""
 
-# ── Step 6: Create/update the Amazon Quick agent ────────────────
-echo "━━━ Step 6: Amazon Quick agent ━━━"
+# ── Step 6: Create/update the AWS Quick agent ────────────────
+echo "━━━ Step 6: AWS Quick agent ━━━"
 # The agent's --spaces expects the Space ARN (not the id).
 SPACE_ARN="$(aws quicksight describe-space \
   --aws-account-id "${ACCOUNT_ID}" --space-id "${SPACE_ID}" \
@@ -814,6 +814,6 @@ echo "  Space:           ${SPACE_ID}"
 echo "  Agent:           ${AGENT_ID}  (${AGENT_NAME})"
 echo "  Shared with:     ${PRINCIPAL_LABEL}"
 echo ""
-echo "  Open Amazon Quick → Agents → '${AGENT_NAME}' (attached to Space '${SPACE_ID}')."
+echo "  Open AWS Quick → Agents → '${AGENT_NAME}' (attached to Space '${SPACE_ID}')."
 echo "  Edit instructions in ${INSTRUCTIONS_FILE} and re-run to update."
 echo ""

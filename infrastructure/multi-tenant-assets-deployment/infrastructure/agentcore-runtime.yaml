@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  Quick asset migration - deploys the runtime that migrates Amazon Quick assets
+  Quick asset migration - deploys the runtime that migrates AWS Quick assets
   (agents, action connectors, and knowledge bases) between accounts.
 
 # ═══════════════════════════════════════════════════════════════════
@@ -64,7 +64,7 @@ Parameters:
     Default: "https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback"
     Description: >
       OAuth2 redirect/callback URL(s) for the 3LO (authorization_code) flow used
-      by the Amazon Quick MCP connector. Must exactly match the redirect URI the
+      by the AWS Quick MCP connector. Must exactly match the redirect URI the
       connector sends.
 
   # ── Test user (3LO login) ──
@@ -146,7 +146,7 @@ Resources:
       UserPoolId: !Ref UserPool
 
   # ── App client WITH a generated secret (3LO authorization_code flow) ──
-  # Amazon Quick's MCP connector authenticates via the OAuth2 authorization_code
+  # AWS Quick's MCP connector authenticates via the OAuth2 authorization_code
   # (3LO / per-user login) flow. The runtime authorizer validates the token's
   # client_id against AllowedClients, which a 3LO token from this client carries.
   UserPoolClient:
@@ -381,7 +381,7 @@ Outputs:
     Description: AgentCore Runtime ARN.
     Value: !GetAtt MigratorRuntime.AgentRuntimeArn
   McpEndpoint:
-    Description: AgentCore MCP invocations endpoint URL (register this in the Amazon Quick connector).
+    Description: AgentCore MCP invocations endpoint URL (register this in the AWS Quick connector).
     Value: !GetAtt McpEndpoint.McpEndpoint
   RuntimeId:
     Description: AgentCore Runtime ID.
@@ -408,7 +408,7 @@ Outputs:
     Description: OAuth2 token endpoint (authorization_code grant / 3LO).
     Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
   AuthorizeEndpoint:
-    Description: OAuth2 authorize endpoint (3LO user login) for the Amazon Quick connector.
+    Description: OAuth2 authorize endpoint (3LO user login) for the AWS Quick connector.
     Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/oauth2/authorize"
   OAuthScope:
     Description: Scopes to request in the authorization_code flow.

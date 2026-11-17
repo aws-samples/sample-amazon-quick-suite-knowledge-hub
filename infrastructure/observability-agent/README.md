@@ -5,7 +5,7 @@ description: "Quick Observability Agent - Natural Language Monitoring"
 
 # Quick Observability Agent - Natural Language Monitoring
 
-**Quick Observability MCP integration** with Amazon Quick. This solution creates an MCP integration that enables natural language monitoring of Quick, and builds a queryable data lake + QuickSight datasets for deep historical analysis and dashboards. It combines live CloudWatch/CloudTrail queries with an Athena-backed data lake that captures every Quick vended log type, all CloudTrail events, and all AWS/QuickSight CloudWatch metrics.
+**Quick Observability MCP integration** with AWS Quick. This solution creates an MCP integration that enables natural language monitoring of Quick, and builds a queryable data lake + Quick Sight datasets for deep historical analysis and dashboards. It combines live CloudWatch/CloudTrail queries with an Athena-backed data lake that captures every Quick vended log type, all CloudTrail events, and all `AWS/QuickSight` CloudWatch metrics.
 
 **Components:**
 
@@ -14,7 +14,7 @@ description: "Quick Observability Agent - Natural Language Monitoring"
 - **Observability data lake**: S3 bucket + Glue Data Catalog + Athena workgroup
 - **CloudWatch Logs delivery**: all 7 Quick vended log types delivered to S3 (and 3 also to CloudWatch Log Groups for live Insights queries)
 - **Poller Lambdas**: 5-minute CloudTrail poller + CloudWatch-metrics poller that snapshot data into the lake
-- **QuickSight datasets**: one Athena data source + one SPICE dataset per table, ready for dashboards
+- **Quick Sight datasets**: one Athena data source + one SPICE dataset per table, ready for dashboards
 - **Quick Integration**: MCP Actions for conversational monitoring
 - **Data Sources**: CloudWatch Logs, CloudWatch Metrics, CloudTrail, and the Athena data lake
 
@@ -23,18 +23,20 @@ description: "Quick Observability Agent - Natural Language Monitoring"
 This solution enables:
 
 - **Natural Language Monitoring**: Query Quick metrics through conversation
-- **Deep analysis**: Athena SQL over 9 tables for per-user storage, per-user and per-agent agent-hours, last-login, MAU/WAU trends, asset usage by capability, and full audit history
+- **Deep analysis**: Athena SQL over 9 tables for per-user storage, per-user and per-agent agent-hours, last-login, monthly and weekly active user (MAU/WAU) trends, asset usage by capability, and full audit history
 - **Comprehensive coverage**: every Quick vended log type, all CloudTrail management + data events, and the full AWS/QuickSight CloudWatch metric catalog
-- **Dashboards**: QuickSight datasets over the same data for building detailed dashboards
+- **Dashboards**: Quick Sight datasets over the same data for building detailed dashboards
 - **Dynamic Schema Discovery**: discover log fields and data-lake tables for custom queries
 
 ## 🏗️ Architecture
 
-![Amazon Quick Observability architecture. An end user (operator) chats with the Quick agent inside a single Amazon Quick instance (QuickSight is part of Amazon Quick, not a separate service). That one Amazon Quick instance emits telemetry (seven vended log types, CloudTrail events for quicksight.amazonaws.com, and AWS/QuickSight CloudWatch metrics), renders the QuickSight usage-metrics dashboards (Athena data source plus ten SPICE datasets, five sheets, a Q&A Topic and a Space), and hosts the Quick agent whose observability MCP connector lives inside Quick. Ingestion: vended logs flow through Amazon CloudWatch Logs delivery and Amazon Data Firehose (seven delivery streams, GZIP JSON), while two AWS Lambda pollers on an Amazon EventBridge rate(5 minutes) schedule with a 15-minute lookback pull CloudTrail and CloudWatch metrics; all land in an Amazon S3 data lake. Data lake: the S3 bucket is cataloged by AWS Glue (database quick_observability, nine external JSON-SerDe tables) and queried by Amazon Athena (workgroup quick-observability, results written back to S3), which imports SPICE datasets into the Quick dashboards. A standalone Amazon Bedrock AgentCore Gateway (MCP endpoint, CUSTOM_JWT / 3LO) with its MCP Lambda — quick_observability (natural language to read-only Athena SQL) and export_user_data (DSAR export) — bridges the Quick agent to Athena.](images/quick_observability_architecture.svg)
+![AWS Quick Observability architecture. An end user (operator) chats with the Quick agent inside a single AWS Quick instance (Quick Sight is part of AWS Quick, not a separate service). That one AWS Quick instance emits telemetry: seven vended log types, CloudTrail events for quicksight.amazonaws.com, and AWS/QuickSight CloudWatch metrics. It renders the Quick Sight usage-metrics dashboards (Athena data source plus ten SPICE datasets, five sheets, a Q&A Topic and a Space). It also hosts the Quick agent whose observability MCP connector lives inside Quick. Ingestion: vended logs flow through Amazon CloudWatch Logs delivery and Amazon Data Firehose (seven delivery streams, GZIP JSON). Two AWS Lambda pollers on an Amazon EventBridge rate(5 minutes) schedule with a 15-minute lookback pull CloudTrail and CloudWatch metrics. All of it lands in an Amazon S3 data lake. Data lake: AWS Glue catalogs the S3 bucket (database quick_observability, nine external JSON-SerDe tables). Amazon Athena queries it (workgroup quick-observability, results written back to S3) and imports SPICE datasets into the Quick dashboards. A standalone Amazon Bedrock AgentCore Gateway (MCP endpoint, CUSTOM_JWT / 3LO) bridges the Quick agent to Athena. Its MCP Lambda exposes quick_observability (natural language to read-only Athena SQL) and export_user_data (DSAR export).](images/quick_observability_architecture.svg)
 
 **Data-lake tables (Glue/Athena):** `chat_events`, `feedback_events`, `agent_hours`, `agent_metadata`, `index_usage`, `kb_file_sync`, `dlp_events` (7 vended-log types), plus `cloudtrail_events` and `metric_snapshots` (poller output).
 
 ## 📁 Project Structure
+
+The project folder is organized as follows:
 
 ```text
 observability-agent/
@@ -63,6 +65,8 @@ observability-agent/
 
 ## 🚀 Quick Start
 
+Check the prerequisites, then clone, deploy, and collect the stack outputs.
+
 ### Prerequisites
 
 Before you begin, ensure you have:
@@ -72,7 +76,7 @@ Before you begin, ensure you have:
 - Node.js and npm installed
 - Python 3.9 or later
 - AWS CDK CLI installed (`npm install -g aws-cdk`)
-- Amazon Quick Sight Enterprise Edition with Quick enabled
+- AWS Quick Sight Enterprise Edition with Quick enabled
 
 **Required IAM Permissions:**
 
@@ -84,6 +88,8 @@ Before you begin, ensure you have:
 - API Gateway (create APIs)
 
 ### 1. Clone Repository (Sparse Checkout)
+
+Clone only this project with a sparse checkout:
 
 ```bash
 # Clone repository with sparse checkout
@@ -97,14 +103,14 @@ cd "docs/manage quick/observability-agent"
 
 ### 2. Deploy AgentCore Gateway
 
-**Recommended — one command (prompts for the inputs and runs every step in order):**
+**Recommended: one command (prompts for the inputs and runs every step in order):**
 
 ```bash
 uv sync
 ./deploy.sh
 ```
 
-`deploy.sh` asks for your AWS region and the QuickSight user(s)/group(s) to share with, then runs `cdk deploy` followed by `setup_quick.sh` (dataset sharing + Topic + Space). It uses a global `cdk` if present, otherwise falls back to `npx aws-cdk@2`. For non-interactive/CI use, pass everything as flags:
+`deploy.sh` asks for your AWS region and the Quick Sight user(s)/group(s) to share with, then runs `cdk deploy` followed by `setup_quick.sh` (dataset sharing + Topic + Space). It uses a global `cdk` if present, otherwise falls back to `npx aws-cdk@2`. For non-interactive/CI use, pass everything as flags:
 
 ```bash
 ./deploy.sh --region us-east-1 --quicksight-group observability-admins
@@ -123,31 +129,35 @@ cdk deploy --require-approval never
 ./setup_quick.sh --quicksight-group observability-admins
 ```
 
-To grant QuickSight users/groups owner access on the data source and datasets **at deploy time** instead of via `setup_quick.sh`, pass their ARNs (note: this does NOT create the Topic/Space — those are only done by `setup_quick.sh`):
+To grant Quick Sight users/groups owner access on the data source and datasets **at deploy time** instead of via `setup_quick.sh`, pass their ARNs. This does NOT create the Topic/Space, which only `setup_quick.sh` does:
 
 ```bash
 cdk deploy --require-approval never \
   --parameters QuickSightPrincipalArns=arn:aws:quicksight:us-east-1:111122223333:user/default/admin
 ```
 
-After deployment there is **one remaining manual step** (no API/CloudFormation path): register the MCP connector in Amazon Quick and create the agent — see [Quick Integration](#-quick-integration) below.
+After deployment there is **one remaining manual step** (no API/CloudFormation path): register the MCP connector in AWS Quick and create the agent. See [Step 1: Configure MCP Action](#step-1-configure-mcp-action) under Quick Integration below.
 
 **What gets deployed:**
 
-- AgentCore Gateway with user-based 3LO OAuth (Cognito hosted UI), plus a dummy `observability_user`
+- AgentCore Gateway with user-based 3LO OAuth (Cognito hosted UI), plus a demo `observability_user`
 - MCP Lambda function exposing a single `quick_observability` tool (natural language → Athena SQL)
 - Observability data lake: S3 bucket + Glue database (9 tables) + Athena workgroup
 - CloudWatch Logs delivery for all 7 Quick vended log types to S3 (chat/feedback/agent-hours also to CloudWatch Log Groups)
 - CloudTrail poller + CloudWatch-metrics poller Lambdas on a 5-minute schedule
-- QuickSight Athena data source + one SPICE dataset per table
+- Quick Sight Athena data source + one SPICE dataset per table
 
 ### 3. Get Outputs
 
+Read the stack outputs from the console or the CLI.
+
 #### Option 1: AWS Console (Recommended)
+
+In the console, open the stack's outputs:
 
 1. Go to **AWS CloudFormation** in the AWS Console
 2. Find the **quick-observability-mcp** stack
-3. Click on the **Outputs** tab
+3. Choose the **Outputs** tab
 4. Copy the required values for Quick integration
 
 #### Option 2: CLI Commands
@@ -168,23 +178,23 @@ Data-lake / dashboard outputs:
 - `DataLakeBucket` - S3 bucket holding all observability data
 - `GlueDatabase` - Glue/Athena database (`quick_observability`)
 - `AthenaWorkGroup` - Athena workgroup for queries
-- `QuickSightDataSourceId` - QuickSight Athena data source for building dashboards
+- `QuickSightDataSourceId` - Quick Sight Athena data source for building dashboards
 
 ## 🔧 The single MCP tool: `quick_observability`
 
-The MCP exposes exactly **one tool**, `quick_observability`. You ask a question in natural language; the Quick agent translates it into read-only Athena SQL and calls the tool, which runs the query against the data lake and returns the rows. The tool's description carries the full schema of all 9 tables plus key conventions, so the agent builds correct SQL without guessing column names.
+The MCP server exposes exactly **one tool**, `quick_observability`. You ask a question in natural language, and the Quick agent translates it into read-only Athena SQL. The agent calls the tool, which runs the query against the data lake and returns the rows. The tool's description carries the full schema of all 9 tables plus key conventions, so the agent builds correct SQL without guessing column names.
 
-**Input:** `sql` (a single read-only statement — `SELECT`/`WITH`/`SHOW`/`DESCRIBE`/`EXPLAIN`), optional `max_rows` (default 1000). Writes and multiple statements are rejected.
+**Input:** `sql` (a single read-only statement: `SELECT`/`WITH`/`SHOW`/`DESCRIBE`/`EXPLAIN`), optional `max_rows` (default 1000). Writes and multiple statements are rejected.
 
 **Tables it can query** (database `quick_observability`): `chat_events`, `feedback_events`, `agent_hours`, `agent_metadata`, `index_usage`, `kb_file_sync`, `dlp_events`, `cloudtrail_events`, `metric_snapshots`.
 
 **Key conventions baked into the tool:**
 
-- There is no username/email column. A user is identified by `user_arn` (e.g. `.../user/default/vineet`). Filter by name with `user_arn LIKE '%vineet%'`.
+- There is no username/email column. A user is identified by `user_arn` (for example, `.../user/default/vineet`). Filter by name with `user_arn LIKE '%vineet%'`.
 - All time columns are epoch **seconds** (`bigint`). Convert with `from_unixtime(col)`; for a window use `event_timestamp >= to_unixtime(current_timestamp - interval '30' day)`.
 - Agent hours: `SUM(usage_hours)`; per-agent `GROUP BY service_resource_arn`, per-user `GROUP BY user_arn`, Included vs Extra `GROUP BY usage_group`.
 
-**Example — "how many agent hours did vineet use?"** The agent generates and runs:
+**Example: "how many agent hours did vineet use?"** The agent generates and runs:
 
 ```sql
 SELECT SUM(usage_hours) AS total_agent_hours
@@ -204,20 +214,20 @@ GROUP BY service_resource_arn, reporting_service, usage_group
 ORDER BY hours DESC
 ```
 
-> **Why one tool?** Because every question now resolves to Athena SQL over the same 9 tables, a single well-described tool is simpler for users and gives the model one clear capability to call. `SHOW TABLES` / `DESCRIBE <table>` let the agent re-check the schema at runtime if needed.
+> **Why one tool?** Every question now resolves to Athena SQL over the same 9 tables. A single well-described tool is easier for users and gives the model one clear capability to call. `SHOW TABLES` / `DESCRIBE <table>` let the agent re-check the schema at runtime if needed.
 
 ## 🧾 DSAR / data-portability export: `export_user_data`
 
 A second tool, `export_user_data`, supports admin-run **data subject access / portability
 requests**. Given a user (full `user_arn` or bare name), it gathers that user's rows across
 the pipeline tables (`chat_events`, `feedback_events`, `agent_hours`, `agent_metadata`,
-`index_usage`, `dlp_events`, `cloudtrail_events`) into a single portable JSON bundle, writes
-it to the data lake's `dsar-exports/` prefix, and returns a short-lived pre-signed download
-URL.
+`index_usage`, `dlp_events`, `cloudtrail_events`) into a single portable JSON bundle. It writes
+the bundle to the data lake's `dsar-exports/` prefix and returns a short-lived pre-signed
+download URL.
 
-> **Scope — important.** This exports **only data captured by this pipeline** (the CHAT_LOGS
+> **Scope: important.** This exports **only data captured by this pipeline** (the CHAT_LOGS
 > vended stream plus metrics/audit). It does **not** include memories, knowledge graph,
-> spaces, agents, or uploaded-file content, which this pipeline does not capture — those
+> spaces, agents, or uploaded-file content, which this pipeline does not capture. Those
 > require a separate path. Chat prompt/response text is present only if the optional
 > CHAT_LOGS content fields are enabled; otherwise the export is metadata-only.
 
@@ -225,12 +235,12 @@ Example (through the agent): *"Export all data we have for user vineet"* → the
 `export_user_data` with `user_arn` and returns the row counts, the tables included, and the
 download link.
 
-## 📊 Building QuickSight dashboards
+## 📊 Building Quick Sight dashboards
 
-The stack creates a QuickSight Athena **data source** and one SPICE **dataset** per table (`Quick Observability - <table>`). To build dashboards:
+The stack creates a Quick Sight Athena **data source** and one SPICE **dataset** per table (`Quick Observability - <table>`). To build dashboards:
 
-1. In QuickSight, open **Datasets** and find the `Quick Observability - *` datasets.
-2. Refresh (SPICE ingestion) the datasets you want — data appears as the pollers run and vended logs are delivered.
+1. In Quick Sight, open **Datasets** and find the `Quick Observability - *` datasets.
+2. Refresh (SPICE ingestion) the datasets you want. Data appears as the pollers run and vended logs are delivered.
 3. Create an analysis on, for example, `agent_hours` for per-user/per-agent hours, `metric_snapshots` for metric trends, `chat_events` for active-user and conversation trends, or `cloudtrail_events` for an audit dashboard.
 4. Timestamps are epoch seconds; add a calculated field `epochDate(event_timestamp)` (or the table's timestamp column) for date axes.
 
@@ -238,13 +248,13 @@ The MCP tool and the dashboards read the **same** Glue tables, so numbers reconc
 
 ## 👥 Share the datasets and create a Quick Space (`setup_quick.sh`)
 
-The CDK stack creates the QuickSight **data source** and the **9 datasets**, but QuickSight resources are owned by the deploying service and are **not visible to a human user** until explicitly shared. Amazon Quick **Spaces** and **Topics** are also not expressible in CloudFormation. The `setup_quick.sh` script does these post-deploy steps for you:
+The CDK stack creates the Quick Sight **data source** and the **9 datasets**. Quick Sight resources are owned by the deploying service, though, and are **not visible to a human user** until explicitly shared. AWS Quick **Spaces** and **Topics** are also not expressible in CloudFormation. The `setup_quick.sh` script does these post-deploy steps for you:
 
-1. Grants the principal(s) you provide **CO_OWNER** on the Athena data source and all 9 datasets (so they appear in QuickSight).
-2. Creates a Q **Topic** (`Quick Observability`) over the datasets and shares it.
+1. Grants the principal(s) you provide **CO_OWNER** on the Athena data source and all 9 datasets (so they appear in Quick Sight).
+2. Creates a Dataset Q&A **Topic** (`Quick Observability`) over the datasets and shares it.
 3. Creates a Quick **Space** (`quick-observability`), attaches the 9 datasets + the Topic, and shares the Space as **OWNER**.
 
-> **You must tell the script who to share with.** There is no single "right" principal — in a real deployment you decide which users or groups should see this data. Pass one or more QuickSight **users** and/or **groups**; the flags are repeatable:
+> **You must tell the script who to share with.** There is no single "right" principal. In a real deployment you decide which users or groups should see this data. Pass one or more Quick Sight **users** and/or **groups**; the flags are repeatable:
 
 ```bash
 cd infrastructure/observability-agent
@@ -256,22 +266,22 @@ cd infrastructure/observability-agent
 ./setup_quick.sh --quicksight-group observability-admins --quicksight-user alice
 ```
 
-Options: `--region` (default `us-east-1`), `--namespace` (default `default`), `--space-id` / `--topic-id` (defaults `quick-observability`). The script is idempotent — re-running updates sharing and re-attaches resources.
+Options: `--region` (default `us-east-1`), `--namespace` (default `default`), `--space-id` / `--topic-id` (defaults `quick-observability`). The script is idempotent: re-running updates sharing and re-attaches resources.
 
-> **Best practice:** prefer sharing with a **QuickSight group** rather than individual users, so membership changes don't require re-running the script. Grant the narrowest set of principals that actually need the observability data.
+> **Best practice:** prefer sharing with a **Quick Sight group** rather than individual users, so membership changes don't require re-running the script. Grant the narrowest set of principals that actually need the observability data.
 
 ### Topic relationships
 
-The Topic declares the genuine join relationships between datasets so Q can answer cross-dataset questions:
+The Topic declares the genuine join relationships between datasets so Dataset Q&A can answer cross-dataset questions:
 
 - `feedback_events.conversation_id` → `chat_events.conversation_id` (feedback belongs to a conversation)
 - `chat_events.agent_id` → `agent_metadata.agent_id` (a conversation references an agent)
 
-Most tables also share a `user_arn` column, but that is a shared **dimension**, not a parent-child key — joining fact tables on `user_arn` would fan out and corrupt aggregates (e.g. agent hours × chat rows), so those joins are intentionally **not** declared. You can still filter or compare any dataset by user. If you add new datasets with real foreign keys, extend the `DataSetRelations` block in `setup_quick.sh`.
+Most tables also share a `user_arn` column, but that is a shared **dimension**, not a parent-child key. Joining fact tables on `user_arn` would fan out and corrupt aggregates (for example, agent hours × chat rows), so those joins are intentionally **not** declared. You can still filter or compare any dataset by user. If you add new datasets with real foreign keys, extend the `DataSetRelations` block in `setup_quick.sh`.
 
 ## 🎨 Quick Integration
 
-Complete guide to integrate Quick Observability with Amazon Quick using MCP Actions.
+Complete guide to integrate Quick Observability with AWS Quick using MCP Actions.
 
 ### Integration prerequisites
 
@@ -281,16 +291,20 @@ From your CDK deployment, you'll need:
 - `ClientId` - Cognito Client ID
 - `ClientSecret` - Cognito Client Secret
 - `CognitoTokenUrl` - OAuth2 token endpoint
-- `ObservabilityUsername` - dummy Cognito user (`observability_user`)
+- `ObservabilityUsername` - demo Cognito user (`observability_user`)
 - the password you supplied at deploy time via `-c observabilityUserPassword=...` (or the `ObservabilityUserPassword` parameter)
 
 ### Step 1: Configure MCP Action
 
+Create the MCP action that connects AWS Quick to the AgentCore Gateway.
+
 #### 1.1 Access Integrations
 
-1. Navigate to **Integrations** in Amazon Quick
-2. Click on **Actions**
-3. Click the **+** button for **Model Context Protocol**
+Open the MCP action setup:
+
+1. Navigate to **Integrations** in AWS Quick
+2. Choose **Actions**
+3. Choose the **+** button for **Model Context Protocol**
 
 #### 1.2 Configure MCP Server
 
@@ -299,12 +313,14 @@ Fill in the MCP configuration:
 - **Name**: Quick Observability
 - **Description**: Natural language monitoring for Quick using CloudWatch Logs, Metrics, and CloudTrail
 - **MCP Server Endpoint**: Paste your `GatewayUrl` from CDK deployment outputs
-- Click **Next**
+- Choose **Next**
 
 #### 1.3 Configure Authentication
 
+Set up per-user sign-in for the connector:
+
 1. For Authentication, select **User Authentication** (3LO / authorization-code)
-2. Each user signs in through the Cognito hosted UI (browser) and the resulting user token is presented to the Gateway — matching the quick-legal-hold-agent and what Amazon Quick's MCP connector expects.
+2. Each user signs in through the Cognito hosted UI (browser), and the resulting user token is presented to the Gateway. This matches the quick-legal-hold-agent and what the AWS Quick MCP connector expects.
 3. Fill in the authentication values from your CDK deployment outputs:
 
    - **Client ID** → Paste your `ClientId` (ensure no leading/trailing spaces)
@@ -313,36 +329,44 @@ Fill in the MCP configuration:
    - **Token URL** → Paste your `CognitoTokenUrl`
    - **Scopes** → `OAuthScopes` output (`openid email profile <pool>/invoke`)
    - **Redirect URI** → `QuickRedirectUri` output (already registered on the client)
-   - **Sign-in when prompted** → `observability_user` / the password you supplied at deploy time (`-c observabilityUserPassword=...`)
+   - **Sign-in when prompted** → `observability_user` / the password you set with `-c observabilityUserPassword=...` when you deployed
 
-> **Demo credential:** `observability_user` is created automatically by the stack; its password is the value you pass at deploy time via `-c observabilityUserPassword=...` (or the NoEcho `ObservabilityUserPassword` parameter) — it is never hardcoded. The user exists only in the account where you deploy.
+> **Demo credential:** `observability_user` is created automatically by the stack. Its password is the value you pass at deploy time with `-c observabilityUserPassword=...` (or the NoEcho `ObservabilityUserPassword` parameter), and it is never hardcoded. The user exists only in the account where you deploy.
 >
-> **Identity provider note:** This sample uses **Amazon Cognito as the OIDC identity provider** so it works out of the box. In a real deployment you should instead use **whichever identity provider your organization already uses** (for example AWS IAM Identity Center, Okta, Microsoft Entra ID / Azure AD, Ping, or any OIDC-compliant IdP). The AgentCore Gateway is configured with a `CUSTOM_JWT` authorizer, so point its discovery URL and allowed clients/audience at your IdP, and configure the Quick MCP connector with that IdP's authorize/token URLs — Cognito is only the stand-in for this reference implementation.
+> **Identity provider note:** This sample uses **Amazon Cognito as the OIDC identity provider** so it works out of the box. In a real deployment, use **whichever identity provider your organization already uses** instead. Examples are AWS IAM Identity Center, Okta, Microsoft Entra ID / Azure AD, Ping, or any OIDC-compliant IdP. The AgentCore Gateway is configured with a `CUSTOM_JWT` authorizer, so point its discovery URL and allowed clients/audience at your IdP. Then configure the Quick MCP connector with that IdP's authorize/token URLs. Cognito is only the stand-in for this reference implementation.
 
 #### 1.4 Complete Setup
 
-1. Click **Create and Continue**
+Finish creating the action:
+
+1. Choose **Create and Continue**
 2. Select **Next**
 3. Select **Next**
 
 ### Step 2: Create Quick Agent
 
+Create the chat agent that calls the MCP action.
+
 #### 2.1 Access Agents
 
-1. Navigate to **Agents** in Amazon Quick
-2. Click **Create agent**
+Start a new agent:
+
+1. Navigate to **Agents** in AWS Quick
+2. Choose **Create agent**
 
 #### 2.2 Configure Agent
+
+Enter the agent details:
 
 - **Agent name**: Quick Observability Agent
 - **Description**: Natural language monitoring for Quick using CloudWatch Logs, Metrics, and CloudTrail
 
 #### 2.3 Add Agent Instructions
 
-Copy and paste the following instructions into the **Agent Instructions** field:
+Copy the following instructions and paste them into the **Agent Instructions** field, without changes, so the agent knows the tables, the SQL conventions, and how to answer:
 
 ```text
-You are the Quick Observability Agent. You answer questions about an Amazon Quick environment using ONE tool, quick_observability, which runs read-only Athena SQL over the Quick observability data lake. Translate the user's question into SQL, call the tool, then interpret the rows for the user.
+You are the Quick Observability Agent. You answer questions about an AWS Quick environment using ONE tool, quick_observability, which runs read-only Athena SQL over the Quick observability data lake. Translate the user's question into SQL, call the tool, then interpret the rows for the user.
 
 TABLES (database quick_observability):
 • chat_events — chat messages/queries (user_arn, conversation_id, user_message, status_code, agent_id, flow_id, message_scope, ...)
@@ -401,14 +425,16 @@ KEY CONSTRAINTS:
 
 #### 2.4 Add Action to Agent
 
+Attach the MCP action to the agent:
+
 1. Scroll to **Actions** section
-2. Click **Add action**
+2. Choose **Add action**
 3. Select **Quick Observability** (the MCP action you just created)
-4. Click **Save**
+4. Choose **Save**
 
 ### Step 3: Test the Agent
 
-Open the agent and try these queries:
+Open the agent and try these queries, which cover agent hours, active users, storage, chat errors, audit events, and metric trends:
 
 ```text
 "How many agent hours did vineet use this month?"
@@ -422,9 +448,11 @@ Open the agent and try these queries:
 
 ## 💡 Usage Examples
 
-Everything is natural language — the agent writes the SQL. All example blocks below show what you type to the agent.
+Everything is natural language, and the agent writes the SQL. All example blocks below show what you type to the agent.
 
 ### Agent hours (per user and per agent)
+
+Ask for one user's agent hours, split by agent:
 
 ```text
 "How many agent hours did vineet use this month, and break it down per agent?"
@@ -432,11 +460,15 @@ Everything is natural language — the agent writes the SQL. All example blocks 
 
 ### Usage analysis
 
+Ask for activity counts over a period, such as active users, conversations, and queries in one week:
+
 ```text
 "How many active users this week, and how many conversations and queries?"
 ```
 
 ### Storage
+
+Find the users who consume the most storage, from the per-user `index_usage` table:
 
 ```text
 "Which users are consuming the most storage?"
@@ -444,17 +476,23 @@ Everything is natural language — the agent writes the SQL. All example blocks 
 
 ### Audit
 
+Review recent changes from the CloudTrail audit data:
+
 ```text
 "Who created, updated, or deleted dashboards and datasets in the last 7 days?"
 ```
 
 ### Metric trends
 
+Track a CloudWatch metric over time, here SPICE capacity consumed against its limit:
+
 ```text
 "Show the SPICE consumed vs limit trend over the last 30 days"
 ```
 
 ## 🐛 Troubleshooting
+
+Find the symptom you see, then work through the checks listed under it.
 
 **MCP Authentication Issues:**
 
@@ -501,7 +539,7 @@ This will delete:
 - AgentCore Gateway
 - Cognito User Pool
 - CloudWatch Log Groups (⚠️ **Note**: Log data will be permanently deleted)
-- Glue database/tables, Athena workgroup, QuickSight data source and datasets
+- Glue database/tables, Athena workgroup, Quick Sight data source and datasets
 - IAM roles and policies
 
 > **Note**: The `DataLakeBucket` S3 bucket is created with a `RETAIN` removal policy, so your collected observability data is **not** deleted by `cdk destroy`. Delete the bucket manually if you no longer need the data.
@@ -510,17 +548,21 @@ This will delete:
 
 ## 🔒 Security Best Practices
 
+Apply these practices when you run the sample:
+
 - **Credentials**: Never commit `ClientSecret` to version control
 - **IAM Roles**: The Lambda function uses least-privilege IAM permissions
 - **Encryption**: All data in transit is encrypted using TLS
 - **Logging**: CloudWatch Logs are retained for 30-90 days (configurable)
-- **Authentication**: Per-user 3LO OAuth (authorization-code) via the Cognito hosted UI; the Gateway validates the resulting user JWT (`CUSTOM_JWT`). Cognito is the sample OIDC provider — swap in your own OIDC IdP for real use (see the identity-provider note above).
+- **Authentication**: Per-user 3LO OAuth (authorization-code) via the Cognito hosted UI; the Gateway validates the resulting user JWT (`CUSTOM_JWT`). Cognito is the sample OIDC provider. Swap in your own OIDC IdP for real use (see the identity-provider note above).
 - **Demo credential**: `observability_user` is a demo login created by the stack; its password is supplied at deploy time via `-c observabilityUserPassword=...` (NoEcho parameter, never hardcoded)
 - **Rotation**: Consider rotating the Cognito user password and OAuth credentials periodically
 
 ## 📚 Additional Resources
 
-- [Amazon Quick Sight Documentation](https://docs.aws.amazon.com/quick/latest/userguide/)
+These references cover the services the sample uses:
+
+- [AWS Quick Documentation](https://docs.aws.amazon.com/quick/latest/userguide/)
 - [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
 - [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock/)
 - [CloudWatch Logs Insights Query Syntax](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html)

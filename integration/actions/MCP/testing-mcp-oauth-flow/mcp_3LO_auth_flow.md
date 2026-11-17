@@ -1,8 +1,10 @@
 # MCP Remote Auth Flow: 3-Legged OAuth (3LO) Handshake
 
+This page walks through the handshake between an MCP client, a remote MCP server, and an authorization server, one step at a time.
+
 ## Overview of the Players
 
-```
+```text
 ┌─────────────┐     ┌─────────────────┐     ┌─────────────────────┐
 │  MCP Client │     │  MCP Server     │     │  Authorization      │
 │  (e.g. IDE) │     │  (Remote)       │     │  Server (AS)        │
@@ -15,7 +17,7 @@
 
 The client first hits the MCP server to discover its capabilities and auth requirements.
 
-```
+```text
 GET https://mcp-server.example.com/.well-known/oauth-authorization-server
 ```
 
@@ -46,7 +48,7 @@ The server responds with metadata:
 
 If the client hasn't been pre-registered, MCP spec allows **dynamic client registration**:
 
-```
+```text
 POST https://auth.example.com/oauth/register
 Content-Type: application/json
 
@@ -60,6 +62,7 @@ Content-Type: application/json
 ```
 
 Response:
+
 ```json
 {
   "client_id": "abc123",
@@ -89,7 +92,7 @@ const codeChallenge = base64url(sha256(codeVerifier))
 
 Client redirects the **user's browser** to the AS with requested scopes:
 
-```
+```text
 GET https://auth.example.com/oauth/authorize?
   response_type=code
   &client_id=abc123
@@ -101,6 +104,7 @@ GET https://auth.example.com/oauth/authorize?
 ```
 
 **The user then:**
+
 1. Logs in (if not already)
 2. Sees a consent screen showing exactly what scopes are being requested
 3. Approves or denies
@@ -111,7 +115,7 @@ GET https://auth.example.com/oauth/authorize?
 
 After user consent, AS redirects back:
 
-```
+```text
 GET http://localhost:3000/callback?
   code=SplxlOBeZQQYbYS6WxSbIA
   &state=randomCSRFtoken     // client verifies this matches
@@ -123,7 +127,7 @@ GET http://localhost:3000/callback?
 
 Client exchanges the code for tokens:
 
-```
+```text
 POST https://auth.example.com/oauth/token
 Content-Type: application/x-www-form-urlencoded
 
@@ -155,7 +159,7 @@ AS responds with tokens:
 
 Now the client connects to the MCP server using the token:
 
-```
+```text
 // SSE or WebSocket connection
 GET https://mcp-server.example.com/sse
 Authorization: Bearer eyJhbGciOiJSUzI1NiJ9...
@@ -211,9 +215,9 @@ Over the established connection:
 
 ## How Scopes Gate MCP Operations
 
-This is where it gets interesting — scopes map to MCP primitives:
+Scopes map to MCP primitives:
 
-```
+```text
 ┌─────────────────────┬──────────────────────────────────────┐
 │  Scope              │  Allowed MCP Operations              │
 ├─────────────────────┼──────────────────────────────────────┤
@@ -255,7 +259,7 @@ function handleToolCall(request, token) {
 
 ## Token Refresh Flow
 
-```
+```text
 POST https://auth.example.com/oauth/token
 
 grant_type=refresh_token
@@ -268,7 +272,7 @@ grant_type=refresh_token
 
 ## Full Flow Diagram
 
-```
+```text
 Client          Browser         Auth Server      MCP Server
   │                │                │                │
   │──discover─────────────────────────────────────►  │
@@ -298,23 +302,34 @@ Client          Browser         Auth Server      MCP Server
 
 ## Key Gotchas
 
-**1. Scope downscoping at the AS**
-```
+Four behaviors catch most implementers out.
+
+### 1. Scope downscoping at the AS
+
+The authorization server can grant fewer scopes than the client requested:
+
+```text
 Requested:  mcp:read mcp:tools:execute mcp:write
 Granted:    mcp:read mcp:tools:execute
 // Client must handle this gracefully
 ```
 
-**2. The MCP server might not be the AS**
+### 2. The MCP server might not be the AS
+
+The server can hand authorization to another system:
+
 - MCP server could delegate to an external IdP (GitHub, Google, etc.)
 - Token introspection or JWT validation happens server-side
 
-**3. Per-tool scope granularity**
+### 3. Per-tool scope granularity
+
 Some implementations get more granular:
-```
+
+```text
 mcp:tools:execute:calculator
 mcp:tools:execute:file-system    // more sensitive, requires explicit grant
 ```
 
-**4. State parameter is critical**
+### 4. State parameter is critical
+
 Must validate `state` on callback to prevent CSRF attacks during the auth flow

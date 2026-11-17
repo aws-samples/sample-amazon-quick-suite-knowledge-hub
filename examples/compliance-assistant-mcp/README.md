@@ -1,28 +1,32 @@
 ---
 category: Use Case
-description: "Multi-agent compliance analysis via Amazon Quick using CrewAI, Bedrock AgentCore Runtime, and MCP"
+description: "Multi-agent compliance analysis via AWS Quick using CrewAI, Bedrock AgentCore Runtime, and MCP"
 ---
 
-# Compliance Assistant — Multi-Agent Analysis via Amazon Quick
+# Compliance Assistant: Multi-Agent Analysis via AWS Quick
 
-Multi-agent compliance analysis exposed as an MCP server to Amazon Quick through Amazon Bedrock AgentCore Gateway. Users ask compliance questions in natural language, and a 3-agent CrewAI pipeline analyzes regulations, drafts policies, and recommends AWS solutions — orchestrated asynchronously to respect Quick's 60-second MCP timeout.
+Multi-agent compliance analysis exposed as an MCP server to AWS Quick through Amazon Bedrock AgentCore Gateway. Users ask compliance questions in natural language. A 3-agent CrewAI pipeline analyzes regulations, drafts policies, and recommends AWS solutions, and it runs asynchronously to stay within Quick's 60-second MCP timeout.
 
 **Components:**
 
-- **AgentCore Gateway** — MCP server endpoint with Cognito OAuth (created by CDK)
-- **Lambda Function** — Orchestrator: starts jobs, polls status, retrieves reports (created by CDK)
-- **AgentCore Runtime** — Runs the CrewAI crew (3 agents, 3-5 min per analysis)
-- **CDK Stack** — DynamoDB, S3, Lambda, Cognito, Gateway, Gateway Target, IAM (Python)
-- **Bedrock Agent** — Foundation model for compliance research (Nova Pro v1)
+- **AgentCore Gateway**: MCP server endpoint with Cognito OAuth (created by CDK)
+- **Lambda Function**: Orchestrator that starts jobs, polls status, and retrieves reports (created by CDK)
+- **AgentCore Runtime**: Runs the CrewAI crew (3 agents, 3-5 min per analysis)
+- **CDK Stack**: DynamoDB, S3, Lambda, Cognito, Gateway, Gateway Target, IAM (Python)
+- **Bedrock Agent**: Foundation model for compliance research (Nova Pro v1)
 
 ## 🎯 Purpose
 
-- **Regulatory Analysis on Demand** — Ask Quick to analyze PCI DSS, HIPAA, NIST CSF, ISO 27001, SOX, GDPR, etc.
-- **Multi-Agent Pipeline** — 3 specialized CrewAI agents work sequentially: Compliance Analyst → Compliance Specialist → Solutions Architect
-- **Async Job Pattern** — Every MCP tool call returns in < 5 seconds; the full pipeline runs in the background (3-5 minutes)
-- **Managed Infrastructure** — AgentCore Runtime handles container builds, scaling, and health checks — no Docker or ECS required
+The assistant gives Quick users on-demand compliance research without long-running MCP calls:
+
+- **Regulatory Analysis on Demand**: Ask Quick to analyze PCI DSS, HIPAA, NIST CSF, ISO 27001, SOX, GDPR, etc.
+- **Multi-Agent Pipeline**: 3 specialized CrewAI agents work sequentially: Compliance Analyst → Compliance Specialist → Solutions Architect
+- **Async Job Pattern**: Every MCP tool call returns in < 5 seconds; the full pipeline runs in the background (3-5 minutes)
+- **Managed Infrastructure**: AgentCore Runtime handles container builds, scaling, and health checks, so no Docker or ECS is required
 
 ## 📁 Project Structure
+
+The folder holds the CDK stack, the runtime code, the CrewAI crew, and a setup script:
 
 ```text
 compliance-assistant-mcp/
@@ -59,17 +63,21 @@ Deployment is 4 steps: clone → create Bedrock Agent → deploy AgentCore Runti
 
 ### Prerequisites
 
-- AWS account with [Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html) available in your target region
+You need the following tools and access:
+
+- AWS account with [Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html) available in your target Region
 - AWS CLI v2 configured with credentials (`aws configure`)
 - Python 3.10+ (required by AgentCore Runtime and CDK)
 - Node.js 18+ (required by the AWS CDK CLI)
 - AWS CDK CLI: `npm install -g aws-cdk`
 - AgentCore CLI: `pip install bedrock-agentcore-starter-toolkit` (requires Python 3.10+)
-- Amazon Nova Pro v1 is automatically available in supported regions — no manual model access setup required
+- Amazon Nova Pro v1 is automatically available in supported Regions, so no manual model access setup is required
 
 **Required IAM Permissions:** CloudFormation, Lambda, IAM, DynamoDB, S3, Cognito, Bedrock, Bedrock AgentCore
 
-### Step 1 — Clone
+### Step 1: Clone
+
+Clone only this use case's files:
 
 ```bash
 git clone --filter=blob:none --sparse \
@@ -79,9 +87,9 @@ git sparse-checkout set docs/use-cases/compliance-assistant-mcp
 cd docs/use-cases/compliance-assistant-mcp
 ```
 
-### Step 2 — Create Bedrock Agent
+### Step 2: Create Bedrock Agent
 
-Set your target region and run the script:
+Set your target Region and run the script:
 
 ```bash
 export AWS_REGION=us-east-1   # any region with Bedrock AgentCore support
@@ -96,9 +104,9 @@ AGENT_ID      = XXXXXXXXXX
 AGENT_ALIAS_ID = YYYYYYYYYY
 ```
 
-### Step 3 — Deploy AgentCore Runtime
+### Step 3: Deploy AgentCore Runtime
 
-The AgentCore Runtime runs the CrewAI crew in a managed container. No Docker needed — the CLI uses CodeBuild.
+The AgentCore Runtime runs the CrewAI crew in a managed container. No Docker needed: the CLI uses CodeBuild.
 
 ```bash
 # Prepare deployment directory
@@ -136,7 +144,7 @@ Get the Runtime ARN:
 agentcore status --verbose
 ```
 
-Note the ARN, e.g.: `arn:aws:bedrock-agentcore:$AWS_REGION:<ACCOUNT_ID>:runtime/compliance_crew_runtime-xxxxxxxx`
+Note the ARN, for example: `arn:aws:bedrock-agentcore:$AWS_REGION:<ACCOUNT_ID>:runtime/compliance_crew_runtime-xxxxxxxx`
 
 Also note the Runtime IAM role name (needed in Step 5):
 
@@ -144,9 +152,9 @@ Also note the Runtime IAM role name (needed in Step 5):
 aws iam list-roles --query "Roles[?contains(RoleName,'AgentCoreSDKRuntime')].RoleName" --output text
 ```
 
-### Step 4 — Deploy CDK Stack
+### Step 4: Deploy CDK Stack
 
-This single command creates DynamoDB, S3, Lambda, Cognito (OAuth), AgentCore Gateway, and the Gateway Target with all 3 MCP tool schemas.
+This command creates DynamoDB, S3, Lambda, Cognito (OAuth), AgentCore Gateway, and the Gateway Target with the schemas for each MCP tool.
 
 ```bash
 cd <path-to>/compliance-assistant-mcp/cdk
@@ -168,7 +176,7 @@ cdk deploy \
   -c agentAliasId="<YOUR_AGENT_ALIAS_ID>"
 ```
 
-> **Troubleshooting CDK Bootstrap:** If bootstrap fails with an S3 bucket conflict (e.g., a stale `cdk-hnb659fds-assets-*` bucket from a previous bootstrap), use a custom qualifier:
+> **Troubleshooting CDK Bootstrap:** If bootstrap fails with an S3 bucket conflict (for example, a stale `cdk-hnb659fds-assets-*` bucket from a previous bootstrap), use a custom qualifier:
 >
 > ```bash
 > cdk bootstrap --qualifier myid --toolkit-stack-name CDKToolkit-myid aws://$ACCOUNT_ID/$AWS_REGION
@@ -203,7 +211,7 @@ aws cognito-idp describe-user-pool-client \
   --output text
 ```
 
-### Step 5 — Grant Runtime Access to DynamoDB and S3
+### Step 5: Grant Runtime Access to DynamoDB and S3
 
 The AgentCore Runtime runs under its own IAM role (created by the `agentcore` CLI). It needs permissions to update job status in DynamoDB and upload reports to S3.
 
@@ -255,39 +263,45 @@ aws iam put-role-policy \
 
 ## 🔧 Available MCP Tools
 
+The Lambda handler exposes these tools to Quick through the gateway:
+
 | Tool | Description | Returns |
 |------|-------------|---------|
 | `start_compliance_analysis` | Kicks off analysis for a regulatory topic | `job_id`, status |
 | `get_analysis_status` | Polls job progress | status, progress message |
 | `get_analysis_report` | Retrieves completed markdown report from S3 | Full report |
 
-## 🎨 Quick Integration
+## 🎨 AWS Quick Integration
 
 From the CDK stack outputs (Step 4), gather these values:
 
-- `GatewayUrl` — MCP Server endpoint
-- `CognitoClientId` — OAuth2 Client ID
-- Client Secret — retrieved via CLI (see Step 4)
-- `CognitoTokenUrl` — OAuth2 token endpoint
-- `CognitoScopes` — OAuth2 scopes
+- `GatewayUrl`: MCP Server endpoint
+- `CognitoClientId`: OAuth2 Client ID
+- Client Secret: retrieved via CLI (see Step 4)
+- `CognitoTokenUrl`: OAuth2 token endpoint
+- `CognitoScopes`: OAuth2 scopes
 
 ### Configure MCP Action
 
-1. Navigate to **Integrations** in Amazon Quick
-2. Click **Actions** → **+** button for **Model Context Protocol**
+Register the gateway as an MCP Action in Quick:
+
+1. Navigate to **Integrations** in Quick
+2. Choose **Actions** → **+** button for **Model Context Protocol**
 3. Fill in:
    - **Name**: Compliance Assistant
    - **Description**: Multi-agent compliance analysis using CrewAI and Bedrock AgentCore
    - **MCP Server Endpoint**: Paste `GatewayUrl`
-   - Click **Next**
+   - Choose **Next**
 4. Configure authentication:
    - Select **Service Authentication** → **Service-to-service OAuth**
    - **Client ID** → Paste `CognitoClientId`
    - **Client Secret** → Paste the secret retrieved via CLI
    - **Token URL** → Paste `CognitoTokenUrl`
-5. Click **Create and Continue** → **Next** → **Next**
+5. Choose **Create and Continue** → **Next** → **Next**
 
 ### Create Quick Agent
+
+Create a chat agent that uses the action:
 
 1. Navigate to **Agents** → **Create agent**
 2. Configure:
@@ -319,9 +333,11 @@ RESPONSE STYLE:
 
 <!-- markdownlint-disable MD029 -->
 4. Scroll to **Actions** → **Add action** → Select **Compliance Assistant**
-5. Click **Save**
+5. Choose **Save**
 
 ### Test the Agent
+
+Try these prompts in order, so the analysis has time to finish before you ask for the report:
 
 ```text
 "Run a compliance analysis on PCI DSS 4.0 requirements for banking organizations"
@@ -330,6 +346,8 @@ RESPONSE STYLE:
 ```
 
 ## 💡 Example Queries
+
+The queries below cover single frameworks, industries, and comparisons across frameworks.
 
 **Regulatory framework analysis:**
 
@@ -369,13 +387,13 @@ RESPONSE STYLE:
 
 **CDK deploy fails on Gateway or Target:**
 
-- Ensure your region supports Amazon Bedrock AgentCore. Check [regional availability](https://docs.aws.amazon.com/general/latest/gr/bedrock.html).
-- The `AWS::BedrockAgentCore::Gateway` and `AWS::BedrockAgentCore::GatewayTarget` CloudFormation resource types must be available in your region.
+- Ensure your Region supports Amazon Bedrock AgentCore. Check [regional availability](https://docs.aws.amazon.com/general/latest/gr/bedrock.html).
+- The `AWS::BedrockAgentCore::Gateway` and `AWS::BedrockAgentCore::GatewayTarget` CloudFormation resource types must be available in your Region.
 
 **MCP Authentication Issues:**
 
 - Verify OAuth2 credentials in Quick MCP Actions configuration
-- Retrieve the client secret via CLI (see Step 4) — it's not shown in CloudFormation outputs
+- Retrieve the client secret via CLI (see Step 4). It's not shown in CloudFormation outputs
 - Ensure client secret is copied without leading/trailing spaces
 
 **Analysis Returns No Data or Fails:**
@@ -392,7 +410,7 @@ RESPONSE STYLE:
 
 **Quick Shows "Tool call timed out":**
 
-- This means a single MCP call exceeded 60 seconds — should not happen with the async pattern
+- This means a single MCP call exceeded 60 seconds, which should not happen with the async pattern
 - Check that the Lambda is returning immediately from `start_compliance_analysis`
 - Verify `FUNCTION_NAME` environment variable is set correctly for self-invocation
 
@@ -424,12 +442,14 @@ aws bedrock-agent delete-agent \
 
 ## 🔒 Security
 
-- **IAM Roles** — Lambda and Runtime use least-privilege IAM permissions
-- **Encryption** — S3 uses server-side encryption; DynamoDB uses AWS-managed encryption
-- **Authentication** — OAuth 2.0 with Cognito (client credentials flow, no user passwords)
-- **Data Retention** — DynamoDB items auto-expire via TTL (24 hours); S3 reports expire after 30 days
-- **Network** — All communication uses TLS; no public endpoints exposed beyond the Gateway
-- **Credentials** — Never commit `gateway_config_v2.json` or `.env` to version control
+The sample applies these security settings:
+
+- **IAM Roles**: Lambda and Runtime use least-privilege IAM permissions
+- **Encryption**: S3 uses server-side encryption; DynamoDB uses AWS-managed encryption
+- **Authentication**: OAuth 2.0 with Cognito (client credentials flow, no user passwords)
+- **Data Retention**: DynamoDB items auto-expire via TTL (24 hours); S3 reports expire after 30 days
+- **Network**: All communication uses TLS; no public endpoints exposed beyond the Gateway
+- **Credentials**: Never commit `gateway_config_v2.json` or `.env` to version control
 
 ## 📝 License
 

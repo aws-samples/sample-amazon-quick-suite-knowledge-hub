@@ -45,7 +45,7 @@ tags carries the tag `Project=QuickAdminBuddy` for cost tracking.
   credentials in Secrets Manager.
 - CloudWatch Logs delivery: delivery sources, destinations, and deliveries that
   route the Runtime application and usage logs, the Gateway application logs,
-  and the workload-identity application logs to retained log groups. The three
+  and the workload-identity application logs to retained log groups. The
   AWS Lambda functions behind the custom resources write to their own retained
   log groups under `/aws/lambda/<stack-name>/`. Every log group has a 90-day
   retention period and is encrypted with the stack's key.
@@ -126,9 +126,9 @@ aws cloudformation deploy \
       QuickSetupBuddySharePrincipals="arn:aws:quicksight:${AWS_REGION}:${ACCOUNT_ID}:user/default/<quick-user>"
 ```
 
-`--capabilities CAPABILITY_NAMED_IAM` is required because the template creates
-named IAM roles (the runtime role, the gateway execution role, and the roles
-for the custom-resource Lambda functions). `aws cloudformation deploy` creates
+The template creates named IAM roles: the runtime role, the gateway execution
+role, and the roles for the custom-resource Lambda functions. That is why
+`--capabilities CAPABILITY_NAMED_IAM` is required. `aws cloudformation deploy` creates
 the stack on the first run and applies a change set on later runs.
 
 The Runtime, Gateway, and workload-identity log group names are fixed, so you
@@ -155,10 +155,10 @@ the first two on the Runtime, and the container image sets the third:
 | `ONBOARDING_TENANT` | `shared` | The single shared tenant ID (matches `TenantId`). |
 | `MCP_BIND_HOST` | `127.0.0.1` | The interface the server listens on. The image sets `0.0.0.0` so the Runtime's proxy can reach it inside the container; no host port is published. |
 
-A variable that isn't set takes its default. A value that is set but invalid,
-for example an empty table name or a name with characters the template's
-`AllowedPattern` doesn't allow, stops the server at startup with an error that
-names the variable. The server also stops at startup if no AWS Region is
+A variable that isn't set takes its default. A value that is set but invalid
+stops the server at startup with an error that names the variable. Examples are
+an empty table name or a name with characters the template's `AllowedPattern`
+doesn't allow. The server also stops at startup if no AWS Region is
 configured; the AgentCore Runtime provides one.
 
 ## Stack outputs
@@ -227,7 +227,7 @@ The `ActionConnectorRedirectUrl` is already registered as an allowed callback on
 the Cognito app client, so AWS Quick can complete the authorization code
 exchange without further Cognito changes.
 
-This is a user-delegated (interactive) OAuth 2.0 flow: an administrator signs
+This is a user-delegated (interactive) OAuth 2.0 flow. An administrator signs
 in through the Cognito hosted UI, and AWS Quick exchanges the resulting code for
 an access token it presents to the gateway. See [auth-model.md](./auth-model.md)
 for the full flow.
@@ -242,7 +242,7 @@ outputs and events contain the secret ARN, not the password.
 
 The user is shared by the administrators who onboard the account. The skill and
 this backend help administrators set up AWS Quick before regular users get
-access, to speed up the initial deployment, and are meant to be removed once the
+access, to speed up the initial deployment. They are meant to be removed once the
 account is ready to onboard regular users (see [Teardown](#teardown)). The user is
 created so that you can sign in right after the stack is deployed.
 
@@ -266,7 +266,7 @@ tokens), so there is no direct user name and password sign-in
 
 You manage connector permissions in AWS Quick after creation. Grant an AWS Quick
 user the see, edit, and manage permission set on the connector from the console
-or with the `update-action-connector-permissions` API, using the user's AWS
+or with the `update-action-connector-permissions` API. Use the user's AWS
 Quick user ARN as the principal.
 
 ## Updating the deployment
@@ -284,8 +284,8 @@ and new, renamed, or removed tools don't appear.
 This step is needed because the `AgentCoreGatewayTarget` uses an MCP server
 target in the default listing mode, which discovers the backend's tools at sync
 time and caches them. Deploying a new `ContainerImageUri` creates a new
-AgentCore Runtime version (the `DEFAULT` endpoint retargets to it, so traffic
-reaches the new container), but the gateway target's `Endpoint` references the
+AgentCore Runtime version, and the `DEFAULT` endpoint retargets to it, so traffic
+reaches the new container. The gateway target's `Endpoint`, however, references the
 Runtime by ID against the `DEFAULT` qualifier and doesn't change. CloudFormation
 therefore sees no change to the target and never starts tool discovery, and the
 cached list goes stale until you sync explicitly.
@@ -341,7 +341,7 @@ The cost is per-request discovery latency, and tools don't appear in
 At startup the server writes one JSON log line (`"event": "startup"`) with the
 settings it resolved: the table name, the tenant, and the bind host. None of
 them is secret. Each tool call then writes one JSON log line to the Runtime's log group
-(`/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT`) with the tool name, the
+(`/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT`). The line holds the tool name, the
 connector or extension key, the result status (and `error_type` when there is
 one), the AWS request IDs of the AWS calls the tool made, and the duration. The
 line never contains tool arguments, result messages, or secret values. Use the
@@ -364,10 +364,10 @@ aws cloudformation delete-stack --region "${AWS_REGION}" --stack-name quick-admi
 ```
 
 Deleting the stack removes the AgentCore resources, the Cognito user pool and
-domain (the `quickadminbuddy` user is deleted by its custom resource on stack
-delete), the IAM roles, the custom-resource Lambda functions, the stack's
+domain, the IAM roles, the custom-resource Lambda functions, the stack's
 Secrets Manager secrets, and the "Quick Setup Buddy" AWS Quick chat agent the
-stack created (any sharing granted to it is lost with it).
+stack created. The user's custom resource deletes the `quickadminbuddy` user when
+the stack is deleted, and any sharing granted to the chat agent is lost with it.
 
 The following are not removed automatically:
 
@@ -409,6 +409,6 @@ done
 ```
 
 Also remove the old image tags from Amazon ECR if you want to restart numbering
-at `0.1.0`, and create the AWS Quick connector again from the new stack's
-outputs (the old one points at a gateway and Cognito user pool that no longer
-exist).
+at `0.1.0`. Then create the AWS Quick connector again from the new stack's
+outputs, because the old one points at a gateway and Cognito user pool that no longer
+exist.

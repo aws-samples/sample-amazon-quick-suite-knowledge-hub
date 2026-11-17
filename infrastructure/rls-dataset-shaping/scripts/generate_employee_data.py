@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate a synthetic 5,000-row employee dataset for the Amazon Quick Security Blog.
+Generate a synthetic 5,000-row employee dataset for the AWS Quick Security Blog.
 
 This script creates:
 1. employee_data.csv - Full dataset (30 columns, 5000 rows)
@@ -288,7 +288,7 @@ def write_csv(filepath, data, fieldnames=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate synthetic employee data for Amazon Quick Security Blog"
+        description="Generate synthetic employee data for AWS Quick Security Blog"
     )
     parser.add_argument(
         "--output-dir", default="../datasets", help="Output directory for CSV files"

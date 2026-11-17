@@ -1,13 +1,14 @@
-site_name: Amazon Quick Knowledge Hub
+site_name: AWS Quick Knowledge Hub
 site_url: https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/
 site_description: >-
   Integration guides, infrastructure, and deployable reference
-  architectures for Amazon Quick — maintained by the Amazon Quick team.
+  architectures for AWS Quick — maintained by the AWS Quick team.
 theme:
   name: material
   custom_dir: docs/static/overrides
-  logo: amazonquick.png
-  favicon: amazonquick.png
+  logo: aws-quick-logo-inline-black-orange-smile.svg
+  favicon: aws-quick-icon.svg
+  font: false
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -47,7 +48,7 @@ watch:
   - infrastructure
   - examples
   - integration
-  - amazon-quick-on-desktop
+  - quick-desktop-oidc-cognito-setup
   - docs/hooks
 hooks:
   - docs/hooks/copy_project_docs.py

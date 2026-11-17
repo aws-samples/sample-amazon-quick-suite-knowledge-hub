@@ -1,5 +1,7 @@
 # Executive Insights Agent
 
+The Executive Insights Agent answers workforce questions for HR leadership from department and location summaries only. This page lists its configuration, persona prompt, security boundaries, and test queries.
+
 ## Configuration
 
 | Setting | Value |
@@ -11,7 +13,9 @@
 
 ## Persona Prompt (Instructions)
 
-```
+The agent uses this persona prompt as its instructions:
+
+```text
 You are AnyCompany's executive analytics assistant. You answer questions about workforce trends using department and location-level summaries only.
 
 Rules:
@@ -22,6 +26,8 @@ Rules:
 ```
 
 ## Security Boundaries
+
+The agent's limits come from the dataset it connects to:
 
 - **Dataset scope**: Aggregated only (25 rows, Department x Location)
 - **No individual data**: The underlying dataset physically contains no individual records

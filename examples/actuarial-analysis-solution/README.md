@@ -5,9 +5,9 @@ description: "Comprehensive actuarial analysis solution for insurance claims pro
 
 # Actuarial Analysis Tools
 
-**Comprehensive actuarial analysis solution** that transforms traditional insurance claims processing through AI-powered natural language interfaces and advanced statistical modeling.
+**Comprehensive actuarial analysis solution** that brings AI-powered natural language interfaces and advanced statistical modeling to insurance claims processing.
 
-This solution addresses critical challenges in insurance operations by providing **real-time fraud detection**, **litigation risk assessment**, **loss reserving calculations**, and **predictive analytics** - all accessible through conversational AI via Amazon Quick.
+This solution addresses critical challenges in insurance operations. It provides **real-time fraud detection**, **litigation risk assessment**, **loss reserving calculations**, and **predictive analytics**, all accessible through conversational AI in AWS Quick.
 
 ## Business Value
 
@@ -17,7 +17,7 @@ This solution addresses critical challenges in insurance operations by providing
 - **Improve Fraud Detection Accuracy** with multi-factor scoring algorithms
 - **Enhance Reserve Adequacy** using Chain Ladder and Bornhuetter-Ferguson methodologies
 - **Minimize Litigation Exposure** through early risk identification
-- **Streamline Actuarial Workflows** with natural language query interfaces
+- **Speed Up Actuarial Workflows** with natural language query interfaces
 
 **For Actuaries & Claims Professionals:**
 
@@ -25,7 +25,7 @@ This solution addresses critical challenges in insurance operations by providing
 - Generate loss development triangles and IBNR calculations instantly
 - Monitor KPIs and receive automated alerts for unusual patterns
 - Access 7 specialized analysis tools through a unified interface
-- Leverage session-based memory for complex multi-step analyses
+- Use session-based memory for complex multi-step analyses
 
 ## Architecture
 
@@ -39,17 +39,19 @@ Complete actuarial analysis solution with:
 - **SQL Query Engine** for flexible data access (Athena, RDS, Redshift, Snowflake, etc.)
 - **AgentCore Gateway** for natural language interaction
 - **Session-Based Memory** for efficient data sharing
-- **Amazon Quick Integration** with conversational AI interface and automated workflow orchestration through Flows
+- **AWS Quick Integration** with conversational AI interface and automated workflow orchestration through Flows
 
 ## Project Structure
 
-```
+The project combines the CDK app, the Lambda tool code, and sample data:
+
+```text
 actuarial-analytics-platform/
  app.py                      # CDK deployment entry point
  cdk.json                    # CDK configuration
  pyproject.toml              # Project dependencies and configuration
  deploy.sh                   # Deployment script
- QUICKSUITE.md              # Amazon Quick integration guide
+ QUICKSUITE.md              # AWS Quick integration guide
  tools/                      # Lambda function code
     agentcore_lambda.py    # Main AgentCore handler
     data_query_lambda.py   # Data query handler
@@ -74,7 +76,11 @@ actuarial-analytics-platform/
 
 ## Quick Start
 
+These steps deploy the stack and collect the values you need to connect it to Quick.
+
 ### 1. Clone Repository (Sparse Checkout)
+
+Clone only this use case's files:
 
 ```bash
 # Clone repository with sparse checkout
@@ -87,6 +93,8 @@ git sparse-checkout set docs/use-cases/actuarial-analysis-solution
 
 ### 2. Install Prerequisites
 
+Install the AWS CDK and uv, then install the project's dependencies:
+
 ```bash
 npm install -g aws-cdk
 pip install uv
@@ -95,11 +103,15 @@ uv sync
 
 ### 3. Configure AWS
 
+Set the credentials and Region the deployment uses:
+
 ```bash
 aws configure
 ```
 
 ### 4. Deploy Everything
+
+Deploy the stack with one command:
 
 ```bash
 cdk deploy --require-approval never
@@ -113,14 +125,20 @@ This single command deploys:
 
 ### 5. Get Outputs
 
-**Option 1: AWS Console (Recommended)**
+Read the stack outputs from the console or from the CLI.
+
+#### Option 1: AWS Console (Recommended)
+
+The console shows every output on the stack's **Outputs** tab:
 
 1. Go to **AWS CloudFormation** in the AWS Console
 2. Find the **ActuarialToolsStack** stack
-3. Click on the **Outputs** tab
+3. Choose the **Outputs** tab
 4. Copy the required values for Quick integration
 
-**Option 2: CLI Commands**
+#### Option 2: CLI Commands
+
+Query the outputs with the AWS CLI:
 
 ```bash
 # View all deployment outputs
@@ -139,6 +157,8 @@ Key outputs for Quick integration:
 - `TokenEndpoint` - OAuth2 token endpoint
 
 ## Available Tools
+
+The solution exposes two sets of tools: data query tools that load claims into a session, and analysis tools that work on that session.
 
 ### Data Query Tools (data_query_lambda.py)
 
@@ -159,9 +179,9 @@ Key outputs for Quick integration:
 | `calculate_reserves` | Calculate IBNR reserves | session_id | reserves, projections |
 | `monitor_development` | KPI tracking and alerts | session_id | alerts, metrics, trends |
 
-## Quick Integration
+## AWS Quick Integration
 
-Complete guide to integrate Actuarial Analysis Tools with Quick using MCP Actions and Flows.
+This section connects the Actuarial Analysis Tools to Quick with MCP Actions and Flows.
 
 ### Prerequisites
 
@@ -174,23 +194,30 @@ From your CDK deployment, you'll need:
 
 ### Configure MCP Action in Quick
 
-**Step 1: Access Integrations**
+Register the AgentCore Gateway as an MCP Action. The wizard has four steps, and the values come from the CDK outputs you collected earlier.
 
-1. Navigate to **Integrations** in Amazon Quick
-2. Click on **Actions**
-3. Click the **+** button for **Model Context Protocol**
+#### Step 1: Access Integrations
 
-**Step 2: Configure MCP Server**
+Open the Model Context Protocol action setup:
+
+1. Navigate to **Integrations** in Quick
+2. Choose **Actions**
+3. Choose the **+** button for **Model Context Protocol**
+
+#### Step 2: Configure MCP Server
+
 Fill in the MCP configuration:
 
 - **Name**: Actuarial Analysis Tools
 - **Description**: Comprehensive actuarial analysis tools for insurance claims
 - **MCP Server Endpoint**: Paste your `GatewayUrl` from CDK deployment outputs
-- Click **Next**
+- Choose **Next**
 
 ![MCP Server Configuration](./images/actuarial-tool-setup1.png)
 
-**Step 3: Configure Authentication**
+#### Step 3: Configure Authentication
+
+Set up the OAuth client credentials the gateway expects:
 
 1. For Authentication, select **Service Authentication**
 2. Keep **Service-to-service OAuth** within the Authentication type field
@@ -202,19 +229,24 @@ Fill in the MCP configuration:
 
 ![Authentication Configuration](./images/actuarial-tool-setup2.png)
 
-**Step 4: Complete Setup**
+#### Step 4: Complete Setup
 
-1. Click **Create and Continue**
+Finish the wizard:
+
+1. Choose **Create and Continue**
 2. Select **Next**
 3. Select **Next**
 
 ### Quick Flows Integration
 
-1. Click the **Flows** icon and choose **+ Create a new flow** if no flows exist or **Generate flow** to create a new flow.
+Create a flow that runs the tools in sequence:
 
-2. Amazon Quick Flows analyzes your conversation and generates a prompt to generate a Flow. Replace the generated prompt with the following prompt:
+1. Choose the **Flows** icon and choose **+ Create a new flow** if no flows exist or **Generate flow** to create a new flow.
 
-**--- COPY THE TEXT BELOW FOR QUICKSUITE FLOWS ---**
+2. Quick Flows analyzes your conversation and generates a prompt to generate a Flow. Replace the generated prompt with the following prompt:
+
+<!-- markdownlint-disable-next-line MD036 -->
+**--- COPY THE TEXT BELOW FOR QUICK FLOWS ---**
 
 Flow Name: "Comprehensive Actuarial Claims Analysis & Risk Assessment Solution"
 
@@ -234,18 +266,21 @@ STEP 7: Fraud Detection - Type: Action Step - Action: score_fraud_risk - Input: 
 
 STEP 8: KPI Monitoring - Type: Action Step - Action: monitor_development - Input: session_id from Step 3 - Instructions: Monitor all claim development patterns and calculate comprehensive KPIs. Track loss ratios, frequency trends, severity trends, reserve adequacy, and performance benchmarks. Generate automated alerts for unusual patterns and threshold breaches. Display complete monitoring dashboard with multi-line trend charts, speedometer gauge charts for alert thresholds, stacked area chart for loss ratio trends, KPI summary cards in 2x3 grid.
 
-**--- END OF QUICKSUITE FLOWS PROMPT ---**
+<!-- markdownlint-disable-next-line MD036 -->
+**--- END OF QUICK FLOWS PROMPT ---**
 
 !!! info "Flows Creation Tip"
     When creating your Flow from natural language, Flows will deconstruct your prompt into individual steps. The quality of the generated flow depends on the clarity and specificity of your natural language prompt. You may need to refine your prompt or make manual adjustments to the flow to achieve your desired outcome.
 
 ### Running Your Flow
 
+The animation below shows a complete run.
+
 ![Actuarial Analysis Flow](./images/Actuarial_analysis1.gif)
 
-1. Click the **Run mode** button
+1. Choose the **Run mode** button
 
-2. Notice the interface has three parts:
+2. Notice the interface has these parts:
    - **Left side**: Shows flow step progress tracker (you may need to expand screen to full)
    - **Middle**: Shows the flow steps with input and Start button
    - **Right side**: Chat interface for conversation
@@ -265,12 +300,16 @@ As the flow runs, you can see:
 
 ### Best Practices
 
+These practices keep flow runs reliable:
+
 - **Use Specific Prompts**: Reference previous steps with @step-name format
 - **Session Management**: Always pass session_id between analysis steps
 - **Error Handling**: Include validation and error checking in prompts
 - **Output Focus**: Be specific about required outputs and formats
 
 ## Troubleshooting
+
+These are the most common deployment and runtime errors, with a fix for each.
 
 **CDK Bootstrap Error:**
 
@@ -297,6 +336,8 @@ aws sts get-caller-identity  # Verify credentials
 
 ## Cleanup
 
+To remove every resource the stack created, run:
+
 ```bash
 cdk destroy
 ```
@@ -310,6 +351,8 @@ The `sample_data/claims.csv` contains 10,000+ synthetic insurance claims with:
 - Realistic claim amounts and patterns
 
 ## Documentation
+
+For more detail, see these pages:
 
 - [CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/actuarial-analysis-solution/cdk/README.md) - Infrastructure deployment details
 - [Tool Definitions](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/actuarial-analysis-solution/tools/agentcore_tools.json) - API specifications

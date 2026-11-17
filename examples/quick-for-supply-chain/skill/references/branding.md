@@ -8,6 +8,8 @@ output.
 
 ## Brand identity
 
+The company name and wordmark appear on every branded document:
+
 - Company name: AnyCompany Manufacturing
 - Wordmark: render the company name as styled text in Brand Red. There is no logo
   image. Place the wordmark top-right for quotes and invoices, bottom-right for reports.
@@ -33,6 +35,8 @@ output.
 
 ## Typography
 
+Use one font stack and these sizes:
+
 - Font stack: `"Inter", Helvetica, Arial, sans-serif`
 - Document title: 24-28px, bold, Dark
 - Section header: 11-14px, uppercase, letter-spacing 1-1.5px, Brand Blue or Brand Red
@@ -40,6 +44,8 @@ output.
 - Numbers and IDs: monospace (`"SF Mono", "Fira Code", Consolas, monospace`), amounts right-aligned, totals bold
 
 ## Layout
+
+Every document and dashboard uses this page layout:
 
 - Max width 800px (documents) or 900px (dashboards), centered with `margin: 0 auto`
 - Header: white background, 4px Brand Red top stripe, title left, wordmark right

@@ -1,7 +1,7 @@
 """
 Amazon Bedrock Knowledge Base MCP Integration Stack
 
-CDK stack that deploys Amazon Bedrock Knowledge Base integration with Amazon Quick
+CDK stack that deploys Amazon Bedrock Knowledge Base integration with AWS Quick
 using MCP through BedrockAgentCore Gateway constructs.
 """
 

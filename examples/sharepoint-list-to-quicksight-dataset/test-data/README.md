@@ -1,16 +1,18 @@
 # Test Data: IT Help Desk Ticket Tracker
 
+This folder holds a sample SharePoint list export for trying the solution.
+
 ## Use Case
 
 A mid-size company (AnyCompany Ltd.) tracks IT support tickets in a SharePoint list.
-The team wants to export this data to Amazon Quick Sight to build dashboards that answer:
+The team wants to export this data to Quick Sight to build dashboards that answer:
 
-- **Volume trends** — How many tickets are opened/closed per week?
-- **SLA compliance** — What percentage of tickets are resolved within the target SLA?
-- **Category breakdown** — Which issue categories generate the most tickets?
-- **Agent performance** — How are tickets distributed across support agents?
-- **Priority distribution** — Are high-priority tickets being resolved faster?
-- **Backlog health** — How many tickets are currently open and aging?
+- **Volume trends**: How many tickets are opened/closed per week?
+- **SLA compliance**: What percentage of tickets are resolved within the target SLA?
+- **Category breakdown**: Which issue categories generate the most tickets?
+- **Agent performance**: How are tickets distributed across support agents?
+- **Priority distribution**: Are high-priority tickets being resolved faster?
+- **Backlog health**: How many tickets are currently open and aging?
 
 ## SharePoint List Schema
 
@@ -33,14 +35,18 @@ The team wants to export this data to Amazon Quick Sight to build dashboards tha
 
 ## Quick Sight Dashboard Ideas
 
-1. **Ticket Volume Over Time** — Line chart of tickets opened per week, colored by priority
-2. **Category Pie Chart** — Breakdown of tickets by category
-3. **SLA Compliance Gauge** — Percentage of tickets meeting SLA
-4. **Agent Workload Bar Chart** — Tickets per agent, stacked by status
-5. **Average Resolution Time by Category** — Bar chart comparing categories
-6. **Open Ticket Aging Table** — List of open tickets sorted by age
-7. **Department Demand Heatmap** — Tickets by department and category
+These visuals answer the questions above:
+
+1. **Ticket Volume Over Time**: Line chart of tickets opened per week, colored by priority
+2. **Category Pie Chart**: Breakdown of tickets by category
+3. **SLA Compliance Gauge**: Percentage of tickets meeting SLA
+4. **Agent Workload Bar Chart**: Tickets per agent, stacked by status
+5. **Average Resolution Time by Category**: Bar chart comparing categories
+6. **Open Ticket Aging Table**: List of open tickets sorted by age
+7. **Department Demand Heatmap**: Tickets by department and category
 
 ## File
 
-- `helpdesk-tickets.csv` — 1,000 sample tickets spanning 2025-01-06 through 2025-03-28
+The folder contains one data file:
+
+- `helpdesk-tickets.csv`: 1,000 sample tickets spanning 2025-01-06 through 2025-03-28

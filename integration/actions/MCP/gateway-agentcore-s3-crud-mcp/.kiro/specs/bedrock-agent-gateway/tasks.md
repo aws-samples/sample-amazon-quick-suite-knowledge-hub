@@ -1,9 +1,8 @@
 # Implementation Plan
 
+The tasks below build the gateway in order. Where a task implements a requirement, it lists the requirement numbers.
+
 - [x] 1. Create CloudFormation template structure and parameters
-
-
-
 
   - Define template metadata, description, and version
   - Create input parameters for S3 bucket name, environment, and deployment configuration
@@ -12,11 +11,7 @@
 
 - [x] 2. Implement Cognito User Pool for service-to-service OAuth
 
-
-
-
   - [x] 2.1 Create Cognito User Pool with OAuth 2.0 configuration
-
 
     - Configure user pool for client credentials flow
     - Set up OAuth 2.0 scopes for service authorization (s3:crud, gateway:invoke)
@@ -25,7 +20,6 @@
 
   - [x] 2.2 Create Cognito User Pool Client for service authentication
 
-
     - Configure app client for client credentials grant type
     - Set up client authentication flow settings
     - Configure OAuth scopes and allowed OAuth flows
@@ -33,35 +27,17 @@
 
   - [x] 2.3 Write property test for OAuth token validation
 
-
-
-
-
-
-
-
-
-
     - **Property 1: Service authentication token validation**
     - **Validates: Requirements 2.2, 2.4**
 
   - [x] 2.4 Write property test for authentication failure handling
-
-
-
-
 
     - **Property 2: Service authentication failure handling**
     - **Validates: Requirements 2.3, 2.5**
 
 - [x] 3. Implement Python Lambda function for S3 CRUD operations
 
-
-
-
-
   - [x] 3.1 Create Lambda function structure and dependencies
-
 
     - Set up Python runtime environment and requirements
     - Configure Lambda function handler and environment variables
@@ -69,7 +45,6 @@
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
   - [x] 3.2 Implement S3 create operation
-
 
     - Write function to create objects in S3 bucket
     - Add input validation for object keys and content
@@ -82,14 +57,12 @@
 
   - [x] 3.4 Implement S3 read operation
 
-
     - Write function to retrieve objects from S3 bucket
     - Handle object not found scenarios
     - Return object content and metadata
     - _Requirements: 3.2_
 
   - [x] 3.5 Implement S3 update operation
-
 
     - Write function to update existing objects in S3 bucket
     - Validate object existence before update
@@ -102,7 +75,6 @@
 
   - [x] 3.7 Implement S3 delete operation
 
-
     - Write function to delete objects from S3 bucket
     - Handle delete confirmation and error scenarios
     - Implement proper cleanup logic
@@ -113,7 +85,6 @@
     - **Validates: Requirements 3.4, 3.5**
 
   - [x] 3.9 Implement comprehensive error handling
-
 
     - Add error handling for permissions, network issues, and invalid input
     - Implement retry logic with exponential backoff
@@ -136,12 +107,7 @@
 
 - [x] 4. Create IAM roles and policies
 
-
-
-
-
   - [x] 4.1 Create Lambda execution role
-
 
     - Define IAM role for Lambda function execution
     - Attach basic Lambda execution policy
@@ -150,14 +116,12 @@
 
   - [x] 4.2 Create Bedrock Gateway service role
 
-
     - Define IAM role for Bedrock Gateway service
     - Add permissions for Lambda function invocation
     - Configure Cognito token validation permissions
     - _Requirements: 1.4, 6.1_
 
   - [x] 4.3 Implement least-privilege access policies
-
 
     - Review and minimize permissions for all roles
     - Implement resource-specific access controls
@@ -166,49 +130,26 @@
 
 - [x] 5. Checkpoint - Ensure all tests pass
 
-
-
-
-
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 6. Configure Bedrock AgentCore Gateway
 
-
-
-
-
-
-
-
   - [x] 6.1 Create Gateway with OAuth inbound authorization
-
-
 
     - Configure gateway with Cognito OIDC discovery URL
     - Set up OAuth 2.0 inbound authorization configuration
     - Configure allowed audiences and scopes
     - _Requirements: 2.2, 4.1_
 
-
-
   - [x] 6.2 Configure Lambda target for Gateway
-
-
-
-
 
     - Set up Lambda function as MCP target
     - Configure request/response transformation
     - Set up proper IAM permissions for gateway-to-lambda communication
 
-
     - _Requirements: 4.1_
 
   - [x] 6.3 Define MCP tool schemas
-
-
-
 
     - Create MCP tool definitions for S3 CRUD operations
     - Define input schemas for each operation
@@ -221,12 +162,7 @@
 
 - [x] 7. Add CloudFormation outputs and finalization
 
-
-
-
-
   - [x] 7.1 Configure template outputs
-
 
     - Add Gateway endpoint URL output
     - Add Cognito User Pool ID and client details
@@ -234,7 +170,6 @@
     - _Requirements: 1.3_
 
   - [x] 7.2 Add resource dependencies and ordering
-
 
     - Configure proper DependsOn relationships
     - Set up resource creation order
@@ -249,22 +184,7 @@
 
 - [x] 8. Implement security and logging
 
-
-
-
-
-
-
-
-
-
-
-
-
-
   - [x] 8.1 Configure CloudWatch logging
-
-
 
     - Set up Lambda function logging
     - Configure Gateway request/response logging
@@ -272,7 +192,6 @@
     - _Requirements: 2.5, 6.3_
 
   - [x] 8.2 Implement security event monitoring
-
 
     - Add authentication failure logging
     - Configure authorization event tracking
@@ -285,16 +204,11 @@
 
   - [x] 8.4 Configure HTTPS/TLS for all communications
 
-
     - Ensure Gateway uses HTTPS endpoints
     - Configure Lambda-to-S3 encrypted connections
     - Verify end-to-end encryption
     - _Requirements: 6.4_
 
 - [x] 9. Final Checkpoint - Make sure all tests are passing
-
-
-
-
 
   - Ensure all tests pass, ask the user if questions arise.

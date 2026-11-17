@@ -1,10 +1,12 @@
 # Design Document
 
+This design covers the Amazon Bedrock AgentCore gateway that exposes S3 CRUD operations as MCP tools.
+
 ## Overview
 
-This system implements a secure, scalable gateway to Amazon Bedrock AgentCore that provides CRUD operations on S3 buckets through a Python Lambda function. The architecture leverages AWS managed services to create a production-ready solution with JWT authentication via Amazon Cognito, exposing standardized MCP (Model Context Protocol) actions for client interactions.
+This system implements a secure, scalable gateway to Amazon Bedrock AgentCore that provides CRUD operations on S3 buckets through a Python Lambda function. The architecture uses AWS managed services to create a production-ready solution with JWT authentication via Amazon Cognito, exposing standardized MCP (Model Context Protocol) actions for client interactions.
 
-The solution addresses the enterprise need for secure, authenticated access to S3 storage operations through AI agents while maintaining proper access controls, audit trails, and scalability. By using Bedrock AgentCore Gateway as the central orchestration point, the system provides a standardized interface that can be easily integrated with various AI applications and development tools.
+The solution addresses the enterprise need for secure, authenticated access to S3 storage operations through AI agents while maintaining proper access controls, audit trails, and scalability. By using Bedrock AgentCore Gateway as the central orchestration point, the system provides a standardized interface that integrates with various AI applications and development tools.
 
 ## Architecture
 
@@ -36,19 +38,24 @@ graph TB
 
 ### Key Architectural Principles
 
+The design follows these principles:
+
 1. **Security First**: All communications use HTTPS/TLS, JWT tokens for authentication, and IAM roles for service-to-service authorization
-2. **Serverless Design**: Leverages AWS managed services to minimize operational overhead
+2. **Serverless Design**: Uses AWS managed services to minimize operational overhead
 3. **Standardized Protocol**: Uses MCP for consistent tool integration across different AI platforms
 4. **Infrastructure as Code**: Complete deployment through CloudFormation templates
 5. **Least Privilege Access**: Each component has minimal required permissions
 
 ## Components and Interfaces
 
+The system has these components, from the gateway that receives requests to the bucket that stores objects.
+
 ### 1. Amazon Bedrock AgentCore Gateway
 
 **Purpose**: Central orchestration point that handles MCP protocol communication, authentication, and request routing.
 
 **Key Responsibilities**:
+
 - Validate JWT tokens against Cognito
 - Expose MCP-compliant endpoints for tool discovery and invocation
 - Route authenticated requests to the Lambda function
@@ -56,6 +63,7 @@ graph TB
 - Provide comprehensive logging and monitoring
 
 **Configuration**:
+
 - Inbound authorization: JWT with Cognito discovery URL
 - Target configuration: Lambda function ARN
 - MCP protocol support with tool discovery
@@ -66,6 +74,7 @@ graph TB
 **Purpose**: Identity provider for service-to-service OAuth authentication.
 
 **Key Responsibilities**:
+
 - Service authentication and credential management
 - OAuth 2.0 client credentials flow for service-to-service authentication
 - Access token generation with appropriate scopes
@@ -73,6 +82,7 @@ graph TB
 - Integration with OIDC discovery endpoints
 
 **Configuration**:
+
 - User pool with app client configured for client credentials flow
 - OAuth 2.0 scopes for service authorization
 - OIDC discovery URL for gateway integration
@@ -84,12 +94,14 @@ graph TB
 **Purpose**: Serverless compute service providing S3 CRUD operations.
 
 **Key Responsibilities**:
+
 - Process MCP tool invocation requests
 - Perform S3 operations (Create, Read, Update, Delete)
 - Input validation and error handling
 - Response formatting for MCP protocol
 
 **Interface Specification**:
+
 ```python
 # Input Event Structure
 {
@@ -116,13 +128,19 @@ graph TB
 **Purpose**: Object storage for CRUD operations.
 
 **Configuration**:
+
 - Bucket name provided as CloudFormation parameter
 - Server-side encryption enabled
 - Access logging for audit trails
 
 ## Data Models
 
+The gateway and the Lambda function exchange these data structures.
+
 ### OAuth Access Token Structure
+
+The access token that Cognito issues carries these claims:
+
 ```json
 {
   "sub": "service-client-id",
@@ -138,6 +156,9 @@ graph TB
 ```
 
 ### MCP Tool Definitions
+
+The gateway exposes these MCP tools:
+
 ```json
 {
   "tools": [
@@ -194,6 +215,9 @@ graph TB
 ```
 
 ### S3 Object Metadata
+
+Each object is described with this metadata:
+
 ```json
 {
   "key": "object-key",
@@ -260,13 +284,21 @@ After analyzing all acceptance criteria, several properties can be consolidated 
 
 ## Error Handling
 
+Each layer returns its own errors, and every error uses the response format at the end of this section.
+
 ### Authentication Errors
+
+The gateway returns these errors when a token is missing or not valid:
+
 - **Invalid OAuth Token**: Return 401 Unauthorized with WWW-Authenticate header
 - **Expired OAuth Token**: Return 401 Unauthorized with token refresh guidance using client credentials flow
 - **Missing OAuth Token**: Return 401 Unauthorized with OAuth 2.0 authentication requirements
 - **Insufficient Scope**: Return 403 Forbidden with required scope information
 
 ### Lambda Function Errors
+
+The Lambda function maps S3 and input failures to these responses:
+
 - **S3 Access Denied**: Return 403 with sanitized permission error message
 - **S3 Object Not Found**: Return 404 with clear object not found message
 - **S3 Bucket Not Found**: Return 404 with bucket not found message
@@ -275,12 +307,18 @@ After analyzing all acceptance criteria, several properties can be consolidated 
 - **Unexpected Exceptions**: Log full error details, return 500 with generic message
 
 ### Gateway Errors
+
+The gateway itself can return these errors:
+
 - **MCP Protocol Errors**: Return appropriate MCP error responses
 - **Request Timeout**: Return 408 with timeout information
 - **Rate Limiting**: Return 429 with retry-after header
 - **Service Unavailable**: Return 503 with service status information
 
 ### Error Response Format
+
+Every error response has this shape:
+
 ```json
 {
   "error": {
@@ -297,6 +335,8 @@ After analyzing all acceptance criteria, several properties can be consolidated 
 
 ## Testing Strategy
 
+Testing combines unit tests with property-based tests.
+
 ### Dual Testing Approach
 
 The system requires both unit testing and property-based testing to ensure comprehensive coverage:
@@ -308,6 +348,7 @@ The system requires both unit testing and property-based testing to ensure compr
 ### Unit Testing Requirements
 
 Unit tests will cover:
+
 - Specific examples that demonstrate correct behavior for each CRUD operation
 - Integration points between Gateway, Lambda, and S3
 - Error handling for specific failure scenarios
@@ -324,6 +365,8 @@ Property-based testing will use **Hypothesis** for Python components and **fast-
 - Generate smart test data that constrains to valid input spaces
 
 ### Test Implementation Guidelines
+
+Apply these guidelines to each part of the system:
 
 1. **Lambda Function Testing**:
    - Mock S3 operations for unit tests
@@ -360,6 +403,8 @@ Property-based tests will use intelligent generators:
 - **Error Scenarios**: Controlled failure injection for resilience testing
 
 ### Performance and Load Testing
+
+Measure performance under these conditions:
 
 - **Lambda Cold Start**: Measure and optimize cold start performance
 - **Concurrent Requests**: Test gateway handling of multiple simultaneous requests

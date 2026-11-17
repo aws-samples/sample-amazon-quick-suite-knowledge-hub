@@ -1,29 +1,29 @@
-# MSP Windows Operations — Powered by Amazon Quick Desktop
+# MSP Windows Operations with AWS Quick Desktop
 
-AI-driven Windows workspace management for Managed Services Practice (MSP) teams — provisioning, software installs, RDP validation, and patch compliance run from a single app by **two Quick Desktop agents**.
+AI-driven Windows workspace management for Managed Services Practice (MSP) teams. **Two Quick Desktop agents** run provisioning, software installs, RDP validation, and patch compliance from a single app.
 
 ## The Problem
 
-An MSP ops engineer's day is spread across four or five tools: the AWS console for provisioning, an RDP client for access, a ticketing system (Jira) for the work queue, and a separate patch dashboard for compliance. Workspaces are built from gold images that drift out of spec, patching is a manual fire drill, and software gets rolled out in bulk whether or not anyone needs it. The result is slow onboarding, compliance gaps, and a lot of tool-switching toil.
+An MSP ops engineer's day is spread across four or five tools. They use the AWS console for provisioning, an RDP client for access, a ticketing system (Jira) for the work queue, and a separate patch dashboard for compliance. Workspaces are built from gold images that drift out of spec, patching is a manual fire drill, and software gets rolled out in bulk whether or not anyone needs it. The result is slow onboarding, compliance gaps, and a lot of tool-switching toil.
 
 ## The Solution
 
-Amazon Quick Desktop runs an AI work companion natively on the operator's machine — reaching into local files, the terminal, and connected tools (Jira, S3, custom MCP servers) while tapping the same Quick spaces and content used on the web. The entire MSP day — **ticket → provision → install → validate (RDP) → close** — happens in one pane of glass.
+AWS Quick Desktop runs an AI work companion natively on the operator's machine. It reaches into local files, the terminal, and connected tools (Jira, S3, custom MCP servers), and it uses the same Quick spaces and content as the web app. The entire MSP day happens in one pane of glass: **ticket → provision → install → validate (RDP) → close**.
 
 The solution is built on **two Quick Desktop agents** that hand off to each other through shared local state:
 
 | Agent | Role | Definition |
 |-------|------|------------|
-| **GSI-Onboarding-With-RDP** | IT Operations Analyst — fulfills Jira MSP tickets by provisioning Windows workspaces, installing software, and opening RDP sessions. | [`GSI-Onboarding-With-RDP.md`](./GSI-Onboarding-With-RDP.md) |
-| **GSI-MSP-Compliance** | Scheduled compliance & patching agent — scans the managed Windows fleet for missing patches and remediates them, with a visual dashboard. | [`GSI-MSP-Compliance.md`](./GSI-MSP-Compliance.md) |
+| **GSI-Onboarding-With-RDP** | IT Operations Analyst. Fulfills Jira MSP tickets by provisioning Windows workspaces, installing software, and opening RDP sessions. | [`GSI-Onboarding-With-RDP.md`](./GSI-Onboarding-With-RDP.md) |
+| **GSI-MSP-Compliance** | Scheduled compliance & patching agent. Scans the managed Windows fleet for missing patches and remediates them, with a visual dashboard. | [`GSI-MSP-Compliance.md`](./GSI-MSP-Compliance.md) |
 
-Both are **persistent agent personas** in Quick Desktop — each with its own identity, instructions, connected tools, and domain knowledge. The onboarding agent is chatted with directly to work tickets; the compliance agent runs on a schedule (every morning at 10 AM CST) or on demand.
+Both are **persistent agent personas** in Quick Desktop, each with its own identity, instructions, connected tools, and domain knowledge. The onboarding agent is chatted with directly to work tickets; the compliance agent runs on a schedule (every morning at 10 AM CST) or on demand.
 
-## How the Two Agents Fit Together
+## How the Agents Fit Together
 
-The agents are deliberately separate personas, but they operate on the **same fleet** and coordinate through shared files on the operator's local machine. The onboarding agent builds and validates a workspace; the compliance agent keeps it patched over its lifetime.
+The agents are deliberately separate personas, but they operate on the **same fleet** and coordinate through shared local files. The onboarding agent builds and validates a workspace; the compliance agent keeps it patched over its lifetime.
 
-```
+```text
                           ┌─────────────────────────────────────────────┐
                           │              Quick Desktop                   │
                           │   (local files · terminal · MCP · Jira · S3) │
@@ -52,7 +52,7 @@ The agents are deliberately separate personas, but they operate on the **same fl
           └──────────────── provisioned, SSM-registered, RDP-ready instance ───────────┘
 ```
 
-**The handoff — shared state files on the operator's machine:**
+**The handoff uses these shared state files:**
 
 | File | Written by | Read by | Purpose |
 |------|-----------|---------|---------|
@@ -66,30 +66,34 @@ This is where **standards get enforced automatically**: the onboarding agent rea
 
 One app, one operator: **ticket → provision → install → validate → close.**
 
-### Part 1 — GSI-Onboarding-With-RDP (provision a NovaTech workspace)
+### Part 1: GSI-Onboarding-With-RDP (provision a NovaTech workspace)
+
+The operator works two Jira tickets with the onboarding agent:
 
 1. **Start with the ticket.** Open the Jira MSP ticket from the Activity Feed ("Work on this").
-2. **Provision.** The agent reads `client_profiles_windows.md` and calls `provision_windows_ec2` — Windows Server 2022, SSM-ready, Fleet Manager RDP, Administrator pre-configured. Python + Git install silently in the background. Client profiles mean the workspace is built to spec, not from a drifting gold image. Ticket transitions To Do → In Progress → Done.
+2. **Provision.** The agent reads `client_profiles_windows.md` and calls `provision_windows_ec2`: Windows Server 2022, SSM-ready, Fleet Manager RDP, Administrator pre-configured. Python + Git install silently in the background. Client profiles mean the workspace is built to spec, not from a drifting gold image. Ticket transitions To Do → In Progress → Done.
 3. **Validate with RDP.** At the mandatory checkpoint, the agent offers to `open_rdp` so the operator can see the live workspace before moving on.
-4. **Next ticket — install tooling.** The agent reads `active_instance.txt` and calls `install_software` for Notepad++ and VS Code.
+4. **Next ticket: install tooling.** The agent reads `active_instance.txt` and calls `install_software` for Notepad++ and VS Code.
 5. **Validate again** with RDP if desired.
 6. **Close the ticket** back in Jira.
 
-### Part 2 — GSI-MSP-Compliance (patch the fleet)
+### Part 2: GSI-MSP-Compliance (patch the fleet)
+
+The compliance agent then keeps the new workspace and the rest of the fleet patched:
 
 1. **The scheduled run.** The recurring question every MSP lives with: are the client's servers patched? This agent runs on a schedule (10 AM CST) or on demand.
 2. **Run compliance.** It adopts the active instance into `managed_instances.txt`, runs `check_compliance` across the fleet, and renders a dark-themed HTML dashboard with per-server patch status.
 3. **Remediate.** On approval, `patch_fleet` scans and then installs missing patches (`RebootIfNeeded`), then re-renders the dashboard.
 4. **Close out.** Report patches applied and current compliance.
 
-**Three takeaways:** single pane of glass (no tool-switching), standards enforced automatically (client profiles over gold images), and trust through validation (live RDP + a real compliance dashboard, not blind checkmarks).
+**Takeaways:** single pane of glass (no tool-switching), standards enforced automatically (client profiles over gold images), and trust through validation (live RDP + a real compliance dashboard, not blind checkmarks).
 
 ## What's in This Folder
 
 | File | Description |
 |------|-------------|
-| `GSI-Onboarding-With-RDP.md` | Agent definition for the onboarding/RDP persona — ticket workflow, mandatory RDP checkpoint, provisioning + install steps, Jira transitions, presentation rules. |
-| `GSI-MSP-Compliance.md` | Agent definition for the scheduled compliance/patching persona — fleet adoption, dashboard rendering, scan/install workflow. |
+| `GSI-Onboarding-With-RDP.md` | Agent definition for the onboarding/RDP persona: ticket workflow, mandatory RDP checkpoint, provisioning + install steps, Jira transitions, presentation rules. |
+| `GSI-MSP-Compliance.md` | Agent definition for the scheduled compliance/patching persona: fleet adoption, dashboard rendering, scan/install workflow. |
 | `mcp_provision_windows_ec2.py` | MCP server for provisioning a Windows Server 2022 EC2 instance (SSM access, Fleet Manager RDP, Administrator pre-set, Chocolatey + Python/Git via UserData). |
 | `mcp_install_windows_software.py` | MCP server for installing software on a Windows instance via Chocolatey through SSM Run Command (async). |
 | `mcp_patch_windows.py` | MCP server for fleet patch compliance and remediation via AWS Systems Manager. |
@@ -97,6 +101,8 @@ One app, one operator: **ticket → provision → install → validate → close
 Each `.py` file is an AWS Lambda function implementing the Model Context Protocol (MCP). Quick Desktop calls them via MCP Action connectors backed by API Gateway endpoints.
 
 ## MCP Tools Reference
+
+The tables below list the tools each MCP server exposes, with their required and optional parameters.
 
 ### `mcp_provision_windows_ec2.py`
 
@@ -108,7 +114,7 @@ Each `.py` file is an AWS Lambda function implementing the Model Context Protoco
 
 | Tool | Description |
 |------|-------------|
-| `install_software` | Installs Chocolatey packages (e.g. `notepadplusplus`, `vscode`, `python3`, `git`) on a Windows instance via SSM Run Command. Returns a command ID immediately; install runs asynchronously. Required: `instance_id`, `packages`. |
+| `install_software` | Installs Chocolatey packages (for example, `notepadplusplus`, `vscode`, `python3`, `git`) on a Windows instance via SSM Run Command. Returns a command ID immediately; install runs asynchronously. Required: `instance_id`, `packages`. |
 
 ### `mcp_patch_windows.py`
 
@@ -120,17 +126,21 @@ Each `.py` file is an AWS Lambda function implementing the Model Context Protoco
 
 ## Deployment
 
-1. Deploy the three `.py` files as separate AWS Lambda functions (Python 3.12).
+Deploy the Lambda functions, then set up the agents in Quick Desktop:
+
+1. Deploy each `.py` file as a separate AWS Lambda function (Python 3.12).
 2. Create API Gateway REST endpoints for each Lambda.
-3. In Amazon Quick Desktop, register the API Gateway URLs as MCP Action connectors.
+3. In AWS Quick Desktop, register the API Gateway URLs as MCP Action connectors.
 4. Connect the Jira MSP project (via the Jira 2LO connector) to the onboarding agent.
-5. Create the two agents in Quick Desktop using the instructions in `GSI-Onboarding-With-RDP.md` and `GSI-MSP-Compliance.md`.
-6. Place the shared state files on the operator's machine: `client_profiles_windows.md`, `active_instance.txt`, `managed_instances.txt` (default location `C:\PartnerSA\infosys\MSP\`).
-7. Schedule the compliance agent (e.g. daily at 10 AM CST).
+5. Create the agents in Quick Desktop using the instructions in `GSI-Onboarding-With-RDP.md` and `GSI-MSP-Compliance.md`.
+6. Place the shared state files on the operator's computer: `client_profiles_windows.md`, `active_instance.txt`, `managed_instances.txt` (default location `C:\PartnerSA\infosys\MSP\`).
+7. Schedule the compliance agent (for example, daily at 10 AM CST).
 
 ## Prerequisites
 
-- AWS account with Amazon Quick (Desktop) enabled
+You need the following before you deploy:
+
+- AWS account with AWS Quick (Desktop) enabled
 - Windows Server 2022 support with SSM Agent and an IAM instance profile for SSM (`EC2-SSM-Role` or equivalent)
 - A subnet and security group for instance placement (Fleet Manager RDP needs no inbound 3389)
 - Jira MSP project reachable via the Quick Jira connector
@@ -138,13 +148,13 @@ Each `.py` file is an AWS Lambda function implementing the Model Context Protoco
 
 ## AWS Services
 
-Amazon Quick (Desktop, Agents, Activity Feed, Knowledge Graph) · Amazon EC2 (Windows Server 2022) · AWS Systems Manager (SSM Run Command, Patch Manager, Fleet Manager RDP) · AWS Lambda · API Gateway · Jira (via connector) · MCP Actions
+AWS Quick (Desktop, Agents, Activity Feed, Knowledge Graph) · Amazon EC2 (Windows Server 2022) · AWS Systems Manager (SSM Run Command, Patch Manager, Fleet Manager RDP) · AWS Lambda · API Gateway · Jira (via connector) · MCP Actions
 
 ## Business Outcomes
 
 | Use Case | Outcome |
 |----------|---------|
 | **Single pane of glass** | Ticket → provision → install → validate → close, with no tool-switching between console, RDP, ticketing, and dashboards. |
-| **Standards enforced automatically** | Client profiles replace gold images — every workspace is built to spec and compliant. |
+| **Standards enforced automatically** | Client profiles replace gold images, so every workspace is built to the client's spec. |
 | **Trust through validation** | Live RDP sessions and a real compliance dashboard, not blind checkmarks. |
-| **Autonomous compliance** | Scheduled, hands-off patch scanning and remediation with an approval gate — not a manual fire drill. |
+| **Autonomous compliance** | Scheduled, hands-off patch scanning and remediation with an approval gate, not a manual fire drill. |

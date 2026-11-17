@@ -1,23 +1,23 @@
 ---
 category: Use Case
-description: "Sync ServiceNow tables into Amazon S3 Tables on a schedule so Amazon Quick can query them with Direct Query. You choose the tables in an AWS CDK configuration file"
+description: "Sync ServiceNow tables into Amazon S3 Tables on a schedule so AWS Quick can query them with Direct Query. You choose the tables in an AWS CDK configuration file"
 ---
 
-# Sync ServiceNow Tables to Amazon Quick Sight Using OAuth
+# Sync ServiceNow Tables to AWS Quick Sight Using OAuth
 
-To report on ServiceNow incidents or change requests in [Amazon Quick](https://aws.amazon.com/quick/), the records have to be in tables that Amazon Quick can query. You list the ServiceNow tables you want in a configuration file and deploy the stack. On a schedule, a workflow then copies the records that changed since its previous run into Apache Iceberg tables in an [Amazon S3 table bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html). Amazon Quick reads those tables with Direct Query, which runs each query against the table when someone opens a visual instead of importing a copy, so dashboards, and natural-language questions that you ask with Dataset Q&A, are as fresh as the last completed run.
+To report on ServiceNow incidents or change requests in [AWS Quick](https://aws.amazon.com/quick/), the records have to be in tables that AWS Quick can query. You list the ServiceNow tables you want in a configuration file and deploy the stack. On a schedule, a workflow then copies the records that changed since its previous run into Apache Iceberg tables in an [Amazon S3 table bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html). AWS Quick reads those tables with Direct Query, which runs each query against the table when someone opens a visual instead of importing a copy. Dashboards, and natural-language questions that you ask with Dataset Q&A, are therefore as fresh as the last completed run.
 
-An [AWS Step Functions](https://aws.amazon.com/step-functions/) workflow coordinates the sync. [AWS Lambda](https://aws.amazon.com/lambda/) functions read the records from ServiceNow and stage them in [Amazon Simple Storage Service (Amazon S3)](https://aws.amazon.com/s3/) as Parquet files, and an [AWS Glue](https://aws.amazon.com/glue/) job merges the staged files into the tables, applying updates and deletions. [docs/DESIGN.md](docs/DESIGN.md) explains how the sync works, and [docs/DEPLOY_RUNBOOK.md](docs/DEPLOY_RUNBOOK.md) covers the full setup, from the ServiceNow OAuth application to the Amazon Quick dataset.
+An [AWS Step Functions](https://aws.amazon.com/step-functions/) workflow coordinates the sync. [AWS Lambda](https://aws.amazon.com/lambda/) functions read the records from ServiceNow and stage them in [Amazon Simple Storage Service (Amazon S3)](https://aws.amazon.com/s3/) as Parquet files. An [AWS Glue](https://aws.amazon.com/glue/) job merges the staged files into the tables, applying updates and deletions. The design document, [docs/DESIGN.md](docs/DESIGN.md), explains how the sync works, and [docs/DEPLOY_RUNBOOK.md](docs/DEPLOY_RUNBOOK.md) covers the full setup, from the ServiceNow OAuth application to the AWS Quick dataset.
 
 ## Prerequisites
 
-The deployment spans AWS, Amazon Quick, and ServiceNow, so you need access to each system, plus a few tools on a macOS or Linux computer.
+The deployment spans AWS, AWS Quick, and ServiceNow, so you need access to each system, plus a few tools on a macOS or Linux computer.
 
 - An AWS account and an [AWS Identity and Access Management (IAM)](https://aws.amazon.com/iam/) identity that can deploy [AWS CloudFormation](https://aws.amazon.com/cloudformation/) stacks, including the IAM roles they create.
 - Version 2 of the [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), recent enough to include the `s3tables` commands, and configured with credentials for that identity.
-- An AWS Region that [supports S3 Tables](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables-regions-quotas.html) and is the Region of your Amazon Quick account. The Amazon Quick **AWS Resources** page lists only the table buckets in its current Region.
+- An AWS Region that [supports S3 Tables](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables-regions-quotas.html) and is the Region of your AWS Quick account. The AWS Quick **AWS Resources** page lists only the table buckets in its current Region.
 - An account and Region that are [bootstrapped for the AWS Cloud Development Kit (AWS CDK)](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping-env.html). The runbook has the command.
-- An Amazon Quick Enterprise subscription and a user who can open **Manage account**.
+- An AWS Quick Enterprise subscription and a user who can open **Manage account**.
 - A ServiceNow instance on the Washington DC release or later. That release added the OAuth client credentials grant that the sync uses.
 - A ServiceNow user with the `admin` role who can also switch to the `security_admin` role, which ServiceNow requires to create access control rules.
 - [Node.js](https://nodejs.org/) 22 and npm. The repository pins the version in `.nvmrc`, so `nvm use` selects it.
@@ -45,7 +45,7 @@ Set up ServiceNow first, because the stack reads credentials that you create the
     make deploy
     ```
 
-5. Follow [Run the first sync](docs/DEPLOY_RUNBOOK.md#run-the-first-sync) and [Set up Amazon Quick](docs/DEPLOY_RUNBOOK.md#set-up-amazon-quick) to start the first sync and connect Amazon Quick to the table bucket.
+5. Follow [Run the first sync](docs/DEPLOY_RUNBOOK.md#run-the-first-sync) and [Set up AWS Quick](docs/DEPLOY_RUNBOOK.md#set-up-aws-quick) to start the first sync and connect AWS Quick to the table bucket.
 
 After the first run, the schedule starts each later sync, and your ongoing work is the table list and the ServiceNow credentials.
 
@@ -77,11 +77,11 @@ syncTable("incident", {
 
 Give the integration user read access to every table you add, as the runbook describes. Deployment writes the list to an [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) table, which the workflow reads at the start of each run.
 
-## What you get in Amazon Quick
+## What you get in AWS Quick
 
 Each ServiceNow table becomes an Apache Iceberg table in the `servicenow` namespace of the table bucket, named after the ServiceNow table, and every table follows the same rules:
 
-- Every column is a string. You change types such as dates and numbers when you prepare the dataset in Amazon Quick.
+- Every column is a string. You change types such as dates and numbers when you prepare the dataset in AWS Quick.
 - Reference and choice fields hold ServiceNow display values, such as a person's name instead of a `sys_id`.
 - Each row is keyed by `sys_id`, so an update replaces the existing row and a deletion removes it.
 
@@ -102,18 +102,18 @@ Pass these with `CDK_ARGS`, for example `make deploy CDK_ARGS="--context enableS
 | `cdk/` | The AWS CDK app in TypeScript. |
 | `backend/` | The Python Lambda handlers and the AWS Glue job. |
 | `simulator/` | A ServiceNow API simulator for the optional test stack. |
-| `docs/DEPLOY_RUNBOOK.md` | ServiceNow, AWS, and Amazon Quick setup, troubleshooting, and cleanup. |
+| `docs/DEPLOY_RUNBOOK.md` | ServiceNow, AWS, and AWS Quick setup, troubleshooting, and cleanup. |
 | `docs/DESIGN.md` | How the sync works and why. |
 
 ## Security
 
 The stack encrypts data at rest with service-managed keys and creates no [AWS Key Management Service (AWS KMS)](https://aws.amazon.com/kms/) keys. [Storage and encryption](docs/DESIGN.md#storage-and-encryption) lists the encryption each service uses.
 
-The OAuth credentials live in Secrets Manager, and the stack grants read access to that secret only. You are responsible for who can use those credentials in ServiceNow and for who can open the datasets in Amazon Quick. ServiceNow access rules aren't carried into Amazon Quick, so share a dataset only with people who are allowed to read that data in ServiceNow.
+The OAuth credentials live in Secrets Manager, and the stack grants read access to that secret only. You are responsible for who can use those credentials in ServiceNow and for who can open the datasets in AWS Quick. ServiceNow access rules aren't carried into AWS Quick, so share a dataset only with people who are allowed to read that data in ServiceNow.
 
 ## Cost
 
-You pay for the AWS services in the stack and for Amazon Quick. The sync cost depends on how many records change and how often the workflow runs, and the Glue job starts only for a table that has new records or deletions. See [Amazon Quick pricing](https://aws.amazon.com/quick/pricing/) for the Amazon Quick side.
+You pay for the AWS services in the stack and for AWS Quick. The sync cost depends on how many records change and how often the workflow runs, and the Glue job starts only for a table that has new records or deletions. See [AWS Quick pricing](https://aws.amazon.com/quick/pricing/) for the AWS Quick side.
 
 ## Clean up resources
 

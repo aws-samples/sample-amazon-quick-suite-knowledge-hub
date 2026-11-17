@@ -1,5 +1,5 @@
 # Module: kms
-# CMK for Amazon Quick with an IDC-aware key policy, plus optional QuickSight registration.
+# CMK for AWS Quick with an IDC-aware key policy, plus optional QuickSight registration.
 
 terraform {
   required_providers {
@@ -17,7 +17,7 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   partition  = data.aws_partition.current.partition
 
-  # Service principals that must use the key for IDC-integrated Amazon Quick.
+  # Service principals that must use the key for IDC-integrated AWS Quick.
   # Mirrors the baseline IDC key policy from the Enterprise Governance guidance.
   idc_service_principals = [
     "sso.amazonaws.com",
@@ -67,7 +67,7 @@ data "aws_iam_policy_document" "key" {
 }
 
 resource "aws_kms_key" "this" {
-  description             = "Amazon Quick CMK (${var.alias})"
+  description             = "AWS Quick CMK (${var.alias})"
   multi_region            = var.multi_region
   enable_key_rotation     = var.enable_key_rotation
   deletion_window_in_days = 30

@@ -23,10 +23,10 @@ permissions:
 
 jobs:
   security-scan:
-    name: Amazon Quick Knowledge Hub Security Scan
+    name: AWS Quick Knowledge Hub Security Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Amazon Quick Knowledge Hub
+      - name: Checkout AWS Quick Knowledge Hub
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -62,7 +62,7 @@ jobs:
       - name: Run Bandit security scan
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule'
         run: |
-          echo "🔒 Running Bandit security scan on Amazon Quick Knowledge Hub..."
+          echo "🔒 Running Bandit security scan on AWS Quick Knowledge Hub..."
           uv tool run bandit -r . -f json -o bandit-results.json || true
           if [ -f bandit-results.json ]; then
             echo "📊 Bandit scan completed - results saved to bandit-results.json"
@@ -98,4 +98,4 @@ jobs:
 
       - name: Skip message
         if: steps.changed-files.outputs.any_changed == 'false' && github.event_name != 'schedule'
-        run: echo "⏭️ No Python files or dependencies changed - skipping security scan for Amazon Quick Knowledge Hub"
+        run: echo "⏭️ No Python files or dependencies changed - skipping security scan for AWS Quick Knowledge Hub"

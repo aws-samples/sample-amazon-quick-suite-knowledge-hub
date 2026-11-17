@@ -15,10 +15,10 @@ permissions:
 
 jobs:
   link-check:
-    name: Amazon Quick Knowledge Hub Link Validation
+    name: AWS Quick Knowledge Hub Link Validation
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Amazon Quick Knowledge Hub
+      - name: Checkout AWS Quick Knowledge Hub
         uses: actions/checkout@v4
 
       - name: Get changed documentation files
@@ -43,10 +43,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: uv sync
 
-      - name: Build Amazon Quick Knowledge Hub documentation
+      - name: Build AWS Quick Knowledge Hub documentation
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
-          echo "📚 Building Amazon Quick Knowledge Hub documentation for link checking..."
+          echo "📚 Building AWS Quick Knowledge Hub documentation for link checking..."
           uv run mkdocs build
 
       - name: Install lychee link checker
@@ -61,16 +61,17 @@ jobs:
           sudo mv lychee-x86_64-unknown-linux-gnu/lychee /usr/local/bin/
           lychee --version
 
-      - name: Check links in Amazon Quick Knowledge Hub
+      - name: Check links in AWS Quick Knowledge Hub
         if: steps.changed-files.outputs.any_changed == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
-          echo "🔗 Checking links in Amazon Quick Knowledge Hub documentation..."
+          echo "🔗 Checking links in AWS Quick Knowledge Hub documentation..."
           lychee --verbose --no-progress \
             --accept 200,204,206,300,301,302,303,304,307,308,403,429 \
             --timeout 30 \
             --retry-wait-time 5 \
             --max-retries 3 \
-            --exclude-mail \
+            --exclude-path 'site/404.html' \
+            --exclude '^http://127\.0\.0\.1' \
             './site/**/*.html' || exit_code=$?
 
           if [ ${exit_code:-0} -ne 0 ]; then
@@ -80,9 +81,9 @@ jobs:
             # Don't fail the workflow for link checker issues in documentation
             exit 0
           else
-            echo "✅ All links in Amazon Quick Knowledge Hub are valid"
+            echo "✅ All links in AWS Quick Knowledge Hub are valid"
           fi
 
       - name: Skip message
         if: steps.changed-files.outputs.any_changed == 'false' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
-        run: echo "⏭️ No documentation files changed - skipping link check for Amazon Quick Knowledge Hub"
+        run: echo "⏭️ No documentation files changed - skipping link check for AWS Quick Knowledge Hub"

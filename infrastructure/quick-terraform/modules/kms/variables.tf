@@ -1,5 +1,5 @@
 # Module: kms
-# Customer managed key (CMK) for Amazon Quick / QuickSight at-rest encryption,
+# Customer managed key (CMK) for AWS Quick / QuickSight at-rest encryption,
 # optionally multi-region (required when IDC home region != Quick region), and
 # registration of the key with QuickSight.
 

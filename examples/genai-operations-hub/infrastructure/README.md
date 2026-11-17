@@ -4,7 +4,11 @@ AWS CDK infrastructure for GenAI Operations Hub.
 
 ## What Gets Deployed
 
+Deployment has two parts: a CDK stack for storage, catalog, and query resources, and a boto3 script for the Quick Sight resources.
+
 ### Base CDK Stack (GenAIOperationsStack)
+
+The CDK stack creates:
 
 1. **S3 Bucket** - `genai-ops-bedrock-logs-{account}` for Bedrock logs
 2. **S3 Bucket** - `genai-ops-athena-results-{account}` for Athena query results
@@ -15,14 +19,18 @@ AWS CDK infrastructure for GenAI Operations Hub.
 
 ### Quick Sight Resources (via boto3 script)
 
-7. **Data Source** - Athena connection for Quick Sight
-8. **Dataset** - Daily Bedrock Invocations (aggregated daily metrics)
-9. **Dataset** - Model Performance Metrics (latency and token analysis)
-10. **Dataset** - Stop Reason Analysis (completion patterns)
+The script then creates:
+
+1. **Data Source** - Athena connection for Quick Sight
+2. **Dataset** - Daily Bedrock Invocations (aggregated daily metrics)
+3. **Dataset** - Model Performance Metrics (latency and token analysis)
+4. **Dataset** - Stop Reason Analysis (completion patterns)
 
 **Note:** Quick Sight resources are created via `create_quicksight_resources.py` script to bypass CloudFormation hooks.
 
 ## Prerequisites
+
+You need the following before you deploy:
 
 - AWS CLI configured
 - Python 3.8+
@@ -30,6 +38,8 @@ AWS CDK infrastructure for GenAI Operations Hub.
 - AWS account with appropriate permissions
 
 ## Installation
+
+Install the CDK CLI and the Python dependencies in a virtual environment:
 
 ```bash
 # Install CDK CLI globally
@@ -45,13 +55,19 @@ pip install -r requirements.txt
 
 ## Deployment
 
+Run these steps in order. Step 3 is a console step that the script in Step 4 depends on.
+
 ### Step 1: Bootstrap CDK
+
+Bootstrap the account and Region once:
 
 ```bash
 cdk bootstrap
 ```
 
 ### Step 2: Deploy Base Stack
+
+Deploy the CDK stack:
 
 ```bash
 cdk deploy GenAIOperationsStack --require-approval never
@@ -61,7 +77,7 @@ cdk deploy GenAIOperationsStack --require-approval never
 
 ### Step 3: Grant Quick Sight Permissions
 
-**CRITICAL: Do this before creating Quick Sight resources**
+**Important:** Do this step before you create the Quick Sight resources.
 
 1. Go to **Quick Sight Console**
 2. Profile icon → **Manage Quick Sight** → **Permissions**
@@ -70,16 +86,18 @@ cdk deploy GenAIOperationsStack --require-approval never
 5. Check **Amazon S3** → Select buckets:
    - `genai-ops-bedrock-logs-<ACCOUNT_ID>`
    - `genai-ops-athena-results-<ACCOUNT_ID>`
-6. Click **Update**
+6. Choose **Update**
 
 ### Step 4: Create Quick Sight Resources
+
+Run the script with your Quick Sight user name:
 
 ```bash
 pip install boto3
 python3 create_quicksight_resources.py 'Admin/your-username'
 ```
 
-Find your username:
+If you don't know your user name, list the users in the `default` namespace:
 
 ```bash
 aws quicksight list-users \
@@ -91,6 +109,8 @@ aws quicksight list-users \
 **Time**: ~1 minute
 
 ### Step 5: View Stack Outputs
+
+Print the stack outputs:
 
 ```bash
 aws cloudformation describe-stacks \
@@ -106,9 +126,11 @@ After deployment, note these outputs:
 - **DatabaseName** - Glue database name
 - **TableName** - Glue table name
 - **AthenaWorkGroup** - Athena workgroup name
-- **Quick SightRoleArn** - IAM role ARN for Quick Sight
+- **QuickSightRoleArn** - IAM role ARN for Quick Sight
 
 ## Customization
+
+Each change below is an edit to `stacks/genai_ops_stack.py`.
 
 ### Change Bucket Names
 
@@ -123,6 +145,8 @@ logs_bucket = s3.Bucket(
 ```
 
 ### Add Encryption
+
+Add an `encryption` setting to the bucket:
 
 ```python
 logs_bucket = s3.Bucket(
@@ -146,6 +170,8 @@ logs_bucket = s3.Bucket(
 ```
 
 ## Troubleshooting
+
+These errors come from the Quick Sight resource script and the datasets.
 
 ### Quick Sight Data Source Creation Failed
 
@@ -183,9 +209,11 @@ logs_bucket = s3.Bucket(
 - Quick Sight lacks permissions
 - Athena workgroup doesn't exist
 
-**Solution**: Verify Steps 2-4 completed successfully
+**Solution**: Verify that Steps 2 to 4 completed successfully.
 
 ## Clean Up
+
+Empty the logs bucket, then destroy the stack:
 
 ```bash
 # Empty S3 buckets first
@@ -199,9 +227,13 @@ aws s3 rm s3://${BUCKET}/ --recursive
 cdk destroy
 ```
 
-## Troubleshooting
+## CDK Troubleshooting
+
+These errors come from CDK bootstrap and deployment.
 
 ### Bootstrap Error
+
+Confirm your credentials, then bootstrap with an explicit account and Region:
 
 ```bash
 # Ensure you have correct permissions
@@ -212,6 +244,8 @@ cdk bootstrap aws://123456789012/us-east-1
 ```
 
 ### Deployment Fails
+
+Rerun with verbose output and read the stack events:
 
 ```bash
 # View detailed logs
@@ -246,10 +280,12 @@ Resources created by this stack:
 
 ## Security
 
+The stack uses sample defaults. Change them before you use it in production:
+
 - S3 buckets have versioning disabled (enable for production)
 - No encryption enabled by default (add for production)
 - IAM role follows least privilege
-- Auto-delete enabled for easy cleanup (disable for production)
+- Auto-delete enabled so cleanup removes the buckets (disable for production)
 
 ## Next Steps
 

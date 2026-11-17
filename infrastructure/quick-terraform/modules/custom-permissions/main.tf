@@ -168,7 +168,7 @@ resource "aws_cloudformation_stack" "custom_permissions" {
 
   template_body = jsonencode({
     AWSTemplateFormatVersion = "2010-09-09"
-    Description              = "Amazon Quick custom-permission profile ${each.key}"
+    Description              = "AWS Quick custom-permission profile ${each.key}"
     Resources = {
       Profile = {
         Type = "AWS::QuickSight::CustomPermissions"

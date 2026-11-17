@@ -1,4 +1,4 @@
-# Amazon Quick Bootstrap - Example Variables
+# AWS Quick Bootstrap - Example Variables
 # Copy this file to terraform.tfvars and customize the values
 
 # AWS Region

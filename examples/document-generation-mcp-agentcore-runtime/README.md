@@ -1,17 +1,17 @@
 ---
 category: Capability
-description: "AI-powered document generation (docx, pdf, pptx, xlsx, HTML) for Amazon Quick using MCP Gateway with AgentCore Runtime and Code Interpreter"
+description: "AI-powered document generation (docx, pdf, pptx, xlsx, HTML) for AWS Quick using MCP Gateway with AgentCore Runtime and Code Interpreter"
 ---
 
 # Document Generation MCP with AgentCore Runtime
 
-AI-powered document generation for Amazon Quick. Creates professional
+AI-powered document generation for AWS Quick. Creates professional
 docx, pdf, pptx, xlsx, and HTML files using a Strands SDK agent with
 Claude Sonnet on Bedrock and AgentCore Code Interpreter.
 
 ## What You Get With This Solution
 
-A chat-to-document pipeline that produces real, downloadable files — not text
+A chat-to-document pipeline that produces real, downloadable files, not text
 you copy-paste and reformat. The agent writes and executes Python code in a
 sandboxed Code Interpreter using real libraries (openpyxl, python-docx,
 reportlab, python-pptx), so the output includes:
@@ -22,21 +22,22 @@ reportlab, python-pptx), so the output includes:
 - PDF reports with professional typography, headers, footers, and page breaks
 - Interactive HTML prototypes with CSS and working JavaScript
 
-The output is a file you download with one click from the chat — ready to
+You download the output file from the chat in one step, ready to
 attach to an email or present in a meeting.
 
 ### Sample Outputs
 
-These were generated entirely by the agent from natural language prompts — no manual editing:
+These were generated entirely by the agent from natural language prompts, with no manual editing:
 
 | File | Prompt Summary |
 |------|---------------|
 | [Employee_Performance_Tracking.xlsx](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/Employee_Performance_Tracking.xlsx) | Employee performance spreadsheet with quarterly KPI scores, weighted averages, and distribution charts |
 | [Cloud_Migration_Business_Proposal.pdf](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/Cloud_Migration_Business_Proposal.pdf) | Cloud migration business proposal with executive summary, cost analysis, and timeline |
-| [AI_BackOffice_Automation_Pitch_Deck.pptx](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/AI_BackOffice_Automation_Pitch_Deck.pptx) | AI back-office automation pitch deck with ROI projections and implementation roadmap |
 | [dataflow-landing-page.html](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/document-generation-mcp-agentcore-runtime/samples/dataflow-landing-page.html) | Product landing page with responsive layout, feature cards, and pricing tiers |
 
 ### What You Can Ask
+
+These prompts show the kind of request each file type handles.
 
 **Spreadsheets (xlsx):**
 
@@ -66,7 +67,7 @@ These were generated entirely by the agent from natural language prompts — no 
 
 ### The Key Difference
 
-The agent doesn't just write text — it writes and executes Python code in a
+The agent doesn't only write text. It writes and executes Python code in a
 sandboxed Code Interpreter. That means it can use real libraries (openpyxl,
 python-docx, reportlab, python-pptx) to produce files with:
 
@@ -78,14 +79,16 @@ python-docx, reportlab, python-pptx) to produce files with:
 - Interactive HTML with working JavaScript
 
 The document generation skills for docx, pdf, pptx, and xlsx are inspired by
-[Anthropic's open-source skills](https://github.com/anthropics/skills/tree/main/skills),
-adapted here to run on AgentCore Runtime with Code Interpreter and enhanced
-with tool call budgeting and base64 capture hooks for reliability.
+[Anthropic's open-source skills](https://github.com/anthropics/skills/tree/main/skills).
+This sample adapts them to run on AgentCore Runtime with Code Interpreter and adds
+tool call budgeting and base64 capture hooks for reliability.
 
 ## Architecture
 
+Quick calls the gateway's MCP tools. Lambda functions start the job and return its result, while the agent runs on AgentCore Runtime and a Step Function tracks it.
+
 ```text
-Amazon Quick (Chat)
+AWS Quick (Chat)
     │
     ▼
 AgentCore Gateway (MCP tools)  ← CDK-managed: Gateway + Cognito + Lambdas
@@ -133,33 +136,37 @@ AgentCore Gateway (MCP tools)  ← CDK-managed: Gateway + Cognito + Lambdas
 
 ## Key Design Decisions
 
-- **Strands SDK** — agent framework running on AgentCore Runtime
-- **Claude Sonnet 4.6** (`us.anthropic.claude-sonnet-4-6`) — cross-region inference profile on Bedrock
-- **AgentCore Code Interpreter** — secure sandbox for Python code execution
-- **Tool call budget** — MaxToolCallsHook limits the agent to 20 code executions to prevent runaway loops
-- **Base64 capture hook** — captures file output in real-time before conversation trimming
-- **Fire-and-forget invocation** — submit_job invokes the agent with a 10s read timeout and doesn't wait for completion; the agent runs independently on AgentCore Runtime with no Lambda timeout constraint
-- **Direct-persist** — the agent uploads the result to S3 and marks the job COMPLETED in DynamoDB before returning, so the result is persisted regardless of any downstream timeouts
-- **Step Function polling loop** — polls DynamoDB every 30s to detect when the agent finishes; 45-minute timeout as a safety net
-- **Async submit/poll** — works around Quick's 60-second MCP timeout
-- **S3 + CloudFront** — file delivery via clean `*.cloudfront.net` URLs that aren't blocked by corporate proxies (S3 presigned URLs are often blocked)
-- **CDK-managed Gateway** — Gateway, Cognito, CloudFront, and all infrastructure in a single CDK stack
+Each choice below addresses a limit of running long document jobs behind a chat interface:
+
+- **Strands SDK**: agent framework running on AgentCore Runtime
+- **Claude Sonnet 4.6** (`us.anthropic.claude-sonnet-4-6`): cross-region inference profile on Bedrock
+- **AgentCore Code Interpreter**: isolated sandbox for Python code execution
+- **Tool call budget**: MaxToolCallsHook limits the agent to 20 code executions to prevent runaway loops
+- **Base64 capture hook**: captures file output in real-time before conversation trimming
+- **Fire-and-forget invocation**: submit_job invokes the agent with a 10s read timeout and doesn't wait for completion. The agent runs independently on AgentCore Runtime with no Lambda timeout constraint
+- **Direct-persist**: the agent uploads the result to S3 and marks the job COMPLETED in DynamoDB before returning, so the result is persisted regardless of any downstream timeouts
+- **Step Function polling loop**: polls DynamoDB every 30s to detect when the agent finishes; 45-minute timeout as a safety net
+- **Async submit/poll**: works around Quick's 60-second MCP timeout
+- **S3 + CloudFront**: file delivery via clean `*.cloudfront.net` URLs that aren't blocked by corporate proxies (S3 presigned URLs are often blocked)
+- **CDK-managed Gateway**: Gateway, Cognito, CloudFront, and the rest of the infrastructure in a single CDK stack
 
 ## Prerequisites
 
 Before you start, make sure you have:
 
 1. **AWS CLI v2** installed and configured with credentials for your target account
-2. **Python 3.12+** — the agent and CDK stack both use Python
-3. **Node.js 18+** and **npm** — required for the AWS CDK CLI (`npx cdk`)
-4. **Bedrock model access** — enable `anthropic.claude-sonnet-4-6` (or the cross-region
+2. **Python 3.12+**: the agent and CDK stack both use Python
+3. **Node.js 18+** and **npm**: required for the AWS CDK CLI (`npx cdk`)
+4. **Bedrock model access**: enable `anthropic.claude-sonnet-4-6` (or the cross-region
    inference profile `us.anthropic.claude-sonnet-4-6`) in the
    [Bedrock console](https://console.aws.amazon.com/bedrock/home#/modelaccess)
-   for your account and region
-5. **AgentCore CLI** — installed via `pip install bedrock-agentcore[starter-toolkit]`
+   for your account and Region
+5. **AgentCore CLI**: installed via `pip install bedrock-agentcore[starter-toolkit]`
    (handled by `requirements.txt` in Step 0)
 
 ## Project Structure
+
+The code is split between the agent, the CDK stack, and the Lambda handlers:
 
 ```text
 agentcore_runtime/         Strands agent deployed to AgentCore Runtime
@@ -187,9 +194,9 @@ samples/                   Sample outputs generated by the agent
 
 ## Deployment
 
-Three steps. Each step depends on the previous one.
+Deployment runs in order from Step 0 to Step 3, and each step depends on the previous one.
 
-Set your target region for all steps (used throughout):
+Set your target Region for every step:
 
 ```bash
 export AWS_REGION=us-east-1   # or your preferred region
@@ -208,8 +215,8 @@ pip install -r cdk/requirements.txt
 
 This installs:
 
-- `bedrock-agentcore[starter-toolkit]` — provides the `agentcore` CLI for deploying the agent
-- `aws-cdk-lib` and `constructs` — Python CDK libraries for the infrastructure stack
+- `bedrock-agentcore[starter-toolkit]`: provides the `agentcore` CLI for deploying the agent
+- `aws-cdk-lib` and `constructs`: Python CDK libraries for the infrastructure stack
 
 Verify the CLI is available:
 
@@ -235,16 +242,18 @@ The script outputs a Role ARN like:
 arn:aws:iam::<account-id>:role/DocumentSkillsAgentCoreRole
 ```
 
-Save this — you'll need it in Step 2.
+Save this ARN for Step 2.
 
 **What the role allows:**
 
-- `bedrock:InvokeModel` / `bedrock:InvokeModelWithResponseStream` — call Claude Sonnet (cross-region inference profiles)
-- `bedrock-agentcore:StartCodeInterpreterSession`, `InvokeCodeInterpreter`, `StopCodeInterpreterSession`, etc. — Code Interpreter sessions (managed + custom)
-- `s3:PutObject` / `dynamodb:UpdateItem` — direct-persist (agent writes results to S3 + DynamoDB)
-- `logs:CreateLogGroup` / `logs:PutLogEvents` — CloudWatch logging
+- `bedrock:InvokeModel` / `bedrock:InvokeModelWithResponseStream`: call Claude Sonnet (cross-region inference profiles)
+- `bedrock-agentcore:StartCodeInterpreterSession`, `InvokeCodeInterpreter`, `StopCodeInterpreterSession`, and related actions: Code Interpreter sessions (managed + custom)
+- `s3:PutObject` / `dynamodb:UpdateItem`: direct-persist (agent writes results to S3 + DynamoDB)
+- `logs:CreateLogGroup` / `logs:PutLogEvents`: CloudWatch logging
 
 ### Step 2: Deploy the agent to AgentCore Runtime
+
+Deploy the agent with the AgentCore CLI:
 
 ```bash
 source .venv/bin/activate
@@ -271,15 +280,15 @@ On success, you'll see:
 Agent ARN: arn:aws:bedrock-agentcore:<region>:<account>:runtime/document_skills_agent-XxxYyyZzz
 ```
 
-Note the **Runtime ID** (the part after `runtime/`, e.g. `document_skills_agent-XxxYyyZzz`).
+Note the **Runtime ID** (the part after `runtime/`, for example `document_skills_agent-XxxYyyZzz`).
 You'll need it in Step 3.
 
-Subsequent deploys (after code changes) just run `agentcore deploy` — no prompts.
+For later deploys after code changes, run `agentcore deploy`. It doesn't prompt again.
 
 ### Step 3: Deploy CDK infrastructure
 
-The CDK stack creates everything: DynamoDB table, S3 bucket, Lambda functions,
-Step Function, AgentCore Gateway, and Cognito authorizer — all in one deploy.
+The CDK stack creates the DynamoDB table, S3 bucket, Lambda functions,
+Step Function, AgentCore Gateway, and Cognito authorizer in one deploy.
 
 ```bash
 cd cdk
@@ -337,13 +346,13 @@ cd ..
 
 **What gets created:**
 
-- **DynamoDB table** (`document-skill-jobs`) — tracks job status, TTL-enabled
-- **S3 bucket** (`document-skills-output-<account>-<region>`) — stores generated files, 7-day auto-expiry
-- **CloudFront distribution** — serves download URLs via `*.cloudfront.net` (avoids corporate proxy blocks on S3 presigned URLs)
-- **3 Lambda functions** — submit_job (invokes agent + starts polling), check_agent_status, update_job, get_job_result
-- **Step Function** (`document-skill-orchestrator`) — polling loop: Wait → Check → Choice (loop or done)
-- **AgentCore Gateway** (`document-skills-gateway`) — MCP gateway with two tool targets
-- **Cognito User Pool** — OAuth2 authorizer with `client_credentials` grant for the gateway
+- **DynamoDB table** (`document-skill-jobs`): tracks job status, TTL-enabled
+- **S3 bucket** (`document-skills-output-<account>-<region>`): stores generated files, 7-day auto-expiry
+- **CloudFront distribution**: serves download URLs via `*.cloudfront.net` (avoids corporate proxy blocks on S3 presigned URLs)
+- **Lambda functions**: submit_job (invokes agent + starts polling), check_agent_status, update_job, get_job_result
+- **Step Function** (`document-skill-orchestrator`): polling loop: Wait → Check → Choice (loop or done)
+- **AgentCore Gateway** (`document-skills-gateway`): MCP gateway with two tool targets
+- **Cognito User Pool**: OAuth2 authorizer with `client_credentials` grant for the gateway
 
 ### Configure Quick
 
@@ -360,8 +369,8 @@ Using the CDK stack outputs (and the Client Secret from the command above):
 | Client Secret | from `describe-user-pool-client` command |
 | Scope | `Scope` from stack output (`document-skills-gateway/invoke`) |
 
-The auth uses OAuth2 `client_credentials` flow — Quick requests a token
-from the Cognito token URL using the client ID + secret, then passes that JWT
+The auth uses the OAuth2 `client_credentials` flow. Quick requests a token
+from the Cognito token URL using the client ID + secret. It then passes that JWT
 in the `Authorization` header when calling the MCP gateway.
 
 1. Save and test by asking Quick to create a document
@@ -391,11 +400,15 @@ automatically poll for the result instead of asking the user what to do next.
 
 ### Agent Setup
 
+Create the agent in Quick:
+
 1. Go to **Quick Admin → Custom Agents → Create Agent**
 2. Configure the agent with the MCP server you set up in the previous section
 3. Use the system prompt below
 
 ### Recommended System Prompt
+
+Paste this prompt into the agent's instructions:
 
 ```text
 You are a document creation assistant. You help users create professional
@@ -465,9 +478,11 @@ User: "Create a Q4 business review PowerPoint with revenue charts"
   Agent: "Your PowerPoint is ready! Download it here: [link]"
 ```
 
-The user controls when to check — the agent gives them the exact query to use.
+The user controls when to check, and the agent gives them the exact query to use.
 
 ## Testing
+
+Test the agent alone first, then the full pipeline.
 
 ### Test the agent directly (without Gateway/Quick)
 
@@ -482,8 +497,8 @@ agentcore invoke -a document_skills_agent '{
 }'
 ```
 
-The response will contain `file_base64` — the generated file encoded as base64.
-(Without `job_id`/`docs_bucket`/`jobs_table`, the agent runs synchronously.)
+The response contains `file_base64`, the generated file encoded as base64.
+When you leave out `job_id`, `docs_bucket`, and `jobs_table`, the agent runs synchronously.
 
 ### Test the full pipeline (Lambda → Agent → Step Function)
 
@@ -549,10 +564,12 @@ cd ..
 agentcore destroy
 ```
 
-CDK handles the Gateway and Cognito cleanup automatically — no separate
-gateway deletion step needed.
+CDK handles the Gateway and Cognito cleanup automatically, so there's no separate
+gateway deletion step.
 
 ## Supported Document Types
+
+Each skill type maps to one output format and its libraries:
 
 | Skill | Output | Libraries Used |
 |-------|--------|---------------|
@@ -566,13 +583,13 @@ gateway deletion step needed.
 
 The agent includes two Strands hooks to handle edge cases:
 
-1. **MaxToolCallsHook** (20 calls max) — Three-phase approach:
+1. **MaxToolCallsHook** (20 calls max): Three-phase approach:
    - Calls 1–18: Normal execution
-   - Call 19: Warning — cancels the call and tells the model to output base64 next
+   - Call 19: Warning that cancels the call and tells the model to output base64 next
    - Call 20: Final allowed call (should be base64 output)
    - Call 21+: Hard-stop via `stop_event_loop`
 
-2. **Base64CaptureHook** — Captures file output from tool results in real-time,
+2. **Base64CaptureHook**: Captures file output from tool results in real-time,
    before `SlidingWindowConversationManager` trims old messages between turns.
 
 ## Troubleshooting
@@ -592,7 +609,7 @@ re-run `cdk bootstrap`.
 
 **Agent times out or produces no file:**
 Check CloudWatch logs at `/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT`.
-The MaxToolCallsHook may have hit the limit — the agent logs show the call count.
+The MaxToolCallsHook may have hit the limit. The agent logs show the call count.
 
 **Step Function execution stuck in polling loop:**
 The Step Function polls every 30s for up to 45 minutes. If the agent crashed

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Syncs users from IAM Identity Center or local Amazon Quick users into a Cognito User Pool.
+"""Syncs users from IAM Identity Center or local AWS Quick users into a Cognito User Pool.
 
 Auto-discovers the Cognito Pool ID from the CloudFormation stack. Shows a
 plan and prompts for confirmation before creating users. Each created user
@@ -8,7 +8,7 @@ sets their own password on first sign-in.
 
 Usage:
     python3 sync_users.py --source idc    # from IAM Identity Center
-    python3 sync_users.py --source local  # from local Amazon Quick users
+    python3 sync_users.py --source local  # from local AWS Quick users
 """
 
 import argparse
@@ -129,7 +129,7 @@ class IdcUserLister:
 
 
 class LocalUserLister:
-    """Lists local Amazon Quick users."""
+    """Lists local AWS Quick users."""
 
     def __init__(self, qs_client: BaseClient, account_id: str) -> None:
         self._qs = qs_client
@@ -239,7 +239,7 @@ class UserSyncOrchestrator:
                 print("Source: IAM Identity Center")
                 users = self._idc_lister_factory().list_users()
             case UserSource.LOCAL:
-                print("Source: Local Amazon Quick users")
+                print("Source: Local AWS Quick users")
                 users = self._local_lister_factory().list_users()
 
         print(f"Pool:    {stack.pool_id}\n")

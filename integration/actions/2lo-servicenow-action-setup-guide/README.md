@@ -1,12 +1,13 @@
+<!-- markdownlint-disable MD029 -->
 # 2LO - ServiceNow - Action Setup Guide
 
 Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page/administer/security/task/t_CreateEndpointforExternalClients.html>
 
-1) For ServiceNow Developer Instance, visit <https://developer.servicenow.com/dev.do#!/home> and click on **Start Building** button. Switch to **New Inbound Integration Experience**:
+1) For ServiceNow Developer Instance, visit <https://developer.servicenow.com/dev.do#!/home> and choose **Start Building** button. Switch to **New Inbound Integration Experience**:
 
 ![ServiceNow Developer Instance](images/image_1.png)
 
-2) Click on **New integration** button:
+2) Choose **New integration** button:
 
 ![New integration button](images/image_2.png)
 
@@ -20,7 +21,7 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 
 ![OAuth application form](images/image_4.png)
 
-5) Navigate to **All** > **System OAuth** > **Application Registry** and click on your application registry.
+5) Navigate to **All** > **System OAuth** > **Application Registry** and choose your application registry.
 
 ![Application Registry](images/image_5.png)
 
@@ -44,7 +45,7 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 
 ![System property configuration](images/image_8.png)
 
-8) Go to **AWS** > **Quick** page, and click on **Integration**:
+8) Go to **AWS** > **Quick** page, and choose **Integration**:
 
 ![Quick Integration](images/image_9.png)
 
@@ -62,15 +63,15 @@ Reference: <https://www.servicenow.com/docs/bundle/xanadu-platform-security/page
 
 ![ServiceNow configuration form](images/image_10.png)
 
-10) Navigate to **Integration** => **Actions** => **ServiceNow Integration** (or your ServiceNow integration name), and click on **Sign in**:
+10) Navigate to **Integration** => **Actions** => **ServiceNow Integration** (or your ServiceNow integration name), and choose **Sign in**:
 
 ![ServiceNow Integration sign in](images/image_11.png)
 
-11) Sign in to ServiceNow and click **Allow**:
+11) Sign in to ServiceNow and choose **Allow**:
 
 ![ServiceNow authorization](images/image_12.png)
 
-12) **Using ServiceNow Integration in Quick**
+12) **Using ServiceNow Integration in AWS Quick**
 
 Now that your ServiceNow integration is configured and authorized, you can use it across different Quick components:
 
@@ -79,8 +80,8 @@ Now that your ServiceNow integration is configured and authorized, you can use i
 1. Navigate to **Chat** in Quick
 2. Create a new chat agent or edit an existing one
 3. In the agent configuration, go to the **Actions** section
-4. Click **Add Action** and select your **ServiceNow Integration**
-5. Configure which ServiceNow operations the agent can perform (e.g., create tickets, search knowledge base, update records)
+4. Choose **Add Action** and select your **ServiceNow Integration**
+5. Configure which ServiceNow operations the agent can perform (for example, create tickets, search knowledge base, update records)
 
 **For Flows:**
 
@@ -103,4 +104,4 @@ Now that your ServiceNow integration is configured and authorized, you can use i
 - **Flow**: Automatically create tickets when certain conditions are met
 - **Automate**: Schedule regular ServiceNow data synchronization
 
-Your ServiceNow integration is now ready to streamline IT service management across all Quick capabilities.
+Your ServiceNow integration is now ready to support IT service management across Quick capabilities.

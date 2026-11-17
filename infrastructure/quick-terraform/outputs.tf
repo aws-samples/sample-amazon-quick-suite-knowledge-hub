@@ -1,4 +1,4 @@
-# Amazon Quick Bootstrap - Outputs
+# AWS Quick Bootstrap - Outputs
 
 output "identity_center_instance_arn" {
   description = "ARN of the IAM Identity Center instance"

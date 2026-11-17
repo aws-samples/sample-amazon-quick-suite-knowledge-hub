@@ -4,7 +4,7 @@ info:
   description: |
     MCP tools for document creation skills exposed via AgentCore Gateway.
     These tools implement an async submit/poll pattern to work within
-    the Amazon Quick 60-second MCP request-response timeout.
+    the AWS Quick 60-second MCP request-response timeout.
 
     USAGE PATTERN (important for the calling agent):
     1. Call create_document to submit a document creation job

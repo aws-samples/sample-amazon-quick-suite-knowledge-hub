@@ -1,6 +1,6 @@
 # GenAI Operations Hub
 
-Build an AI-powered operations dashboard for Amazon Bedrock invocation logs using Amazon Quick Sight Q, Spaces, and Flows.
+Build an AI-powered operations dashboard for Amazon Bedrock invocation logs using Quick Sight, Spaces, and Flows in AWS Quick.
 
 ## Overview
 
@@ -16,11 +16,15 @@ This solution enables leaders and engineers to:
 
 ## What's Included
 
+The sample ships the infrastructure, the data, and the guides:
+
 - **Infrastructure as Code**: CDK stack to provision S3, Athena, and Quick Sight resources
 - **Sample Data**: Real Bedrock invocation logs for testing
 - **Step-by-Step Guides**: Console-based instructions for each task
 
 ## Tasks
+
+The guides in `docs/` walk through these tasks in order, each building on the one before:
 
 1. **AI Dashboard** - Use Quick Sight Generative BI to build visualizations with natural language
 2. **Create Space** - Set up a Quick Sight Space with your dashboard
@@ -29,13 +33,19 @@ This solution enables leaders and engineers to:
 
 ## Prerequisites
 
+You need the following before you start:
+
 - AWS Account with Bedrock invocation logs enabled
 - Quick Sight Enterprise Edition subscription
 - Permissions for S3, Athena, Quick Sight, and IAM
 
 ## Quick Start
 
+Deploy the stack first. Then generate and upload the sample data, and work through the task guides in `docs/` in order, starting with the AI dashboard.
+
 ### Deploy Infrastructure
+
+Create a virtual environment, install the CDK dependencies, and deploy:
 
 ```bash
 cd infrastructure
@@ -53,6 +63,8 @@ cdk deploy
 
 ### Extract and Upload Sample Data
 
+Generate the sample logs and copy them to the stack's S3 bucket:
+
 ```bash
 # Generate sample data
 cd infrastructure/data-generators
@@ -69,7 +81,9 @@ Navigate to the `docs/` folder and follow each guide in order. Start with creati
 
 ## Repository Structure
 
-```
+The folder holds the architecture diagram, the CDK app, and the task guides:
+
+```text
 genai-operations-hub/
 ├── README.md
 ├── architecture/
@@ -92,7 +106,7 @@ genai-operations-hub/
 
 ## Contributing
 
-See the [Amazon Quick Knowledge Hub Contribution Guide](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/HOW-TO-CONTRIBUTE/)
+See the [AWS Quick Knowledge Hub Contribution Guide](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/HOW-TO-CONTRIBUTE/)
 
 ## License
 

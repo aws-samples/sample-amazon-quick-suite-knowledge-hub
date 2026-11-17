@@ -148,12 +148,12 @@ def check_supplier_approval(
 ) -> dict:
     """
     Validate supplier against governance rules. Supplier data must be provided
-    by the orchestrator (queried from the database via Amazon Quick SUPPLY_CHAIN.SCM.SUPPLIERS table).
+    by the orchestrator (queried from the database via AWS Quick SUPPLY_CHAIN.SCM.SUPPLIERS table).
 
     Args:
         supplier_id: Supplier ID for reference
         supplier_name: Supplier name for reference
-        supplier_data: Full supplier record from the database via Amazon Quick (must include: approval_status, risk_tier, categories, next_audit_date)
+        supplier_data: Full supplier record from the database via AWS Quick (must include: approval_status, risk_tier, categories, next_audit_date)
         category: Product category for category-specific rules
         po_value: PO value for threshold checks
     """

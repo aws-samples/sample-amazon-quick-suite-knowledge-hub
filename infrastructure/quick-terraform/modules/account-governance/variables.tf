@@ -16,7 +16,7 @@ variable "default_namespace" {
 }
 
 variable "termination_protection_enabled" {
-  description = "Prevent the Amazon Quick account subscription from being deleted."
+  description = "Prevent the AWS Quick account subscription from being deleted."
   type        = bool
   default     = true
 }
@@ -35,7 +35,7 @@ variable "ip_restriction_enabled" {
 }
 
 variable "ip_restriction_rule_map" {
-  description = "Map of CIDR block => description. Only listed CIDRs may access Amazon Quick."
+  description = "Map of CIDR block => description. Only listed CIDRs may access AWS Quick."
   type        = map(string)
   default     = {}
 }

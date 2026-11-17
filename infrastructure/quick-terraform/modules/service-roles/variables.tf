@@ -1,5 +1,5 @@
 # Module: service-roles
-# IAM service role(s) that Amazon Quick / QuickSight assumes to reach AWS data sources.
+# IAM service role(s) that AWS Quick / QuickSight assumes to reach AWS data sources.
 
 variable "role_name" {
   description = "Name of the QuickSight service role."

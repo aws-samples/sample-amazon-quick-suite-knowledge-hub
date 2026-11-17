@@ -2,7 +2,7 @@
 Quoting MCP — Lambda Handler for AgentCore Gateway
 ═══════════════════════════════════════════════════════════════
 Applies pricing RULES (tier discounts, volume discounts, margin floors)
-to product data provided by the caller (from the database via Amazon Quick).
+to product data provided by the caller (from the database via AWS Quick).
 
 Tools:
 - generate_quote: Build a quote for a customer request
@@ -78,7 +78,7 @@ def generate_quote(
         account_id: Customer account ID
         customer_tier: One of Enterprise, Premium, Standard
         items: List of {sku, quantity} to quote
-        products: Product catalog data from the database via Amazon Quick (list of {sku, name, list_price, cost, min_margin_pct})
+        products: Product catalog data from the database via AWS Quick (list of {sku, name, list_price, cost, min_margin_pct})
         valid_days: Quote validity in days (default 30)
         notes: Optional notes
     """
@@ -222,7 +222,7 @@ TOOLS = {
 TOOL_SCHEMAS = [
     {
         "name": "generate_quote",
-        "description": "Generate a price quote for a customer. Applies tier discounts, volume discounts, and calculates margins. Requires products data from the database via Amazon Quick.",
+        "description": "Generate a price quote for a customer. Applies tier discounts, volume discounts, and calculates margins. Requires products data from the database via AWS Quick.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -243,7 +243,7 @@ TOOL_SCHEMAS = [
                 },
                 "products": {
                     "type": "array",
-                    "description": "Product catalog from the database via Amazon Quick: [{sku, name, list_price, cost, min_margin_pct}]",
+                    "description": "Product catalog from the database via AWS Quick: [{sku, name, list_price, cost, min_margin_pct}]",
                     "items": {"type": "object"},
                 },
                 "valid_days": {"type": "integer", "default": 30},

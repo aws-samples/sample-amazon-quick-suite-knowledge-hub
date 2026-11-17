@@ -10,7 +10,7 @@ locals {
   idc_groups = var.enable_idc ? {
     admin = {
       display_name = var.admin_group_name
-      description  = "Amazon Quick admin group"
+      description  = "AWS Quick admin group"
       create       = var.create_admin_group
     }
   } : {}

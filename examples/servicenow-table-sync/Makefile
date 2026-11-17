@@ -1,4 +1,4 @@
-# ServiceNow to Amazon Quick ingestion: root automation entry point.
+# ServiceNow to AWS Quick ingestion: root automation entry point.
 #
 # Every sub-project exposes the same seven verbs. This Makefile runs each verb
 # across all of them in a fixed order. CI runs these same targets.
@@ -16,7 +16,7 @@ SUBPROJECTS := backend cdk simulator
 .PHONY: help install build fix check test deploy clean $(SUBPROJECTS)
 
 help:
-	@echo "ServiceNow → Amazon Quick ingestion"
+	@echo "ServiceNow → AWS Quick ingestion"
 	@echo ""
 	@echo "  make install   Install dependencies (uv / npm) across $(SUBPROJECTS)"
 	@echo "  make build     Compile/package artifacts"

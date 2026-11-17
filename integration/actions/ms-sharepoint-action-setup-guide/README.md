@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 -->
 # MS Sharepoint - Action Setup Guide
 
 1) Sign in to the Microsoft Entra admin center as at least an Application Developer.
@@ -6,7 +7,7 @@
 
    - Choose **Single tenant** and provide optional `Web` Redirect URI: `https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`
 
-   - Click **Register** button:
+   - Choose **Register** button:
 
    ![App registration form](images/image_1.png)
 
@@ -26,7 +27,7 @@
 
    ![Client ID and Tenant ID](images/image_4.png)
 
-6) Go to **AWS** > **Quick** page, and click on **Integration**:
+6) Go to **AWS** > **Quick** page, and choose **Integration**:
 
    ![Quick Integration](images/image_6.png)
 
@@ -57,14 +58,14 @@
 
    ![Configuration form](images/image_8.png)
 
-8) Click on **Create and continue**
+8) Choose **Create and continue**
 
-9) Navigate to **Integration** => **Actions** => **Microsoft SharePoint Online Integration** (or your MS Sharepoint integration name), and click on **Sign in**:
+9) Navigate to **Integration** => **Actions** => **Microsoft SharePoint Online Integration** (or your MS Sharepoint integration name), and choose **Sign in**:
 
    ![Authorization consent](images/image_9.png)
 
    - Enter your Microsoft Sharepoint email and password in the popup window;
-   - Check **Consent on behalf of your organization** and click **Accept**:
+   - Check **Consent on behalf of your organization** and choose **Accept**:
 
    ![Authorization consent](images/image_10.png)
 

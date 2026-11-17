@@ -1,7 +1,7 @@
 """
 Amazon Redshift Data Query MCP Integration Stack
 
-CDK stack that deploys Amazon Redshift integration with Amazon Quick
+CDK stack that deploys Amazon Redshift integration with AWS Quick
 using MCP (Model Context Protocol) through native BedrockAgentCore Gateway constructs.
 """
 

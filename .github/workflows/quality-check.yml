@@ -30,7 +30,7 @@ jobs:
     name: Code Quality and Documentation Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Amazon Quick Knowledge Hub
+      - name: Checkout AWS Quick Knowledge Hub
         uses: actions/checkout@v4
 
       - name: Get changed files
@@ -49,7 +49,7 @@ jobs:
               - "pyproject.toml"
               - "mkdocs.yml"
 
-      - name: Set up Python for Amazon Quick Knowledge Hub
+      - name: Set up Python for AWS Quick Knowledge Hub
         if: steps.changed-files.outputs.python_any_changed == 'true' || steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
         uses: actions/setup-python@v5
         with:
@@ -72,7 +72,7 @@ jobs:
       - name: Lint Python files
         if: steps.changed-files.outputs.python_any_changed == 'true'
         run: |
-          echo "🔍 Linting Python files for Amazon Quick Knowledge Hub:"
+          echo "🔍 Linting Python files for AWS Quick Knowledge Hub:"
           echo "${{ steps.changed-files.outputs.python_all_changed_files }}" | tr ',' '\n'
           IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.python_all_changed_files }}"
           for file in "${FILES[@]}"; do
@@ -107,7 +107,7 @@ jobs:
       - name: Build MkDocs documentation
         if: steps.changed-files.outputs.config_any_changed == 'true' || steps.changed-files.outputs.markdown_any_changed == 'true'
         run: |
-          echo "📚 Building Amazon Quick Knowledge Hub documentation..."
+          echo "📚 Building AWS Quick Knowledge Hub documentation..."
           uv run mkdocs build --strict
 
       - name: Test MkDocs serve
@@ -129,4 +129,4 @@ jobs:
 
       - name: Skip message
         if: steps.changed-files.outputs.python_any_changed == 'false' && steps.changed-files.outputs.markdown_any_changed == 'false' && steps.changed-files.outputs.config_any_changed == 'false'
-        run: echo "⏭️ No relevant files changed - skipping quality checks for Amazon Quick Knowledge Hub"
+        run: echo "⏭️ No relevant files changed - skipping quality checks for AWS Quick Knowledge Hub"

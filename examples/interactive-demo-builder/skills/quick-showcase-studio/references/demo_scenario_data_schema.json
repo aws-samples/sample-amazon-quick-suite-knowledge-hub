@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "demo-scenario-data.schema.json",
-  "title": "Amazon Quick Demo Data Export",
-  "description": "Schema for an Amazon Quick demo data export bundling an activity feed, a knowledge graph, and long-term memories. All timestamps are RELATIVE offsets from the moment the file is loaded (negative = past, positive = future) so the data stays fresh regardless of import time. Reconstruct absolute time with: absolute_time = NOW + offset. Fields ending in '_offset_seconds' are in seconds; fields ending in '_offset_days' are in days.",
+  "title": "AWS Quick Demo Data Export",
+  "description": "Schema for an AWS Quick demo data export bundling an activity feed, a knowledge graph, and long-term memories. All timestamps are RELATIVE offsets from the moment the file is loaded (negative = past, positive = future) so the data stays fresh regardless of import time. Reconstruct absolute time with: absolute_time = NOW + offset. Fields ending in '_offset_seconds' are in seconds; fields ending in '_offset_days' are in days.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -36,7 +36,7 @@
         },
         "generated_by": {
           "type": "string",
-          "description": "Producer of the file, e.g. 'Amazon Quick'."
+          "description": "Producer of the file, e.g. 'AWS Quick'."
         },
         "total_feed_items": {
           "type": "integer",

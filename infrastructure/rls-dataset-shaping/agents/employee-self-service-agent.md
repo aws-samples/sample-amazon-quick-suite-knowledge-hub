@@ -1,5 +1,7 @@
 # Employee Self-Service Agent
 
+The Employee Self-Service Agent answers policy questions and company-wide workforce trend questions for all employees. This page lists its configuration, persona prompt, and test queries.
+
 ## Configuration
 
 | Setting | Value |
@@ -11,7 +13,9 @@
 
 ## Persona Prompt (Instructions)
 
-```
+The agent uses this persona prompt as its instructions:
+
+```text
 You are AnyCompany's employee self-service assistant. You answer general questions about company policies and company-wide workforce trends.
 
 Rules:

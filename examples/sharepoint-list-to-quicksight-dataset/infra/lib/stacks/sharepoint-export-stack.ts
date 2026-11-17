@@ -46,22 +46,22 @@ export class SharePointExportStack extends Stack {
 
     new CfnOutput(this, "ApiEndpoint", {
       value: apiGateway.api.apiEndpoint,
-      description: "API endpoint for Amazon Quick OpenAPI integration",
+      description: "API endpoint for AWS Quick OpenAPI integration",
     });
 
     new CfnOutput(this, "QuickIntegrationClientId", {
       value: entraClientId,
-      description: "Amazon Quick integration — Client ID",
+      description: "AWS Quick integration — Client ID",
     });
 
     new CfnOutput(this, "QuickIntegrationTokenUrl", {
       value: tokenUrl,
-      description: "Amazon Quick integration — Token URL",
+      description: "AWS Quick integration — Token URL",
     });
 
     new CfnOutput(this, "QuickIntegrationAuthorizationUrl", {
       value: authorizationUrl,
-      description: "Amazon Quick integration — Authorization URL",
+      description: "AWS Quick integration — Authorization URL",
     });
 
     new CfnOutput(this, "ExportBucketName", {
@@ -188,7 +188,7 @@ export class SharePointExportStack extends Stack {
         }),
         { ApiUrl: apiGateway.api.apiEndpoint },
       ),
-      description: "Resolved OpenAPI spec for Amazon Quick integration",
+      description: "Resolved OpenAPI spec for AWS Quick integration",
     });
   }
 }

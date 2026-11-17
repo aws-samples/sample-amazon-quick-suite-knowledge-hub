@@ -1,14 +1,16 @@
 # Supply Chain Operations Skill
 
-An Amazon Quick agent skill that orchestrates supply chain requests: it queries
+An AWS Quick agent skill that orchestrates supply chain requests: it queries
 the connected space for data, applies business rules through the supply chain
-connectors, and renders branded documents. The skill follows the Amazon Quick
+connectors, and renders branded documents. The skill follows the AWS Quick
 Official Catalog skill standard (frontmatter plus `## Overview` and `## Workflow`
 with XML blocks, plus reference and asset files).
 
 ## Directory layout
 
-```
+The skill is one folder with its definition, reference files, and a quote template:
+
+```text
 skill/
   SKILL.md                     The skill definition (frontmatter + workflow)
   references/                  Lookup data the agent reads during execution
@@ -23,7 +25,7 @@ skill/
 
 ## Install
 
-Copy the skill directory into the Amazon Quick desktop skills folder (create the
+Copy the skill directory into the AWS Quick desktop skills folder (create the
 folder if it does not exist):
 
 ```bash
@@ -34,7 +36,7 @@ cp -R skill ~/.quickwork/profiles/{your-profile}/skills/supply-chain-ops
 
 The skill takes runtime inputs rather than hardcoded values:
 
-- `space_id`: the Amazon Quick space holding the supply chain datasets and
+- `space_id`: the AWS Quick space holding the supply chain datasets and
   knowledge base (for example `supply-chain-management`). If omitted, the skill
   asks which space to use.
 - `approver_email`: the default recipient when sending a quote for approval. If
@@ -49,8 +51,8 @@ quote template in `assets/quote-template.html` reads those tokens.
 
 ## Dependencies
 
-The skill lists these in `depends-on` and expects them configured in Amazon Quick
-as custom action connectors (the four business rule MCP servers plus the agent),
+The skill lists these in `depends-on` and expects them configured in AWS Quick
+as custom action connectors (the business rule MCP servers plus the agent),
 or available as skills:
 
 - `sc-quoting`, `sc-governance`, `sc-invoice`, `sc-disruption`: business rule connectors
@@ -61,6 +63,8 @@ or available as skills:
 See the project README for how these connectors are deployed and configured.
 
 ## What this skill does
+
+For each request, the skill runs these steps in order:
 
 1. Classifies the request (quote, invoice, governance, disruption, data lookup,
    visualization, or a multi-step workflow).

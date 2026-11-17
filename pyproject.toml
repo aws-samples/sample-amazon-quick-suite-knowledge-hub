@@ -1,7 +1,7 @@
 [project]
 name = "amazon-quick-knowledge-hub"
 version = "1.0.0"
-description = "Integration guides and documentation for Amazon Quick"
+description = "Integration guides and documentation for AWS Quick"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -129,7 +129,7 @@ ignore = [
     "S311",
     "F821",
 ]
-"amazon-quick-on-desktop/scripts/sync_users.py" = ["S105"]  # Cognito status label
+"quick-desktop-oidc-cognito-setup/scripts/sync_users.py" = ["S105"]  # Cognito status label
 # MCP servers bind all interfaces inside their container runtime by design.
 "integration/actions/MCP/custom-mcp-server-agentcore-runtime/hr_mcp_server.py" = [
     "S104",
@@ -160,7 +160,7 @@ extend-exclude = [
     "docs/infrastructure/",
     "docs/integration/",
     "docs/examples/",
-    "docs/amazon-quick-on-desktop/",
+    "docs/quick-desktop-oidc-cognito-setup/",
     "uv.lock",
     "package-lock.json",
     # Synthetic demo datasets: US state codes (ND, VA...), place names and

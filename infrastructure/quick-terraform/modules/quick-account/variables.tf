@@ -1,8 +1,8 @@
 # Module: quick-account
-# Creates the Amazon Quick (QuickSight) account subscription + an optional namespace.
+# Creates the AWS Quick (QuickSight) account subscription + an optional namespace.
 
 variable "account_name" {
-  description = "Name for the Amazon Quick account subscription."
+  description = "Name for the AWS Quick account subscription."
   type        = string
 
   validation {
@@ -12,7 +12,7 @@ variable "account_name" {
 }
 
 variable "notification_email" {
-  description = "Email address that receives Amazon Quick service notifications."
+  description = "Email address that receives AWS Quick service notifications."
   type        = string
 
   validation {
@@ -22,7 +22,7 @@ variable "notification_email" {
 }
 
 variable "edition" {
-  description = "Amazon Quick edition. ENTERPRISE_AND_Q enables Q topics; ENTERPRISE is standard."
+  description = "AWS Quick edition. ENTERPRISE_AND_Q enables Topics; ENTERPRISE is standard."
   type        = string
   default     = "ENTERPRISE"
 

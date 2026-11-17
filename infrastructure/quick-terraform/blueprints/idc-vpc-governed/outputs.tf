@@ -1,7 +1,7 @@
 # Blueprint: idc-vpc-governed - outputs
 
 output "account_name" {
-  description = "Amazon Quick account name."
+  description = "AWS Quick account name."
   value       = module.quick_account.account_name
 }
 

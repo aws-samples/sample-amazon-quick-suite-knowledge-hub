@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Amazon Quick Security Blog - QuickSight Resource Deployment Script
+# AWS Quick Security Blog - QuickSight Resource Deployment Script
 # ==============================================================================
 # This script automates the creation of QuickSight resources for the blog walkthrough.
 # It creates datasets, groups, and configures RLS using the AWS CLI.

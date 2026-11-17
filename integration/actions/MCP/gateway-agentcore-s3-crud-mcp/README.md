@@ -1,6 +1,6 @@
 # Bedrock Agent Gateway - S3 CRUD Operations
 
-The genesis of this project was wanting to perform CRUD operations against a S3 bucket from within Quicks Flow. Now using this remote MCP server, you can add this to Quicks integration, and then call upon the actions from within a Flow.
+The genesis of this project was wanting to perform CRUD operations against an S3 bucket from within Quick Flows. With this remote MCP server, you can add it as a Quick integration and then call its actions from within a flow.
 
 This is a secure gateway to Amazon Bedrock AgentCore that provides CRUD operations on S3 buckets through a Lambda function. The system uses JWT authentication with Amazon Cognito and exposes MCP (Model Context Protocol) actions for client interactions.
 
@@ -9,6 +9,8 @@ This is a secure gateway to Amazon Bedrock AgentCore that provides CRUD operatio
 This project creates a complete infrastructure for secure S3 operations through Amazon Bedrock AgentCore Gateway. It enables applications to perform Create, Read, Update, and Delete operations on S3 objects through a standardized MCP interface with OAuth 2.0 authentication.
 
 ### Key Features
+
+The project provides these features:
 
 - **🔐 Secure Authentication**: OAuth 2.0 client credentials flow with Amazon Cognito
 - **📁 Full S3 CRUD Operations**: Create, read, update, delete, and list S3 objects
@@ -19,6 +21,8 @@ This project creates a complete infrastructure for secure S3 operations through 
 - **🔧 MCP Protocol**: Standardized Model Context Protocol for AI agent interactions
 
 ### Architecture Components
+
+The project deploys these components:
 
 - **Amazon Bedrock AgentCore Gateway**: MCP protocol endpoint
 - **AWS Lambda Function**: S3 operations handler with binary file support
@@ -31,7 +35,11 @@ This project creates a complete infrastructure for secure S3 operations through 
 
 ## Installation
 
+Deploy the gateway with the AWS CLI and a CloudFormation template.
+
 ### Prerequisites
+
+You need the following:
 
 - AWS CLI configured with appropriate permissions
 - AWS account with access to:
@@ -43,6 +51,8 @@ This project creates a complete infrastructure for secure S3 operations through 
   - Amazon CloudWatch
 
 ### Deployment Steps
+
+Follow these steps:
 
 1. **Clone the repository**
 
@@ -92,6 +102,8 @@ The CloudFormation template accepts the following parameters:
 
 ## Usage
 
+After deployment, authenticate against the gateway and call the MCP operations.
+
 ### Authentication
 
 The system uses OAuth 2.0 client credentials flow. After deployment, you'll receive:
@@ -103,6 +115,8 @@ The system uses OAuth 2.0 client credentials flow. After deployment, you'll rece
 
 ### Getting an Access Token
 
+Request a token from the Cognito token endpoint:
+
 ```bash
 curl -X POST https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -111,7 +125,11 @@ curl -X POST https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/to
 
 ### MCP Operations
 
+The examples below show the request body for each operation.
+
 #### 1. Upload a Text File
+
+Send a key, the text content, and optional metadata:
 
 ```json
 {
@@ -126,6 +144,8 @@ curl -X POST https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/to
 
 #### 2. Upload a Binary File (PDF/Image)
 
+Send the content as base64 and set `is_base64` to `true`:
+
 ```json
 {
   "key": "files/document.pdf",
@@ -139,6 +159,8 @@ curl -X POST https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/to
 ```
 
 #### 3. Read a File
+
+Send the key of the object to read:
 
 ```json
 {
@@ -172,6 +194,8 @@ curl -X POST https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/to
 
 #### 4. List Files
 
+Send a prefix and a maximum number of keys:
+
 ```json
 {
   "prefix": "documents/",
@@ -180,6 +204,8 @@ curl -X POST https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/to
 ```
 
 #### 5. Delete a File
+
+Send the key and confirm the delete:
 
 ```json
 {
@@ -190,10 +216,14 @@ curl -X POST https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/to
 
 ### Supported File Types
 
+The gateway handles these file types:
+
 - Text Files
 - Binary Files (See Quick documentation for supported types)
 
 ## Testing
+
+Run the unit tests and then test the deployed Lambda function.
 
 ### Unit Tests
 
@@ -217,6 +247,8 @@ aws lambda invoke \
 
 ## Monitoring and Logging
 
+The stack writes logs to CloudWatch, and you can query them from the CLI.
+
 ### CloudWatch Log Groups
 
 The system creates three log groups:
@@ -226,6 +258,8 @@ The system creates three log groups:
 - `/aws/security/PROJECT-ENVIRONMENT-events` - Security and authentication logs
 
 ### Monitoring Commands
+
+Use these commands to read logs and metrics:
 
 ```bash
 # View Lambda function logs
@@ -243,6 +277,8 @@ aws cloudwatch get-metric-statistics \
 
 ## Security
 
+The stack limits access with IAM policies and requires JWT authentication on every request.
+
 ### IAM Policies
 
 The system implements least privilege access:
@@ -253,6 +289,8 @@ The system implements least privilege access:
 
 ### Authentication Flow
 
+Each request follows this flow:
+
 1. Client requests OAuth token using client credentials
 2. Cognito validates credentials and returns JWT access token
 3. Client includes JWT token in MCP requests to gateway
@@ -261,6 +299,8 @@ The system implements least privilege access:
 
 ### Best Practices
 
+Follow these practices:
+
 - Rotate client secrets regularly
 - Use short-lived access tokens (1-24 hours)
 - Monitor CloudWatch logs for suspicious activity
@@ -268,7 +308,7 @@ The system implements least privilege access:
 
 ## Cleanup
 
-To remove all resources:
+To remove all resources, run:
 
 ```bash
 # Empty the S3 bucket first (if it contains objects)
@@ -287,7 +327,11 @@ aws cloudformation wait stack-delete-complete \
 
 ## Troubleshooting
 
+Use this section if a deployment or request fails.
+
 ### Common Issues
+
+These issues come up most often:
 
 1. **Lambda function name too long**
    - Solution: The template automatically generates short, unique names
@@ -302,6 +346,8 @@ aws cloudformation wait stack-delete-complete \
    - Solution: Ensure `is_base64: true` is set for binary content
 
 ### Debug Commands
+
+These commands show stack events and call the Lambda function directly:
 
 ```bash
 # Check stack events for errors
@@ -319,6 +365,8 @@ aws lambda invoke \
 
 ## Contributing
 
+To contribute:
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
@@ -326,6 +374,8 @@ aws lambda invoke \
 5. Open a Pull Request
 
 ### Development Setup
+
+Set up a local environment with these commands:
 
 ```bash
 # Install development dependencies
@@ -343,6 +393,8 @@ aws cloudformation validate-template --template-body file://template.yaml
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/LICENSE) file for details.
 
 ## Authors and Acknowledgment
+
+Credits for this sample:
 
 - **Primary Developer**: David Girling
 - **AWS Services**: Amazon Bedrock AgentCore, AWS Lambda, Amazon S3, Amazon Cognito

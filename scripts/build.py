@@ -1,4 +1,4 @@
-"""Build script for the Amazon Quick Knowledge Hub.
+"""Build script for the AWS Quick Knowledge Hub.
 
 Each tool is declared once in TOOLS, with its check command and the commands
 that fix what it reports. Checks and fixes therefore cannot drift apart, and

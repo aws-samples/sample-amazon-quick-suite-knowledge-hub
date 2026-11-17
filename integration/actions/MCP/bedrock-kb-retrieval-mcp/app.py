@@ -3,7 +3,7 @@
 Bedrock KB - Amazon Bedrock Knowledge Base Integration
 
 CDK application entry point for deploying Knowledge Base
-infrastructure with Amazon Quick integration using native constructs.
+infrastructure with AWS Quick integration using native constructs.
 """
 
 import aws_cdk as cdk
@@ -22,7 +22,7 @@ BedrockKBNativeStack(
     app,
     "quicksuite-bedrock-kb-mcp",
     env=env,
-    description="Amazon Bedrock Knowledge Base Integration with Amazon Quick MCP",
+    description="Amazon Bedrock Knowledge Base Integration with AWS Quick MCP",
 )
 
 app.synth()

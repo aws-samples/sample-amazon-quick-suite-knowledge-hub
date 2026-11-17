@@ -1,5 +1,5 @@
 # Module: identity-center
-# Creates (or references) IAM Identity Center groups used by Amazon Quick for
+# Creates (or references) IAM Identity Center groups used by AWS Quick for
 # role-based access (admin / author / reader).
 
 variable "identity_store_id" {
@@ -20,7 +20,7 @@ variable "groups" {
   EOT
   type = map(object({
     display_name = string
-    description  = optional(string, "Managed by Amazon Quick Terraform")
+    description  = optional(string, "Managed by AWS Quick Terraform")
     create       = optional(bool, true)
   }))
   default = {}

@@ -13,11 +13,11 @@
 
    ![Enter Confluence URL](images/image_2.png)
 
-4) Click on **Sign in** and pop-up window will display
+4) Choose **Sign in** and pop-up window will display
 
    ![Sign in popup](images/image_3.png)
 
-5) Click on **Accept**, and confirm the pop-up screen closing.
+5) Choose **Accept**, and confirm the pop-up screen closing.
 
 6) Now the action summary page should show as '**Signed in**'
 

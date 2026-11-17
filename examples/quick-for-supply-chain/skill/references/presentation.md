@@ -6,6 +6,8 @@ Lookup data: how to render each response type. Apply the brand tokens in
 
 ## Rendering rules
 
+The response type decides the output format:
+
 - QUOTE: always render a company-branded HTML quote (use the template asset), and
   also offer a Word (.docx) copy. Never a plain markdown table for a quote.
 - All other responses (governance, disruption, invoice decisions, data lookups,
@@ -31,6 +33,8 @@ Default to full when the input is absent.
 
 ## By category
 
+Each category has its own layout:
+
 - QUOTE: full-page HTML quote. Header with the company wordmark and "Quotation"
   label, quote number and dates, customer and tier, line items (item, sku, qty,
   list price, discount, unit price, line total), subtotal, tax, grand total,
@@ -46,7 +50,7 @@ Default to full when the input is absent.
 - GOVERNANCE CHECK: compliance card. Entity checked, status badge (compliant,
   conditional, non-compliant), checklist of rules with pass or fail, required actions.
 - PAYMENT QUEUE: financial dashboard. Summary cards (total payable, overdue,
-  upcoming), invoice table by due date, AP aging buckets as a simple bar chart.
+  upcoming), invoice table by due date, AP aging buckets as a bar chart.
 - DATA LOOKUP: concise summary with highlighted numbers, HTML table if more than
   three rows, color-coded badges for inventory (critical, low, ok), actionable insight.
 - VISUALIZATION: branded chart container using the brand palette for all series.

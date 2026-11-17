@@ -1,7 +1,7 @@
 [project]
 name = "actuarial-analysis-mcp"
 version = "0.1.0"
-description = "Actuarial Analysis Solution MCP integration with Amazon Quick"
+description = "Actuarial Analysis Solution MCP integration with AWS Quick"
 requires-python = ">=3.11"
 dependencies = [
     "aws-cdk-lib>=2.170.0",

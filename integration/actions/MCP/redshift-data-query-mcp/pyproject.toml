@@ -1,7 +1,7 @@
 [project]
 name = "redshift-data-query-mcp"
 version = "0.1.0"
-description = "Amazon Redshift Data Query MCP integration with Amazon Quick"
+description = "Amazon Redshift Data Query MCP integration with AWS Quick"
 requires-python = ">=3.11"
 dependencies = [
     "aws-cdk-lib>=2.170.0",

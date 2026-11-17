@@ -3,19 +3,19 @@
 # single blueprint can also express the simpler topologies by turning features off.
 
 variable "aws_region" {
-  description = "AWS region to deploy Amazon Quick resources."
+  description = "AWS region to deploy AWS Quick resources."
   type        = string
   default     = "us-east-1"
 }
 
 # --- Account ---------------------------------------------------------------
 variable "account_name" {
-  description = "Amazon Quick account subscription name."
+  description = "AWS Quick account subscription name."
   type        = string
 }
 
 variable "notification_email" {
-  description = "Email for Amazon Quick service notifications."
+  description = "Email for AWS Quick service notifications."
   type        = string
 }
 
@@ -65,7 +65,7 @@ variable "kms_multi_region" {
 
 # --- VPC (toggles) ---------------------------------------------------------
 variable "enable_privatelink" {
-  description = "Type 1: restrict access TO Amazon Quick via a PrivateLink interface endpoint."
+  description = "Type 1: restrict access TO AWS Quick via a PrivateLink interface endpoint."
   type        = bool
   default     = false
 }
@@ -95,7 +95,7 @@ variable "security_group_ids" {
 }
 
 variable "privatelink_service_name" {
-  description = "Region-specific Amazon Quick interface endpoint service name (for PrivateLink)."
+  description = "Region-specific AWS Quick interface endpoint service name (for PrivateLink)."
   type        = string
   default     = ""
 }
@@ -141,13 +141,13 @@ variable "enable_account_settings" {
 }
 
 variable "termination_protection_enabled" {
-  description = "Prevent the Amazon Quick account subscription from being deleted (when enable_account_settings = true)."
+  description = "Prevent the AWS Quick account subscription from being deleted (when enable_account_settings = true)."
   type        = bool
   default     = true
 }
 
 variable "enable_ip_restriction" {
-  description = "Gate Amazon Quick console & API access by IP CIDR, VPC, or VPC endpoint."
+  description = "Gate AWS Quick console & API access by IP CIDR, VPC, or VPC endpoint."
   type        = bool
   default     = false
 }
@@ -159,19 +159,19 @@ variable "ip_restriction_enabled" {
 }
 
 variable "ip_restriction_rule_map" {
-  description = "Map of CIDR block => description. Only listed CIDRs may access Amazon Quick."
+  description = "Map of CIDR block => description. Only listed CIDRs may access AWS Quick."
   type        = map(string)
   default     = {}
 }
 
 variable "vpc_id_restriction_rule_map" {
-  description = "Map of VPC ID => description allowed to access Amazon Quick."
+  description = "Map of VPC ID => description allowed to access AWS Quick."
   type        = map(string)
   default     = {}
 }
 
 variable "vpc_endpoint_id_restriction_rule_map" {
-  description = "Map of VPC endpoint ID => description allowed to access Amazon Quick."
+  description = "Map of VPC endpoint ID => description allowed to access AWS Quick."
   type        = map(string)
   default     = {}
 }

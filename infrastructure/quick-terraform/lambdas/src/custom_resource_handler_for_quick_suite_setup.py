@@ -1,7 +1,7 @@
 """
 Quick Setup Lambda Handler
 
-This Lambda function handles the setup of Amazon Quick with IAM Identity Center.
+This Lambda function handles the setup of AWS Quick with IAM Identity Center.
 It can be invoked as a CloudFormation Custom Resource or directly via Lambda invocation.
 """
 
@@ -163,7 +163,7 @@ class QuickSuiteSetup:
             response = self.iam.create_role(
                 RoleName=role_name,
                 AssumeRolePolicyDocument=json.dumps(assume_role_policy),
-                Description="Service role for Amazon Quick",
+                Description="Service role for AWS Quick",
                 Tags=[{"Key": "ManagedBy", "Value": "QuickSuiteStarterKit"}],
             )
 

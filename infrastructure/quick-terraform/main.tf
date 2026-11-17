@@ -1,5 +1,5 @@
-# Amazon Quick Bootstrap - Terraform
-# This module sets up Amazon Quick with IAM Identity Center integration
+# AWS Quick Bootstrap - Terraform
+# This module sets up AWS Quick with IAM Identity Center integration
 
 terraform {
   required_version = ">= 1.0.0"

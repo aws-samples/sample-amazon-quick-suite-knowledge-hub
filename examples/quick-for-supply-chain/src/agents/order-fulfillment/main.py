@@ -1,7 +1,7 @@
 """
 Supply Chain Order Fulfillment Agent — Bedrock AgentCore Runtime (MCP server).
 
-Exposed as an MCP server (streamable-http) so it can be added in Amazon Quick as a
+Exposed as an MCP server (streamable-http) so it can be added in AWS Quick as a
 Custom MCP connector with a CALLABLE tool. The tool runs the multi-step reasoning
 agent, which internally calls the 4 business MCP gateways.
 
@@ -50,7 +50,7 @@ You have access to 4 MCP tool servers for supply chain operations:
 4. DISRUPTION (sc-disruption-alert-mcp): assess_disruption_impact, classify_severity, recommend_mitigation, get_escalation_chain
 
 Architecture:
-- DATA (products, orders, suppliers, inventory) lives in the database — queried by the supervisor (Amazon Quick) and passed to you as context
+- DATA (products, orders, suppliers, inventory) lives in the database — queried by the supervisor (AWS Quick) and passed to you as context
 - RULES (pricing tiers, approval thresholds, compliance checks) live in the MCPs
 - You provide REASONING — analyzing data, chaining tools, making decisions
 

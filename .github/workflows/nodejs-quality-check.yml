@@ -38,7 +38,7 @@ jobs:
     name: Node.js Code Quality Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Amazon Quick Knowledge Hub
+      - name: Checkout AWS Quick Knowledge Hub
         uses: actions/checkout@v4
 
       - name: Get changed Node.js files
@@ -78,7 +78,7 @@ jobs:
         if: steps.changed-files.outputs.nodejs_any_changed == 'true' && steps.check-nodejs.outputs.has_nodejs == 'true'
         id: find-projects
         run: |
-          echo "🔍 Finding Node.js projects in Amazon Quick Knowledge Hub..."
+          echo "🔍 Finding Node.js projects in AWS Quick Knowledge Hub..."
           projects=$(find . -name "package.json" -not -path "./node_modules/*" | xargs dirname | sort -u)
           echo "projects<<EOF" >> $GITHUB_OUTPUT
           echo "$projects" >> $GITHUB_OUTPUT
@@ -127,4 +127,4 @@ jobs:
 
       - name: Skip message
         if: steps.changed-files.outputs.nodejs_any_changed == 'false'
-        run: echo "⏭️ No Node.js files changed - skipping Node.js quality checks for Amazon Quick Knowledge Hub"
+        run: echo "⏭️ No Node.js files changed - skipping Node.js quality checks for AWS Quick Knowledge Hub"

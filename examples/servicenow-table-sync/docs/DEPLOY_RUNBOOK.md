@@ -1,6 +1,6 @@
-# Deploy the ServiceNow table sync and connect Amazon Quick
+# Deploy the ServiceNow table sync and connect AWS Quick
 
-This runbook takes you from a ServiceNow instance with no integration to an Amazon Quick dataset that answers questions about your incidents. Work through it in order. ServiceNow comes first because the sync needs the OAuth credentials that you create there, and the AWS stack reads those credentials from [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/), so the secret must exist before you deploy.
+This runbook takes you from a ServiceNow instance with no integration to an AWS Quick dataset that answers questions about your incidents. Work through it in order. ServiceNow comes first because the sync needs the OAuth credentials that you create there. The AWS stack reads those credentials from [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/), so the secret must exist before you deploy.
 
 Check the prerequisites in the [README](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/servicenow-table-sync/README.md#prerequisites) before you begin. Replace each value in angle brackets, such as `<INSTANCE>`, with your own.
 
@@ -10,7 +10,7 @@ The sync authenticates to ServiceNow with the OAuth 2.0 client credentials grant
 
 ### Turn on the client credentials grant
 
-ServiceNow added the client credentials grant in the Washington DC release, and an administrator must turn it on with a system property ([Up Your OAuth2.0 Game: Inbound Client Credentials with Washington DC](https://www.servicenow.com/community/developer-blog/up-your-oauth2-0-game-inbound-client-credentials-with-washington/ba-p/2816891)). Sign in to your instance as a user with the `admin` role.
+ServiceNow added the client credentials grant in the Washington DC release. An administrator must turn it on with a system property ([Up Your OAuth2.0 Game: Inbound Client Credentials with Washington DC](https://www.servicenow.com/community/developer-blog/up-your-oauth2-0-game-inbound-client-credentials-with-washington/ba-p/2816891)). Sign in to your instance as a user with the `admin` role.
 
 #### To confirm the required plugins
 
@@ -41,7 +41,7 @@ The integration user should be able to read the tables you sync and do nothing e
 
 ### Grant read access to the tables
 
-An OAuth token carries the access of the integration user, so the user needs a read access control rule (ACL) for every table in your sync, plus `sys_audit_delete`, the table where ServiceNow records deletions. You create a role, attach the read rules to it, and assign it to the user. ServiceNow requires the `security_admin` role to create ACLs, so [switch to that role](https://www.servicenow.com/community/itsm-forum/limit-users-to-update-incidents-based-on-assignment-group/td-p/3439461) before you start.
+An OAuth token carries the access of the integration user. The user needs a read access control rule (ACL) for every table in your sync, plus `sys_audit_delete`, the table where ServiceNow records deletions. You create a role, attach the read rules to it, and assign it to the user. ServiceNow requires the `security_admin` role to create ACLs, so [switch to that role](https://www.servicenow.com/community/itsm-forum/limit-users-to-update-incidents-based-on-assignment-group/td-p/3439461) before you start.
 
 #### To create the role
 
@@ -76,17 +76,17 @@ The OAuth application is the record that holds the client ID and client secret a
 
 1. Go to **System OAuth** > **Application Registry**, and then choose **New**.
 2. Choose **Create an OAuth API endpoint for external clients**.
-3. For **Name**, enter `Amazon Quick table sync`.
+3. For **Name**, enter `AWS Quick table sync`.
 4. For **Default Grant Type**, choose **Client Credentials**.
 5. Leave **Public Client** cleared. The client credentials grant is for confidential clients, and the redirect and login URLs aren't used.
 6. For **OAuth Application User**, choose `quick_table_sync`.
 7. Choose **Submit**.
 
-If the form has no **OAuth Application User** field, open the form context menu, choose **Configure** > **Form Builder**, add the existing **OAuth Application User** field to the **Default** view, and save ([Up Your OAuth2.0 Game: Inbound Client Credentials with Washington DC](https://www.servicenow.com/community/developer-blog/up-your-oauth2-0-game-inbound-client-credentials-with-washington/ba-p/2816891)). Then open the application and set the field.
+The form might have no **OAuth Application User** field. In that case, open the form context menu, choose **Configure** > **Form Builder**, add the existing **OAuth Application User** field to the **Default** view, and save ([Up Your OAuth2.0 Game: Inbound Client Credentials with Washington DC](https://www.servicenow.com/community/developer-blog/up-your-oauth2-0-game-inbound-client-credentials-with-washington/ba-p/2816891)). Then open the application and set the field.
 
 After you submit, open the application again and copy the **Client ID** and **Client Secret**. You need both in the next section.
 
-The token you get has the full access of the integration user. ServiceNow can narrow it further with a REST API authentication scope, for example one that allows only `GET` requests to the Table API ([Limit the access granted to an OAuth client by using REST API authentication scopes](https://www.servicenow.com/community/developer-articles/limit-the-access-granted-to-an-oauth-client-by-using-rest-api/ta-p/3173651)). The sync sends only read requests, so a read-only scope is a good addition once the sync works.
+The token you get has the full access of the integration user. ServiceNow can narrow it further with a REST API authentication scope. For example, a scope can allow only `GET` requests to the Table API ([Limit the access granted to an OAuth client by using REST API authentication scopes](https://www.servicenow.com/community/developer-articles/limit-the-access-granted-to-an-oauth-client-by-using-rest-api/ta-p/3173651)). The sync sends only read requests, so a read-only scope is a good addition once the sync works.
 
 ### Test the credentials
 
@@ -141,7 +141,7 @@ Every line should end in `200`. A `403` means the integration user can't read th
 
 ### Check that ServiceNow records deletions
 
-The sync finds deleted records by reading `sys_audit_delete`, so a table must audit its deletions. ServiceNow audits record deletions by default, unless the table has the `no_audit_delete` dictionary attribute, and it doesn't audit deletions from system tables that start with `sys` unless you add them to a list ([Deleted records table](https://www.servicenow.com/community/now-platform-forum/deleted-records-table/td-p/1054869)). None of the default tables is a system table. If you add a table that has `no_audit_delete`, or a system table, its deleted records stay in Amazon Quick until you remove them yourself.
+The sync finds deleted records by reading `sys_audit_delete`, so a table must audit its deletions. ServiceNow audits record deletions by default, unless the table has the `no_audit_delete` dictionary attribute. It doesn't audit deletions from system tables that start with `sys` unless you add them to a list ([Deleted records table](https://www.servicenow.com/community/now-platform-forum/deleted-records-table/td-p/1054869)). None of the default tables is a system table. If you add a table that has `no_audit_delete`, or a system table, its deleted records stay in AWS Quick until you remove them yourself.
 
 ## Create the AWS secret
 
@@ -235,13 +235,13 @@ The stack deploys to the Region and account of your active AWS CLI profile. Your
     make deploy
     ```
 
-The deploy builds the Lambda container image, so the first deploy takes longer than later ones. When it finishes, the CDK prints the outputs `TableBucketArn` and `StateMachineArn`. `TableBucketArn` is the value you enter in Amazon Quick, and `StateMachineArn` starts a sync.
+The deploy builds the Lambda container image, so the first deploy takes longer than later ones. When it finishes, the CDK prints the outputs `TableBucketArn` and `StateMachineArn`. `TableBucketArn` is the value you enter in AWS Quick, and `StateMachineArn` starts a sync.
 
 From now on the workflow runs on the interval that `SYNC_INTERVAL_HOURS` sets in [`cdk/lib/common/config.ts`](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/examples/servicenow-table-sync/cdk/lib/common/config.ts). To turn the schedule off, deploy with `make deploy CDK_ARGS="--context enableSchedule=false"`, and start each sync yourself.
 
 ## Run the first sync
 
-Start the first run yourself so that you don't wait for the schedule, and so that you can confirm the tables before you connect Amazon Quick.
+Start the first run yourself so that you don't wait for the schedule, and so that you can confirm the tables before you connect AWS Quick.
 
 ### To start and check a sync
 
@@ -275,15 +275,15 @@ Start the first run yourself so that you don't wait for the schedule, and so tha
 
 You see a table for each ServiceNow table that returned records. A table with no matching records doesn't appear until it has data. If the status is `FAILED`, see [Troubleshooting](#troubleshooting).
 
-## Set up Amazon Quick
+## Set up AWS Quick
 
-Amazon Quick reads the tables straight from the table bucket, so there is no import job to build. The datasets in these steps use Direct Query, which reads the table when a visual loads instead of importing a copy, so a dataset has no refresh to schedule and new rows appear after the next sync ([Introducing new data source with S3 Tables in Amazon Quick](https://aws.amazon.com/blogs/machine-learning/from-data-lake-to-ai-ready-analytics-introducing-direct-query-with-s3-tables-in-amazon-quick/)). You can switch a dataset to SPICE later.
+AWS Quick reads the tables straight from the table bucket, so there is no import job to build. The datasets in these steps use Direct Query, which reads the table when a visual loads instead of importing a copy. A dataset has no refresh to schedule, and new rows appear after the next sync ([Introducing new data source with S3 Tables in AWS Quick](https://aws.amazon.com/blogs/machine-learning/from-data-lake-to-ai-ready-analytics-introducing-direct-query-with-s3-tables-in-amazon-quick/)). You can switch a dataset to SPICE later.
 
-The table bucket uses Amazon S3 managed encryption, so you don't grant Amazon Quick access to an AWS KMS key. S3 Tables asks for a key permission only when a table uses SSE-KMS ([Permission requirements for S3 Tables SSE-KMS encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables-kms-permissions.html)).
+The table bucket uses Amazon S3 managed encryption, so you don't grant AWS Quick access to an AWS KMS key. S3 Tables asks for a key permission only when a table uses SSE-KMS ([Permission requirements for S3 Tables SSE-KMS encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables-kms-permissions.html)).
 
-### Allow Amazon Quick to read the table bucket
+### Allow AWS Quick to read the table bucket
 
-An administrator does this step once ([Creating a dataset using Amazon S3 Tables](https://docs.aws.amazon.com/quick/latest/userguide/create-a-data-set-s3-tables.html)). Sign in to Amazon Quick as an administrator, in the same Region as the table bucket.
+An administrator does this step once ([Creating a dataset using Amazon S3 Tables](https://docs.aws.amazon.com/quick/latest/userguide/create-a-data-set-s3-tables.html)). Sign in to AWS Quick as an administrator, in the same Region as the table bucket.
 
 #### To allow access
 
@@ -294,9 +294,11 @@ An administrator does this step once ([Creating a dataset using Amazon S3 Tables
 5. Select the bucket named `service-now-ingestion-normalized-<ACCOUNT_ID>-<REGION>`, and then choose **Finish**.
 6. Choose **Save**.
 
-Amazon Quick creates an IAM role named `aws-quicksight-s3-tables-role-v0` with read access to the selected bucket. The AWS documentation labels this page **Manage QuickSuite**.
+AWS Quick creates an IAM role named `aws-quicksight-s3-tables-role-v0` with read access to the selected bucket. The AWS documentation labels this page **Manage Quick**.
 
 ### Create the data source
+
+The data source points AWS Quick at the table bucket. Use the `TableBucketArn` value from the stack outputs.
 
 #### To create the data source
 
@@ -309,7 +311,7 @@ Amazon Quick creates an IAM role named `aws-quicksight-s3-tables-role-v0` with r
 
 ### Create a dataset
 
-Amazon Quick Sight is the business intelligence feature of Amazon Quick. You connect it to data sources, prepare data, build interactive dashboards, and ask natural language questions against your data. You create a dataset for each table you want to analyze, and the `incident` table is a good first one.
+AWS Quick Sight is the business intelligence feature of AWS Quick. You connect it to data sources, prepare data, build interactive dashboards, and ask natural language questions against your data. You create a dataset for each table you want to analyze, and the `incident` table is a good first one.
 
 #### To create a dataset
 
@@ -321,11 +323,11 @@ Amazon Quick Sight is the business intelligence feature of Amazon Quick. You con
 6. Choose **Edit/Preview data**.
 7. Prepare the fields as described in the next procedure, and then choose **Save and publish**.
 
-To add another table to the same dataset, choose **Add data** in the editor, select the data source, select the table, and join the tables on a column whose values match in both. Reference fields hold display values, such as a person's name, so a `sys_id` from one table doesn't match a reference in another.
+To add another table to the same dataset, choose **Add data** in the editor, and select the data source and the table. Then join the tables on a column whose values match in both. Reference fields hold display values, such as a person's name, so a `sys_id` from one table doesn't match a reference in another.
 
 ### Prepare the fields
 
-Every column arrives as a string, because the sync keeps all ServiceNow tables in the same format. Amazon Quick Sight assigns the data type when you prepare the dataset, so change the columns that hold dates and numbers. A row whose value doesn't fit the new type is skipped, so check the preview after each change ([Changing a field data type](https://docs.aws.amazon.com/quick/latest/userguide/changing-a-field-data-type.html)).
+Every column arrives as a string, because the sync keeps all ServiceNow tables in the same format. AWS Quick Sight assigns the data type when you prepare the dataset, so change the columns that hold dates and numbers. A row whose value doesn't fit the new type is skipped, so check the preview after each change ([Changing a field data type](https://docs.aws.amazon.com/quick/latest/userguide/changing-a-field-data-type.html)).
 
 #### To change a field data type
 
@@ -338,6 +340,8 @@ Look at a few rows in the preview before you choose a format, because the values
 
 ### Share the dataset
 
+Share the dataset with the people who analyze the ServiceNow data.
+
 #### To share a dataset
 
 1. Choose **Data** at left, and then select the dataset that you want to share.
@@ -345,11 +349,11 @@ Look at a few rows in the preview before you choose a format, because the values
 3. Enter a user or group, and then choose **Add**.
 4. For **Permissions**, choose **User** to let the person build analyses, or **Owner** to let them also edit and reshare the dataset.
 
-Sharing a dataset gives people access to its data, and ServiceNow access rules don't carry over, so share it only with people who may read that data in ServiceNow ([Sharing datasets](https://docs.aws.amazon.com/quick/latest/userguide/sharing-data-sets.html)).
+Sharing a dataset gives people access to its data, and ServiceNow access rules don't carry over. Share it only with people who may read that data in ServiceNow ([Sharing datasets](https://docs.aws.amazon.com/quick/latest/userguide/sharing-data-sets.html)).
 
 ### Ask questions with Dataset Q&A
 
-Dataset Q&A answers natural-language questions by reading the dataset's schema at query time, so you don't build a topic or define field mappings first ([How the Dataset Q&A feature of Amazon Quick powers the next generation of data decisions](https://aws.amazon.com/blogs/machine-learning/beyond-bi-how-the-dataset-qa-feature-of-amazon-quick-powers-the-next-generation-of-data-decisions/)). The column names are the ServiceNow field names, such as `short_description` and `assignment_group`.
+Dataset Q&A answers natural-language questions by reading the dataset's schema at query time. You don't build a topic or define field mappings first ([How the Dataset Q&A feature of AWS Quick powers the next generation of data decisions](https://aws.amazon.com/blogs/machine-learning/beyond-bi-how-the-dataset-qa-feature-of-amazon-quick-powers-the-next-generation-of-data-decisions/)). The column names are the ServiceNow field names, such as `short_description` and `assignment_group`.
 
 #### To ask a question in chat
 
@@ -359,11 +363,11 @@ Dataset Q&A answers natural-language questions by reading the dataset's schema a
 4. Select the dataset, and then choose **Save**.
 5. Ask a question, for example "How many incidents were opened last month by priority?"
 
-To give a team the same dataset, create a space and add the dataset as an asset. A space organizes documents and Amazon Quick resources, such as datasets, into a collection that agents use as their source of information ([Spaces](https://docs.aws.amazon.com/quick/latest/userguide/spaces-desktop.html)).
+To give a team the same dataset, create a space and add the dataset as an asset. A space organizes documents and AWS Quick resources, such as datasets, into a collection that agents use as their source of information ([Spaces](https://docs.aws.amazon.com/quick/latest/userguide/spaces-desktop.html)).
 
 ### Switch a dataset to SPICE
 
-Direct Query has a time limit. Amazon Quick Sight stops generating a visual after two minutes ([Data source quotas](https://docs.aws.amazon.com/quick/latest/userguide/data-source-limits.html)), and a large table or a join across tables can reach that limit. SPICE imports a copy of the data and refreshes it on a schedule, which suits a dataset that is slow in Direct Query ([Introducing new data source with S3 Tables in Amazon Quick](https://aws.amazon.com/blogs/machine-learning/from-data-lake-to-ai-ready-analytics-introducing-direct-query-with-s3-tables-in-amazon-quick/)).
+Direct Query has a time limit. AWS Quick Sight stops generating a visual after two minutes ([Data source quotas](https://docs.aws.amazon.com/quick/latest/userguide/data-source-limits.html)), and a large table or a join across tables can reach that limit. SPICE imports a copy of the data and refreshes it on a schedule. It suits a dataset that is slow in Direct Query ([Introducing new data source with S3 Tables in AWS Quick](https://aws.amazon.com/blogs/machine-learning/from-data-lake-to-ai-ready-analytics-introducing-direct-query-with-s3-tables-in-amazon-quick/)).
 
 #### To switch a dataset to SPICE
 
@@ -374,7 +378,7 @@ Direct Query has a time limit. Amazon Quick Sight stops generating a visual afte
 
 ## Change the table list later
 
-To add a table, give the integration user the read rules for it, test it, add a `syncTable` line, and run `make deploy`. The table appears in the table bucket after the next sync. Then create a dataset for it in Amazon Quick.
+To add a table, give the integration user the read rules for it, test it, add a `syncTable` line, and run `make deploy`. The table appears in the table bucket after the next sync. Then create a dataset for it in AWS Quick.
 
 To stop syncing a table, remove its line and run `make deploy`. The sync stops reading that table, but its table in the bucket and the datasets built on it stay, so delete them when you no longer need them.
 
@@ -388,7 +392,7 @@ ServiceNow returns `unauthorized_client` with this message when the OAuth applic
 
 ### A table returns 403
 
-The integration user can't read the table through the REST API. Check, in order, that the read rule for the table lists `quick_table_sync_reader`, that the user has that role, and that the table allows access through web services ([Failed API Level ACL Validation Error When Accessing Tables via REST API](https://hi.service-now.com/kb_view.do?sysparm_article=KB2686027)). Some instances also activate an access rule that requires the `snc_platform_rest_api_access` role for the Table API, so add that role to the user if every table returns 403 ([Assigning Roles to API Users](https://www.servicenow.com/community/developer-forum/assigning-roles-to-api-users/m-p/3509994)). A REST API access policy can also block the call ([REST API Access Policies: A Complete Guide](https://www.servicenow.com/community/platform-privacy-security-blog/demystifying-rest-api-access-policies-what-you-need-to-know-part/bc-p/3508776)).
+The integration user can't read the table through the REST API. Check these in order: the read rule for the table lists `quick_table_sync_reader`, the user has that role, and the table allows access through web services ([Failed API Level ACL Validation Error When Accessing Tables via REST API](https://hi.service-now.com/kb_view.do?sysparm_article=KB2686027)). Some instances also activate an access rule that requires the `snc_platform_rest_api_access` role for the Table API. If every table returns 403, add that role to the user ([Assigning Roles to API Users](https://www.servicenow.com/community/developer-forum/assigning-roles-to-api-users/m-p/3509994)). A REST API access policy can also block the call ([REST API Access Policies: A Complete Guide](https://www.servicenow.com/community/platform-privacy-security-blog/demystifying-rest-api-access-policies-what-you-need-to-know-part/bc-p/3508776)).
 
 ### Rows arrive with empty columns
 
@@ -402,9 +406,9 @@ Open the Lambda log group for `ExtractTableLambda`. An `extraction failed for <t
 
 Open the job run in the [AWS Glue](https://aws.amazon.com/glue/) console or the `/aws-glue/jobs/` log group. The merge into S3 Tables is idempotent, so you can start a new execution after you fix the cause.
 
-### Amazon Quick doesn't list the table bucket
+### AWS Quick doesn't list the table bucket
 
-Confirm that your Amazon Quick account and the table bucket are in the same Region, that **Amazon S3 Tables** is selected on the **AWS Resources** page, and that you chose the bucket there. The page lists only the buckets in the current Region.
+Confirm that your AWS Quick account and the table bucket are in the same Region. Then confirm that **Amazon S3 Tables** is selected on the **AWS Resources** page, and that you chose the bucket there. The page lists only the buckets in the current Region.
 
 ### A column I added is missing from the table
 
@@ -438,7 +442,7 @@ S3 Tables doesn't delete a table bucket that still holds tables, and the sync cr
 
 ### To remove the sync
 
-1. In Amazon Quick, delete the datasets and the `ServiceNow tables` data source that use the table bucket.
+1. In AWS Quick, delete the datasets and the `ServiceNow tables` data source that use the table bucket.
 2. Delete each table in the `servicenow` namespace. List them first with `aws s3tables list-tables`, as in [Run the first sync](#run-the-first-sync), and then run this command for each table:
 
     ```bash

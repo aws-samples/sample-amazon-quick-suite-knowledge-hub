@@ -1,15 +1,17 @@
 ---
 category: Capability
-description: "Embed an Amazon Quick Chat Agent into Salesforce as a Lightning Web Component"
+description: "Embed an AWS Quick Chat Agent into Salesforce as a Lightning Web Component"
 ---
 
 # Embed Quick Chat Agent in Salesforce
 
-Embed an Amazon Quick Chat Agent into Salesforce as a Lightning Web Component (LWC).
+Embed an AWS Quick Chat Agent into Salesforce as a Lightning Web Component (LWC).
 
 ## Architecture
 
-```
+The component shows the chat agent in an iframe, and the user signs in to Quick inside it:
+
+```text
 Salesforce User (logged in)
   → Lightning page loads LWC
   → LWC renders iframe with Quick Chat Agent embed URL
@@ -19,7 +21,9 @@ Salesforce User (logged in)
 
 ## Prerequisites
 
-- AWS account with Amazon Quick Enterprise Edition
+You need the following before you start:
+
+- AWS account with AWS Quick Enterprise Edition
 - A Quick Chat Agent created and configured
 - A Quick account with users provisioned (password-based or single sign-on)
 - Salesforce org with Lightning Experience enabled
@@ -27,12 +31,16 @@ Salesforce User (logged in)
 
 ## Setup
 
+Complete these steps in order. Steps 1 and 2 happen in Quick, and the rest in Salesforce.
+
 ### 1. Get Your Chat Agent Embed URL
+
+Copy the agent's embed code from the Quick console:
 
 1. Go to the [Quick console](https://quicksight.aws.amazon.com/)
 2. Navigate to **Explore** → **Chat agents**
-3. Click the three dots next to your Chat Agent → **Embed**
-4. Copy the embed code — it will look like:
+3. Choose the options menu (⋮) next to your Chat Agent → **Embed**
+4. Copy the embed code. It looks like this:
 
 ```html
 <iframe
@@ -43,13 +51,16 @@ Salesforce User (logged in)
 </iframe>
 ```
 
-Note the `src` URL — you'll need it in step 3.
+Note the `src` URL. You need it in step 3.
 
 ### 2. Add Your Salesforce Domain to Quick
 
+Allow Quick content to load in your Salesforce domain:
+
 1. Go to Quick console → **Manage Quick** → **Domains and Embedding**
 2. Add your Salesforce Lightning domain:
-   ```
+
+   ```text
    https://<your-org>.lightning.force.com
    ```
 
@@ -75,6 +86,8 @@ Edit `salesforce/force-app/main/default/lwc/quickChat/quickChat.html` and replac
 
 ### 4. Deploy to Salesforce
 
+Sign in to your org with the Salesforce CLI and deploy the component:
+
 ```bash
 cd salesforce
 
@@ -90,11 +103,14 @@ sf project deploy start --source-dir force-app
 In Salesforce Setup, add the following:
 
 **CSP Trusted Sites** (Setup → CSP Trusted Sites → New Trusted Site):
+
 - Trusted Site Name: `QuickChatAgent`
 - Trusted Site URL: `https://<region>.quicksight.aws.amazon.com`
 - Check **all** context boxes (Connect, Font, Img, Media, Object, Script, Style, Frame)
 
 ### 6. Add the Component to a Page
+
+Place the component on a Lightning page and make the page available:
 
 1. Go to Setup → **Lightning App Builder**
 2. Edit or create a Lightning page
@@ -104,7 +120,9 @@ In Salesforce Setup, add the following:
 
 ## Project Structure
 
-```
+The Salesforce project holds the LWC and its Apex controller:
+
+```text
 salesforce-chat-embed/
 └── salesforce/
     ├── sfdx-project.json
@@ -121,17 +139,22 @@ salesforce-chat-embed/
 ## User Access
 
 Users accessing the Chat Agent in Salesforce must have:
+
 1. A **Quick** account with a provisioned user (password-based or SSO)
 2. Access to the Chat Agent's underlying topics/data in Quick
 
 ## Production Considerations
 
+Before you roll this out, consider the following:
+
 - The static embed URL requires users to authenticate with Quick separately
-- For SSO-based embedding with trusted identity propagation, use the `generate_embed_url_for_registered_user_with_identity` API when Chat Agent support is added — see the [Quick Chat Agent Embedding Demo](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/use-cases/quick-chat-agent-embedding-demo/) for the API-based approach
-- Consider storing the Chat Agent URL in a Salesforce Custom Metadata Type for easier updates
+- For SSO-based embedding with trusted identity propagation, use the `generate_embed_url_for_registered_user_with_identity` API when Chat Agent support is added. See the [Quick Chat Agent Embedding Demo](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/examples/quick-chat-agent-embedding-demo/) for the API-based approach
+- Consider storing the Chat Agent URL in a Salesforce Custom Metadata Type to make updates easier
 
 ## References
 
-- [Quick Chat Agent Embedding Demo](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/use-cases/Quick-chat-agent-embedding-demo/)
+For more detail, see:
+
+- [Quick Chat Agent Embedding Demo](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/examples/quick-chat-agent-embedding-demo/)
 - [Embed Quick Chat Agents in Enterprise Applications](https://aws.amazon.com/blogs/machine-learning/embed-amazon-quick-suite-chat-agents-in-enterprise-applications/)
-- [GenerateEmbedUrlForRegisteredUser API](https://docs.aws.amazon.com/quick/latest/APIReference/API_GenerateEmbedUrlForRegisteredUser.html)
+- [GenerateEmbedUrlForRegisteredUser API](https://docs.aws.amazon.com/quicksight/latest/APIReference/API_GenerateEmbedUrlForRegisteredUser.html)

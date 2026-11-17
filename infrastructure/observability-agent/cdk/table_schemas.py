@@ -1,5 +1,5 @@
 """
-Glue Data Catalog table schemas for Amazon Quick observability data.
+Glue Data Catalog table schemas for AWS Quick observability data.
 
 Each entry defines one Athena/Glue table over the observability S3 data lake:
 its logical name, the Quick data source it stores, and its ordered column

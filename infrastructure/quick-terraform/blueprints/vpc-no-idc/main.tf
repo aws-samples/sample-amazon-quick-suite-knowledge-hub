@@ -1,5 +1,5 @@
 # Blueprint: vpc-no-idc
-# VPC-isolated Amazon Quick using native QuickSight identity (no IAM Identity Center).
+# VPC-isolated AWS Quick using native QuickSight identity (no IAM Identity Center).
 # Enables PrivateLink (Type 1) and/or a QuickSight VPC connection (Type 2).
 
 variable "aws_region" {

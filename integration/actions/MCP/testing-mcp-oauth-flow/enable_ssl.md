@@ -7,7 +7,7 @@ This guide covers how to switch the callback server in `mcp_test-3LO.ipynb` to H
 
 You need a TLS certificate and private key for `localhost`. Two options:
 
-### Option A: mkcert (recommended — no browser warnings)
+### Option A: mkcert (recommended, no browser warnings)
 
 ```bash
 brew install mkcert
@@ -15,9 +15,9 @@ mkcert -install          # one-time: installs a local CA into your system trust 
 mkcert localhost         # creates localhost.pem + localhost-key.pem
 ```
 
-This produces certs that your browser already trusts, so the OAuth redirect works seamlessly.
+This produces certs that your browser already trusts, so the OAuth redirect works without a warning.
 
-### Option B: openssl (self-signed — browser will warn)
+### Option B: openssl (self-signed, browser will warn)
 
 ```bash
 openssl req -x509 -newkey rsa:2048 \
@@ -26,7 +26,7 @@ openssl req -x509 -newkey rsa:2048 \
 ```
 
 With self-signed certs, your browser will show a security warning on the callback.
-You'll need to click through it (or manually add the cert to your keychain).
+You'll need to proceed past it (or manually add the cert to your keychain).
 
 ## Notebook Changes
 
@@ -71,7 +71,7 @@ it references the variable. No extra change needed there.
 
 After setup, your project directory should look like:
 
-```
+```text
 .
 ├── .env
 ├── .venv/
@@ -88,7 +88,7 @@ After setup, your project directory should look like:
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Browser shows "Your connection is not private" | Self-signed cert (Option B) | Use mkcert (Option A) or click through the warning |
+| Browser shows "Your connection is not private" | Self-signed cert (Option B) | Use mkcert (Option A) or proceed past the warning |
 | `ssl.SSLError: [SSL] PEM lib` | Wrong cert/key file paths | Verify `localhost.pem` and `localhost-key.pem` exist in the working directory |
 | IDP rejects `https://localhost:8888/callback` | Redirect URI not registered | Re-register the client with the `https://` URI, or update it in the IDP's developer console |
 | `OSError: [Errno 48] Address already in use` | Port 8888 still bound from a previous run | Wait a few seconds or kill the process using the port: `lsof -ti:8888 \| xargs kill` |

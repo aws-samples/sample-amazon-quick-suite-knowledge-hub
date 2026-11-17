@@ -4,18 +4,20 @@ hide:
   - toc
 ---
 
-# Amazon Quick Knowledge Hub
+<!-- markdownlint-disable MD033 -->
+
+# AWS Quick Knowledge Hub
 
 <div class="qh-hero" markdown>
 <div class="qh-hero__inner" markdown>
 
-<span class="qh-hero__eyebrow">Amazon Quick · Knowledge Hub</span>
+<span class="qh-hero__eyebrow">AWS Quick · Knowledge Hub</span>
 
-<h1 class="qh-hero__title">Everything you need to build on Amazon Quick</h1>
+<h1 class="qh-hero__title">Everything you need to build on AWS Quick</h1>
 
 <p class="qh-hero__lead">
 Integration guides, deployable infrastructure, MCP servers, and end-to-end
-reference solutions. Curated and maintained by the Amazon Quick team to take you
+reference solutions. Curated and maintained by the AWS Quick team to take you
 from the console to a working implementation.
 </p>
 
@@ -33,7 +35,7 @@ from the console to a working implementation.
 
 ## Browse the hub
 
-<div class="qh-cats">
+<div class="qh-rows">
 <!-- QH:CATEGORIES -->
 </div>
 
@@ -45,15 +47,15 @@ from the console to a working implementation.
 
 ## What this hub covers
 
-The [integrations section](integration/actions/asana-action-setup-guide/) has step-by-step OAuth and connector setup for each supported third-party service. Most guides follow the same pattern: register an OAuth app on the provider side, configure the redirect URI and scopes, then create the action connector in the Amazon Quick console. The MCP implementations are complete CDK stacks you can deploy directly.
+The [integrations section](integration/actions/asana-action-setup-guide/) has step-by-step OAuth and connector setup for each supported third-party service. Most guides follow the same pattern: register an OAuth app on the provider side, configure the redirect URI and scopes, then create the action connector in the AWS Quick console. The MCP implementations are complete CDK stacks you can deploy directly.
 
-The [data sources section](integration/data-sources/databricks-unity-catalog-3lo-setup-guide/) covers connecting Quick to data platforms with per-user identity enforcement. The [Databricks Unity Catalog (3LO) guide](integration/data-sources/databricks-unity-catalog-3lo-setup-guide/) walks end to end through the Databricks OAuth app connection, the workload identity federation policy, the Quick OAuth client application, and a 3LO data source with Trusted Identity Propagation, so each user only sees the data their Unity Catalog permissions allow.
+The [data sources section](integration/data-sources/databricks-unity-catalog-3lo-setup-guide/) covers connecting Quick to data platforms with per-user identity enforcement. The [Databricks Unity Catalog (3LO) guide](integration/data-sources/databricks-unity-catalog-3lo-setup-guide/) walks through the full setup. It covers the Databricks OAuth app connection, the workload identity federation policy, the Quick OAuth client application, and a 3LO data source with trusted identity propagation. With that setup, each user only sees the data their Unity Catalog permissions allow.
 
-The [infrastructure section](infrastructure/quick-terraform/) covers deployable building blocks for running Quick. The [Terraform module](infrastructure/quick-terraform/) bootstraps an Amazon Quick account with AWS IAM Identity Center from scratch, handling the account subscription, admin user, group membership, and IAM roles in a single `terraform apply`. The [custom domain redirect](infrastructure/quick-custom-domain-redirect/) is a CDK app that points a domain you own at your Quick sign-in URL using a CloudFront Function, an ACM certificate, and Route 53 alias records.
+The [infrastructure section](infrastructure/quick-terraform/) covers deployable building blocks for running Quick. The [Terraform module](infrastructure/quick-terraform/) bootstraps an AWS Quick account with AWS IAM Identity Center from scratch, handling the account subscription, admin user, group membership, and IAM roles in a single `terraform apply`. The [custom domain redirect](infrastructure/quick-custom-domain-redirect/) is a CDK app that points a domain you own at your Quick sign-in URL. It uses a CloudFront Function, an ACM certificate, and Route 53 alias records.
 
-The [infrastructure section](infrastructure/observability-agent/) also covers day-2 operations: a CloudWatch-based observability MCP that exposes chat logs, feedback, agent hours, Quick Sight metrics, and CloudTrail audit data through natural language queries in Quick itself, plus a [row-level security dataset-shaping example](infrastructure/rls-dataset-shaping/) for securing Quick Sight data. For onboarding, the [AWS Quick Admin Buddy MCP](infrastructure/aws-quick-admin-buddy-mcp/) is the backend of the Admin Onboarding Buddy skill: an AgentCore-hosted MCP server, deployed with one CloudFormation template, that creates and shares action connectors and knowledge bases from a chat with Quick.
+The [infrastructure section](infrastructure/observability-agent/) also covers day-2 operations. A CloudWatch-based observability MCP server exposes chat logs, feedback, agent hours, Quick Sight metrics, and CloudTrail audit data through natural language queries in Quick itself. A [row-level security dataset-shaping example](infrastructure/rls-dataset-shaping/) shows how to secure Quick Sight data. For onboarding, the [AWS Quick Admin Buddy MCP](infrastructure/aws-quick-admin-buddy-mcp/) is the backend of the Admin Onboarding Buddy skill. It's an AgentCore-hosted MCP server, deployed with one CloudFormation template, that creates and shares action connectors and knowledge bases from a chat with Quick.
 
-The [desktop section](amazon-quick-on-desktop/) is a CDK stack that deploys Amazon Cognito as an OIDC provider for the desktop application. It includes an API Gateway proxy that strips the `offline_access` scope (which Cognito does not support but Quick sends with every request), a user invitation flow, and MFA configuration. This is for [enterprise deployments](https://docs.aws.amazon.com/quick/latest/userguide/desktop-enterprise-setup.html){:target="\_blank"} where you use local users or IAM Identity Center without a federated IdP.
+The [desktop section](quick-desktop-oidc-cognito-setup/) covers [enterprise desktop sign-in](https://docs.aws.amazon.com/quick/latest/userguide/desktop-enterprise-setup.html){:target="\_blank"}. By default, the desktop connector reuses your web sign-in, so no OIDC provider is needed. The optional dedicated identity provider configuration is for accounts that use local users or IAM Identity Center without a federated IdP. For it, the CDK stack deploys Amazon Cognito as the OIDC provider, with a user invitation flow and MFA configuration.
 
 The [use cases section](examples/actuarial-analysis-solution/) has complete, deployable solutions covering chat agent embedding, document generation, compliance automation, and operational dashboards.
 
@@ -61,9 +63,10 @@ The [use cases section](examples/actuarial-analysis-solution/) has complete, dep
 
 | Workshop                                                                                                                                                 | What you build                                                                               |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [Amazon Quick Flows](https://catalog.us-east-1.prod.workshops.aws/workshops/a8484e57-2e30-40ee-bd98-0122f0d05acc){:target="\_blank"}                     | Workflow automation with AI decision-making, customer support triage, and agent-backed flows |
-| [A Complete Guide to Amazon Quick](https://catalog.workshops.aws/amazon-quick-suite-workshop/en-US){:target="\_blank"}                                   | Data connections, dashboards, chat agents, spaces, and app building                          |
-| [Security and Governance Controls](https://catalog.us-east-1.prod.workshops.aws/workshops/fc1e6164-b5f5-4158-a269-88e71b769af3/en-US){:target="\_blank"} | Identity integration, access policies, data governance, monitoring, and compliance           |
+| [AWS Quick Flows](https://catalog.us-east-1.prod.workshops.aws/workshops/a8484e57-2e30-40ee-bd98-0122f0d05acc){:target="\_blank"}                     | Workflow automation with AI decision-making, customer support triage, and agent-backed flows |
+| [A Complete Guide to AWS Quick](https://catalog.workshops.aws/amazon-quick-suite-workshop/en-US){:target="\_blank"}                                   | Data connections, dashboards, chat agents, spaces, and app building                          |
+| [AWS Quick Administration Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/767bc5b8-1d33-40e2-8969-f8653db64756/en-US){:target="\_blank"} | Identity and permissions, network controls, data governance, capacity, approval flows, observability, and branding |
+| [Build production agent skills on AWS Quick](https://catalog.us-east-1.prod.workshops.aws/workshops/81cb0167-8214-4a0b-8e88-9af25f8e491c/en-US){:target="\_blank"} | Production agent skills that run on demand or on a schedule, skill security audits, and LLM-as-a-judge evaluation |
 
 ## Links
 
@@ -80,9 +83,9 @@ The [use cases section](examples/actuarial-analysis-solution/) has complete, dep
   <span class="qh-link__name">FAQs</span>
   <span class="qh-link__host">aws.amazon.com/quick/faqs</span>
 </a>
-<a class="qh-link" href="https://aws.amazon.com/quicksuite/pricing/" target="_blank" rel="noopener">
+<a class="qh-link" href="https://aws.amazon.com/quick/pricing/" target="_blank" rel="noopener">
   <span class="qh-link__name">Pricing</span>
-  <span class="qh-link__host">aws.amazon.com/quicksuite/pricing</span>
+  <span class="qh-link__host">aws.amazon.com/quick/pricing</span>
 </a>
 <a class="qh-link" href="https://quicksight.aws.amazon.com/" target="_blank" rel="noopener">
   <span class="qh-link__name">Sign in</span>

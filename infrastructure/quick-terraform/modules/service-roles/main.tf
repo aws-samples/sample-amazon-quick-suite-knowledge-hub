@@ -23,7 +23,7 @@ data "aws_iam_policy_document" "assume" {
 
 resource "aws_iam_role" "service" {
   name               = var.role_name
-  description        = "Service role for Amazon Quick"
+  description        = "Service role for AWS Quick"
   assume_role_policy = data.aws_iam_policy_document.assume.json
   tags               = var.tags
 }

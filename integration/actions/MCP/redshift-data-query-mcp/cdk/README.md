@@ -1,12 +1,15 @@
+<!-- markdownlint-disable MD024 -->
 # CDK Infrastructure for Amazon Redshift Data Query MCP Integration
 
-This directory contains the AWS CDK infrastructure code for deploying the Amazon Redshift Data Query MCP integration with Amazon Quick.
+This directory contains the AWS CDK infrastructure code for deploying the Amazon Redshift Data Query MCP integration with AWS Quick.
 
 ## Architecture Overview
 
 The CDK stack deploys the following AWS resources:
 
 ### Core Components
+
+The stack has four main parts.
 
 - **Amazon Bedrock AgentCore Gateway**: MCP protocol gateway for Quick integration
 - **AWS Lambda Function**: Processes Redshift queries using AWS LAB MCP Server
@@ -15,7 +18,9 @@ The CDK stack deploys the following AWS resources:
 
 ## File Structure
 
-```
+This directory holds the stack definition and this guide.
+
+```text
 cdk/
  redshift_agentcore_stack.py   # Main CDK stack definition
  README.md                     # This file
@@ -23,6 +28,8 @@ cdk/
 ```
 
 ## Stack Resources
+
+The `RedshiftAgentCoreStack` stack creates the resources below.
 
 ### RedshiftAgentCoreStack
 
@@ -54,6 +61,8 @@ The main CDK stack creates:
 
 ## Deployment
 
+Deploy the stack from your own AWS account after you meet the prerequisites.
+
 ### Prerequisites
 
 Ensure you have the following installed and configured:
@@ -63,6 +72,8 @@ Ensure you have the following installed and configured:
 - Python 3.11 or later
 
 ### Deploy the Stack
+
+Run these steps in order.
 
 1. **Navigate to the project root**:
 
@@ -105,6 +116,8 @@ cdk destroy
 
 ## Configuration
 
+You can adjust the stack through CDK context values and by editing the stack code.
+
 ### Environment Variables
 
 The stack uses the following CDK context values:
@@ -122,6 +135,8 @@ You can customize the deployment by modifying `redshift_agentcore_stack.py`:
 
 ## Security Considerations
 
+The stack applies least privilege and uses OAuth 2.0 for access.
+
 ### IAM Permissions
 
 The stack implements least-privilege access:
@@ -132,11 +147,15 @@ The stack implements least-privilege access:
 
 ### Authentication
 
+The gateway authenticates callers as follows:
+
 - OAuth 2.0 client credentials flow
 - JWT tokens with configurable expiration
 - Cognito-managed client secrets
 
 ## Monitoring and Troubleshooting
+
+Use CloudWatch to monitor the stack and diagnose problems.
 
 ### CloudWatch Integration
 
@@ -176,13 +195,19 @@ aws cloudformation describe-stack-events --stack-name RedshiftAgentCoreStack
 
 ## Best Practices
 
+Apply these practices as you develop and run the stack.
+
 ### Development
+
+During development:
 
 - Use CDK context for environment-specific configuration
 - Implement proper error handling in Lambda functions
 - Follow AWS naming conventions for resources
 
 ### Production
+
+For production use:
 
 - Enable CloudTrail for audit logging
 - Configure backup and disaster recovery
@@ -191,12 +216,16 @@ aws cloudformation describe-stack-events --stack-name RedshiftAgentCoreStack
 
 ## Additional Resources
 
+These AWS documents cover the services used here.
+
 - [AWS CDK Developer Guide](https://docs.aws.amazon.com/cdk/)
 - [Amazon Redshift Data API Documentation](https://docs.aws.amazon.com/redshift/latest/mgmt/data-api.html)
 - [AWS Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
 - [Amazon Cognito Developer Guide](https://docs.aws.amazon.com/cognito/)
 
 ## Deployment
+
+To deploy and read the outputs, run:
 
 ```bash
 uv pip install -e .
@@ -206,7 +235,7 @@ aws cloudformation describe-stacks --stack-name RedshiftAgentCoreStack --query '
 
 ## Outputs
 
-The stack provides these outputs for Amazon Quick MCP Actions integration:
+The stack provides these outputs for AWS Quick MCP Actions integration:
 
 - `GatewayUrl`: Amazon Bedrock Agent Runtime endpoint
 - `ClientId`: Amazon Cognito client ID
@@ -217,6 +246,8 @@ The stack provides these outputs for Amazon Quick MCP Actions integration:
 
 ## Configuration
 
+The stack takes its settings from the environment of the Lambda function.
+
 ### Environment Variables
 
 AWS Lambda function environment variables:
@@ -225,9 +256,11 @@ AWS Lambda function environment variables:
 
 ### Resource Naming
 
-All AWS resources use the stack name prefix for consistent naming and easy identification.
+All AWS resources use the stack name prefix for consistent naming and identification.
 
 ## Security
+
+The stack applies these controls:
 
 - **Least Privilege**: AWS IAM roles with minimal required permissions
 - **Authentication**: OAuth2 with Amazon Cognito for MCP Actions
@@ -235,6 +268,8 @@ All AWS resources use the stack name prefix for consistent naming and easy ident
 - **Logging**: Comprehensive Amazon CloudWatch logging for audit trails
 
 ## Monitoring
+
+The stack provides these monitoring resources:
 
 - **Amazon CloudWatch Logs**: AWS Lambda execution logs with 30-day retention
 - **Amazon Bedrock Agent Runtime Metrics**: Request/response metrics and throttling

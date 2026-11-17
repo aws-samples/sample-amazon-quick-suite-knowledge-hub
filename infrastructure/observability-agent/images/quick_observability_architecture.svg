@@ -22,11 +22,11 @@
   </defs>
 
   <rect x="0" y="0" width="1480" height="920" fill="#ffffff"/>
-  <text x="48" y="48" class="title">Amazon Quick Observability — Architecture</text>
-  <text x="48" y="72" class="subtitle">Amazon Quick telemetry &#8594; S3 data lake (Glue/Athena) &#8594; QuickSight dashboards and a single-tool MCP agent</text>
+  <text x="48" y="48" class="title">AWS Quick Observability — Architecture</text>
+  <text x="48" y="72" class="subtitle">AWS Quick telemetry &#8594; S3 data lake (Glue/Athena) &#8594; QuickSight dashboards and a single-tool MCP agent</text>
 
   <!-- ===================== ACTORS (two users) ===================== -->
-  <!-- End user: interacts with Amazon Quick (produces the activity) -->
+  <!-- End user: interacts with AWS Quick (produces the activity) -->
   <circle cx="70" cy="236" r="22" fill="#eef3fb" stroke="#4a73c0" stroke-width="1.5"/>
   <circle cx="70" cy="228" r="7.5" fill="#4a73c0"/>
   <path d="M56 250 c0 -10 28 -10 28 0 z" fill="#4a73c0"/>
@@ -40,14 +40,14 @@
   <text x="70" y="587" text-anchor="middle" class="sub">(observability)</text>
 
   <!-- ===================== AWS CLOUD BOUNDARY (your AWS account resources) ===================== -->
-  <!-- wraps INGESTION + DATA LAKE + AgentCore Gateway; NOT Amazon Quick (SaaS) or the human user -->
+  <!-- wraps INGESTION + DATA LAKE + AgentCore Gateway; NOT AWS Quick (SaaS) or the human user -->
   <rect class="aws" x="612" y="104" width="836" height="712" rx="16"/>
   <text x="632" y="128" class="aws-title">AWS CLOUD (your account)</text>
 
   <!-- ===================== LANES ===================== -->
-  <!-- lane A (Amazon Quick) x=190 w=360 | lane B (Ingestion) x=636 w=350 | lane C (Data Lake) x=1060 w=350 -->
+  <!-- lane A (AWS Quick) x=190 w=360 | lane B (Ingestion) x=636 w=350 | lane C (Data Lake) x=1060 w=350 -->
   <rect class="lane" x="190" y="150" width="360" height="650" rx="14"/>
-  <text x="214" y="178" class="lane-title">AMAZON QUICK</text>
+  <text x="214" y="178" class="lane-title">AWS QUICK</text>
 
   <rect class="lane" x="636" y="150" width="350" height="470" rx="14"/>
   <text x="660" y="178" class="lane-title">INGESTION</text>
@@ -55,7 +55,7 @@
   <rect class="lane" x="1060" y="150" width="350" height="650" rx="14"/>
   <text x="1084" y="178" class="lane-title">DATA LAKE</text>
 
-  <!-- ===================== AMAZON QUICK SURFACES (x=222 w=296); the lane header IS Amazon Quick ===================== -->
+  <!-- ===================== AWS QUICK SURFACES (x=222 w=296); the lane header IS AWS Quick ===================== -->
   <rect class="box" x="222" y="300" width="296" height="118" rx="10"/>
   <rect class="box-accent" x="222" y="300" width="6" height="118" rx="3"/>
   <text x="244" y="330" class="label">QuickSight dashboards</text>
@@ -130,7 +130,7 @@
   <text x="682" y="753" class="sub">(NL&#8594;SQL), export_user_data (DSAR)</text>
 
   <!-- ===================== ARROWS ===================== -->
-  <!-- end user -> Amazon Quick lane (produces activity) -->
+  <!-- end user -> AWS Quick lane (produces activity) -->
   <path class="edge-dash" d="M92 236 H190"/>
   <text class="elabel" x="104" y="228">uses Quick</text>
 
@@ -140,7 +140,7 @@
   <path class="edge-dash" d="M92 528 Q130 528 130 529 H222"/>
   <text class="elabel" x="100" y="556">asks</text>
 
-  <!-- Amazon Quick (the lane itself) -> ingestion : telemetry, from lane right edge x=550 -->
+  <!-- AWS Quick (the lane itself) -> ingestion : telemetry, from lane right edge x=550 -->
   <path class="edge" d="M550 239 H660"/>
   <text class="elabel" x="566" y="231">vended logs</text>
   <path class="edge" d="M550 300 H600 V427 H660"/>

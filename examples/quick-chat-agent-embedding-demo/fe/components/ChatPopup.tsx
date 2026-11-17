@@ -328,7 +328,7 @@ export default function ChatPopup({ idToken, apiEndpoint }: ChatPopupProps) {
           >
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center p-1 backdrop-blur-sm">
-                <img src="/amazonquick.png" alt="Amazon Quick" className="w-6 h-6" />
+                <img src="/aws-quick-icon.svg" alt="AWS Quick" className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="font-semibold text-sm">Quick Embedded Chat Demo</h3>
@@ -356,7 +356,7 @@ export default function ChatPopup({ idToken, apiEndpoint }: ChatPopupProps) {
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-100/30 to-blue-100/30 animate-pulse"></div>
                 <div className="relative z-10 text-center mb-6">
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mb-4 mx-auto p-3 shadow-lg transform hover:scale-105 transition-transform duration-300">
-                    <img src="/amazonquick.png" alt="Amazon Quick" className="w-10 h-10" />
+                    <img src="/aws-quick-icon.svg" alt="AWS Quick" className="w-10 h-10" />
                   </div>
                   <h2 className="text-xl font-semibold text-gray-800 mb-2">
                     Welcome to the Embedded Chat Demo!
@@ -405,7 +405,7 @@ export default function ChatPopup({ idToken, apiEndpoint }: ChatPopupProps) {
                     <div className="text-center">
                       <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
                       <div className="text-sm text-gray-600 animate-pulse">
-                        Initializing Amazon Quick...
+                        Initializing AWS Quick...
                       </div>
                     </div>
                   </div>

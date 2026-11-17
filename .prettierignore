@@ -16,7 +16,7 @@ node_modules/
 docs/infrastructure/
 docs/integration/
 docs/examples/
-docs/amazon-quick-on-desktop/
+docs/quick-desktop-oidc-cognito-setup/
 docs/_projects/
 
 # Local scratch and pinned tooling

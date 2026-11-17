@@ -1,7 +1,7 @@
 [project]
 name = "compliance-assistant-mcp"
 version = "1.0.0"
-description = "Multi-agent compliance analysis exposed as MCP server to Amazon Quick via AgentCore Gateway and Bedrock AgentCore Runtime"
+description = "Multi-agent compliance analysis exposed as MCP server to AWS Quick via AgentCore Gateway and Bedrock AgentCore Runtime"
 requires-python = ">=3.10"
 license = {text = "MIT-0"}
 

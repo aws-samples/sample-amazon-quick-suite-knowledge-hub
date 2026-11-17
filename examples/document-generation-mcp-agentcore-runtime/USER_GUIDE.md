@@ -1,6 +1,6 @@
-# Document Generation — User Guide
+# Document Generation: User Guide
 
-Generate professional documents directly from Amazon Quick chat.
+Generate professional documents directly from AWS Quick chat.
 Type what you need, and get a real downloadable file in minutes.
 
 ## Supported Formats
@@ -14,6 +14,8 @@ Type what you need, and get a real downloadable file in minutes.
 | **HTML** | Web pages, dashboards, prototypes | Landing pages, email templates, admin dashboards |
 
 ## How to Use
+
+Each request goes through four steps, from the chat prompt to the download link.
 
 ### Step 1: Ask in Chat
 
@@ -30,7 +32,7 @@ Open Quick and type your request in the chat. Be specific about what you want.
 Quick will show an **Action review** popup with the tool name
 `create_document` and the parameters it detected (document type, content).
 
-Click **Submit** to start generating.
+Choose **Submit** to start generating.
 
 ### Step 3: Wait for Generation
 
@@ -42,8 +44,8 @@ take up to 8 minutes.
 
 ### Step 4: Download
 
-When the document is ready, a **download link** appears in the chat. Click
-it to download. The link is valid for **7 days**.
+When the document is ready, a **download link** appears in the chat. Choose
+it to download the file. The link is valid for **7 days**.
 
 ## Example Prompts
 
@@ -109,7 +111,7 @@ Good prompts are specific. The more detail you give, the better the output.
 > Create a landing page.
 
 **Better:**
-> Design a modern SaaS product landing page for "DataFlow" — a real-time
+> Design a modern SaaS product landing page for "DataFlow", a real-time
 > analytics platform. Include: hero section with tagline and CTA button,
 > 3 feature cards with icons, a "How it works" section with 4 steps,
 > customer logos bar, pricing table with 3 tiers (Starter $29, Pro $99,
@@ -117,6 +119,8 @@ Good prompts are specific. The more detail you give, the better the output.
 > blue and white color scheme. Make it responsive.
 
 ## Tips for Best Results
+
+These tips help the agent produce the document you have in mind on the first try.
 
 ### Be Specific About Structure
 
@@ -147,7 +151,7 @@ The agent can handle formatting requests:
 
 - "Use a **blue and white** color scheme"
 - "Add **page numbers** and a header with the company name"
-- "Include **conditional formatting** — red for values below target"
+- "Include **conditional formatting**, red for values below target"
 - "Add **speaker notes** to each slide"
 - "Make the table **zebra-striped** for readability"
 
@@ -159,9 +163,9 @@ before starting.
 
 ## Checking Job Status
 
-If the chat session times out or you close the browser before the
-download link appears, you can check status using the **job ID** that
-was shown when you submitted the request.
+The chat session can time out, or you can close the browser before the
+download link appears. In either case, check the status with the **job ID**
+that was shown when you submitted the request.
 
 Type in chat:
 > Check status [your-job-id]
@@ -171,11 +175,13 @@ the document is ready.
 
 ## Limitations
 
+Keep these limits in mind when you plan a request:
+
 - **Generation time**: Documents take 3-8 minutes. This is not instant.
 - **No images**: The agent generates text, tables, charts, and formatting
   but cannot insert photos or external images.
 - **Charts from generated data**: Charts are based on sample or
-  described data — the agent cannot connect to your live databases.
+  described data. The agent cannot connect to your live databases.
 - **File size**: Typical output is 50KB-500KB. Very complex documents
   with many charts may be larger.
 - **One document per request**: Each chat message generates one file.

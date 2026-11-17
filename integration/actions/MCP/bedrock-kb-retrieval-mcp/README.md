@@ -5,7 +5,7 @@ description: "Amazon Bedrock Knowledge Base Retrieval MCP integration with Quick
 
 # Bedrock KB Retrieval MCP - Amazon Bedrock Knowledge Base Integration
 
-**Amazon Bedrock Knowledge Base Retrieval MCP integration** with Amazon Quick. This solution creates an MCP integration that enables direct access to Amazon Bedrock Knowledge Bases through Quick using MCP Actions.
+**Amazon Bedrock Knowledge Base Retrieval MCP integration** with AWS Quick. This solution creates an MCP integration that enables direct access to Amazon Bedrock Knowledge Bases through Quick using MCP Actions.
 
 ## Architecture
 
@@ -29,6 +29,8 @@ This MCP integration enables:
 
 ## Project Structure
 
+The project is laid out as follows.
+
 ```text
 bedrock-kb-retrieval-mcp/
  app.py                          # CDK deployment entry point
@@ -46,7 +48,11 @@ bedrock-kb-retrieval-mcp/
 
 ## Quick Start
 
+The steps below deploy the gateway and collect the values you need for Quick.
+
 ### 1. Clone Repository (Sparse Checkout)
+
+Clone only the folder for this integration.
 
 ```bash
 # Clone repository with sparse checkout
@@ -60,6 +66,8 @@ cd docs/integration/actions/MCP/bedrock-kb-retrieval-mcp
 
 ### 2. Deploy AgentCore Gateway
 
+Install the CDK, sync the dependencies, and deploy the stack.
+
 ```bash
 npm install -g aws-cdk
 uv sync
@@ -68,11 +76,15 @@ cdk deploy --require-approval never
 
 ### 3. Get Outputs
 
+You can read the stack outputs from the console or the CLI.
+
 #### Option 1: AWS Console (Recommended)
+
+Use these steps in the console.
 
 1. Go to **AWS CloudFormation** in the AWS Console
 2. Find the **quicksuite-bedrock-kb-mcp** stack
-3. Click on the **Outputs** tab
+3. Choose the **Outputs** tab
 4. Copy the required values for Quick integration
 
 #### Option 2: CLI Commands
@@ -89,6 +101,8 @@ Key outputs for Quick Actions:
 - `CognitoTokenUrl` - OAuth2 token endpoint
 
 ## Available Tools
+
+The Lambda function exposes two tools.
 
 ### Knowledge Base Tools (kb_agentcore_lambda.py)
 
@@ -119,7 +133,7 @@ Key outputs for Quick Actions:
 
 ## Quick Integration
 
-Complete guide to integrate Bedrock KB Retrieval with Amazon Quick using MCP Actions.
+Complete guide to integrate Bedrock KB Retrieval with AWS Quick using MCP Actions.
 
 ### Prerequisites
 
@@ -132,11 +146,15 @@ From your CDK deployment, you'll need:
 
 ### Configure MCP Action in Quick
 
+Follow these steps in Quick.
+
 #### Step 1: Access Integrations
 
-1. Navigate to **Integrations** in Amazon Quick
-2. Click on **Actions**
-3. Click the **+** button for **Model Context Protocol**
+Open the MCP setup page.
+
+1. Navigate to **Integrations** in AWS Quick
+2. Choose **Actions**
+3. Choose the **+** button for **Model Context Protocol**
 
 **Step 2: Configure MCP Server**
 Fill in the MCP configuration:
@@ -144,9 +162,11 @@ Fill in the MCP configuration:
 - **Name**: Bedrock Knowledge Base Retrieval
 - **Description**: Amazon Bedrock Knowledge Base retrieval with natural language queries
 - **MCP Server Endpoint**: Paste your `GatewayUrl` from CDK deployment outputs
-- Click **Next**
+- Choose **Next**
 
 #### Step 3: Configure Authentication
+
+Set up service authentication with the values from your deployment outputs.
 
 1. For Authentication, select **Service Authentication**
 2. Keep **Service-to-service OAuth** within the Authentication type field
@@ -158,11 +178,15 @@ Fill in the MCP configuration:
 
 #### Step 4: Complete Setup
 
-1. Click **Create and Continue**
+Finish the setup in this order.
+
+1. Choose **Create and Continue**
 2. Select **Next**
 3. Select **Next**
 
 ### Usage in Quick
+
+After setup, you can ask Quick questions like these:
 
 ```text
 "List all available knowledge bases"
@@ -192,6 +216,8 @@ Fill in the MCP configuration:
 - Review CORS configuration for Quick
 
 ## Documentation
+
+These links give more detail.
 
 - [CDK Deployment Guide](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/bedrock-kb-retrieval-mcp/cdk/README.md) - Infrastructure details
 - [MCP Tool Definitions](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/integration/actions/MCP/bedrock-kb-retrieval-mcp/tools/kb_agentcore_tools.json) - API specifications

@@ -115,7 +115,7 @@ export default function Home() {
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-8">
                 <div className="flex items-center space-x-2">
-                  <img src="/amazonquick.png" alt="Amazon Quick" className="w-8 h-8" />
+                  <img src="/aws-quick-icon.svg" alt="AWS Quick" className="w-8 h-8" />
                   <span className="text-xl font-semibold">Quick Chat Agent Embedding Demo</span>
                 </div>
               </div>
@@ -404,7 +404,7 @@ export default function Home() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-8">
               <div className="flex items-center space-x-2">
-                <img src="/amazonquick.png" alt="Amazon Quick" className="w-8 h-8" />
+                <img src="/aws-quick-icon.svg" alt="AWS Quick" className="w-8 h-8" />
                 <span className="text-xl font-semibold">Quick Chat Agent Embedding Demo</span>
               </div>
             </div>
@@ -483,7 +483,7 @@ export default function Home() {
                 Embedding Integration
               </h3>
               <p className="text-gray-600">
-                See how Amazon Quick chat seamlessly integrates into web applications using the
+                See how AWS Quick chat seamlessly integrates into web applications using the
                 embedding SDK.
               </p>
             </div>

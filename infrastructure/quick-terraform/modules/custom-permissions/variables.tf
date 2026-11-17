@@ -1,5 +1,5 @@
 # Module: custom-permissions
-# Declares Amazon Quick custom-permission profiles with three ergonomic layers:
+# Declares AWS Quick custom-permission profiles with three ergonomic layers:
 #   1. deny_by_default  - start from "deny everything", then allow-list exceptions.
 #   2. preset           - pick a named, ready-made posture (reader_lockdown, etc.).
 #   3. capabilities      - raw escape hatch: set individual capability => "DENY".

@@ -612,7 +612,7 @@ def handler(event, context):
         # User Pool Client.
         #
         # 3LO (authorization-code) auth, matching the quick-legal-hold-agent and
-        # what Amazon Quick's MCP connector expects: each user signs in through
+        # what AWS Quick's MCP connector expects: each user signs in through
         # the Cognito hosted UI (browser), so the JWT presented to the Gateway
         # represents a real logged-in user. The dummy user below is a sample
         # login for evaluation.

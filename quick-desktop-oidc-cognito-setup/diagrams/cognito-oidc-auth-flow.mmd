@@ -2,10 +2,10 @@ sequenceDiagram
     participant User
     participant Desktop as Desktop App
     participant Cognito as Amazon Cognito<br/>(User Pool)
-    participant QuickService as Amazon Quick Service
+    participant QuickService as AWS Quick Service
     participant TTI as Trusted Token Issuer<br/>(IAM Identity Center)
 
-    User->>Desktop: Launch and select Enterprise sign-in
+    User->>Desktop: Launch and choose Continue with SSO
     Desktop->>QuickService: Request discovery configuration
     QuickService-->>Desktop: Cognito endpoints, Client ID, scopes
     Desktop->>Desktop: Generate PKCE code verifier + challenge

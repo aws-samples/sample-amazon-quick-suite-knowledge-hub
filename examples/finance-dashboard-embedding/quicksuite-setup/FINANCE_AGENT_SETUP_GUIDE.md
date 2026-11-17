@@ -1,22 +1,24 @@
-# AnyCompany Finance Assistant - QuickSight Agent Setup Guide
+# AnyCompany Finance Assistant: AWS Quick Agent Setup Guide
 
-## Overview
-
-This guide configures the QuickSight Chat Agent as a **Financial Analysis Assistant** embedded in the AnyCompany Finance Performance Dashboard. The agent combines structured financial data with business context documents to answer questions from executive leadership, finance teams, and business leads.
+This guide configures the Quick Sight Chat Agent as a **Financial Analysis Assistant** embedded in the AnyCompany Finance Performance Dashboard. The agent combines structured financial data with business context documents to answer questions from executive leadership, finance teams, and business leads.
 
 ## Prerequisites
 
-- Amazon QuickSight Enterprise edition (required for Chat Agents)
-- QuickSight dataset connected to the FinanceDashboardStack DynamoDB table (or use the CSV files below as uploaded knowledge sources)
+Before you start, make sure you have the following:
+
+- AWS Quick Sight Enterprise edition (required for Chat Agents)
+- Quick Sight dataset connected to the FinanceDashboardStack DynamoDB table (or use the CSV files below as uploaded knowledge sources)
 - IAM Identity Center user matching your Cognito user email
 
 ---
 
 ## Step 1: Navigate to Chat Agents
 
-1. AWS Console → QuickSight
+Open the chat agents page in the console:
+
+1. AWS Console → Quick Sight
 2. Left nav → **Explore** → **Chat agents**
-3. Click **Create chat agent**
+3. Choose **Create chat agent**
 
 ---
 
@@ -25,7 +27,8 @@ This guide configures the QuickSight Chat Agent as a **Financial Analysis Assist
 **Agent Name:** `AnyCompany Finance Assistant`
 
 **Description:**
-```
+
+```text
 AI-powered financial analysis assistant for AnyCompany's Finance Performance Dashboard.
 Helps executive leadership, finance teams, and business leads explore financial data,
 understand performance trends, and take action on insights.
@@ -52,7 +55,7 @@ Upload these files from the `quicksuite-setup/` directory as knowledge sources. 
 
 Paste this as the agent's system prompt:
 
-```
+```text
 You are the AnyCompany Finance Assistant, an AI embedded in AnyCompany's Finance Performance Dashboard.
 
 ## Your Role
@@ -113,14 +116,17 @@ If the user asks to send a Slack message or create an Asana task, acknowledge th
 
 ## Step 5: Get the Agent ID
 
+The frontend needs the agent ID to embed the agent. Copy it from the agent details:
+
 1. Go to **Chat agents** list
 2. Find **AnyCompany Finance Assistant**
-3. Click the options menu → **View chat agent details**
-4. Click **Copy link** next to the agent name
+3. Choose the options menu → **View chat agent details**
+4. Choose **Copy link** next to the agent name
 5. Extract the ID from the URL: `https://us-east-1.quicksight.aws.amazon.com/sn/start/agents?view=<AGENT_ID>`
 
 Update `frontend/.env`:
-```
+
+```text
 REACT_APP_QUICKSUITE_AGENT_ID=<your-agent-id>
 ```
 
@@ -128,23 +134,37 @@ REACT_APP_QUICKSUITE_AGENT_ID=<your-agent-id>
 
 ## Sample Questions to Test
 
+Ask these questions in the embedded chat to check each kind of answer the system prompt describes.
+
 ### Self-service analytics
+
+These questions check answers from the structured data:
+
 - "What are sales figures for the EMEA region?"
 - "What was our revenue in Q3 2024?"
 - "Which country had the highest revenue growth last quarter?"
 - "Show me profit margins by product line for Q4 2024"
 
 ### Reporting
+
+These requests check generated summaries:
+
 - "Create a monthly financial summary for the executive team highlighting key metrics and trends"
 - "Compare our performance against budget targets across all departments"
 - "Show me profit margins by product line for the current quarter"
 
 ### Insight & context
+
+These questions combine the numbers with the business context documents:
+
 - "Why did revenue decline 15% in Q3 compared to Q2?"
 - "I see Product A's profit margin dropped 8% this quarter. What did the product strategy team recommend in their last quarterly review?"
 - "We're showing $45k in software licenses this month. How should this be classified according to our accounting policy manual?"
 
 ### Action-oriented
+
+These requests need the Slack and Asana actions configured (see Notes):
+
 - "Send a Slack to the finance directors summarizing this expense spike with a link to this dashboard"
 - "Create an Asana task for the country lead to review this revenue decline. Assign it high priority with a due date of next Friday"
 
@@ -152,6 +172,8 @@ REACT_APP_QUICKSUITE_AGENT_ID=<your-agent-id>
 
 ## Notes
 
-- The agent ID `0edc27d9-097a-491c-a475-d2f871a25d2c` in `.env` should be replaced with the new Finance Assistant agent ID after creation
-- Slack and Asana integrations require configuring those actions in the QuickSight agent console under **Actions**
-- For QuickSight topic-based data Q&A (structured data queries), connect the agent to a QuickSight dataset built from the DynamoDB table
+Keep these points in mind after setup:
+
+- After you create the agent, replace the agent ID `0edc27d9-097a-491c-a475-d2f871a25d2c` in `.env` with the new Finance Assistant agent ID
+- Slack and Asana integrations require configuring those actions in the Quick Sight agent console under **Actions**
+- For Quick Sight topic-based data Q&A (structured data queries), connect the agent to a Quick Sight dataset built from the DynamoDB table

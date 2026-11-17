@@ -5,7 +5,7 @@
   --md-accent-fg-color: #d600ba;
   --md-typeset-a-color: #7300e5;
 
-  /* Amazon Quick brand palette (from quick.aws.com) */
+  /* AWS Quick brand palette (from quick.aws.com) */
   --quick-gradient: linear-gradient(100deg, #ff4b14 0%, #d600ba 33%, #7300e5 66%, #6842ff 100%);
   --quick-orange: #ff4b14;
   --quick-magenta: #d600ba;
@@ -15,7 +15,7 @@
   --quick-ink: #14181c;
 }
 
-/* ── Amazon Quick brand accents ────────────────────────────────── */
+/* ── AWS Quick brand accents ────────────────────────────────── */
 
 /* Gradient accent bar under the header for a fluid, branded feel */
 .md-header {
@@ -226,8 +226,9 @@
 .md-header__button.md-logo svg,
 .md-nav__title .md-nav__button.md-logo img,
 .md-nav__title .md-nav__button.md-logo svg {
-  height: 1.5rem;
-  width: 1.5rem;
+  height: 1.7rem;
+  width: auto;
+  display: block;
 }
 
 .md-tabs__link {
@@ -372,8 +373,11 @@
   }
 }
 
-/* Make the top-level "Amazon Quick on desktop" entry bold like a section header */
-.md-nav--primary > .md-nav__list > .md-nav__item > .md-nav__link[href$="amazon-quick-on-desktop/"] {
+/* Make the top-level "AWS Quick on desktop" entry bold like a section header */
+.md-nav--primary
+  > .md-nav__list
+  > .md-nav__item
+  > .md-nav__link[href$="quick-desktop-oidc-cognito-setup/"] {
   font-weight: 700;
   font-size: 1.4em;
 }
@@ -689,4 +693,510 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   aws.amazon.com/quick look: ink text, Amazon Ember type, pill buttons,
+   neutral borders and surfaces, blue links. Overrides the gradient
+   styling above. Left navigation rules are unchanged.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root > * {
+  --qa-ink: #161d26;
+  --qa-ink-2: #232b37;
+  --qa-muted: #656871;
+  --qa-border: #dedee3;
+  --qa-surface: #f3f3f7;
+  --qa-surface-warm: #efede8;
+  --qa-link: #006ce0;
+  --qa-link-hover: #003b8f;
+  --qa-font: "Amazon Ember Display", "Amazon Ember", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --qa-font-mono:
+    "Amazon Ember Mono", Consolas, "Andale Mono", "Lucida Console", Monaco, "Courier New", monospace;
+  --md-text-font-family: var(--qa-font);
+  --md-code-font-family: var(--qa-font-mono);
+  --md-primary-fg-color: var(--qa-ink);
+  --md-accent-fg-color: var(--qa-link);
+  --md-typeset-a-color: var(--qa-link);
+  --quick-ink: var(--qa-ink);
+}
+[data-md-color-scheme="slate"] {
+  --qa-ink: #ffffff;
+  --qa-muted: #b4b4bb;
+  --qa-border: #333843;
+  --qa-surface: #232b37;
+  --qa-surface-warm: #232b37;
+  --qa-link: #0099ff;
+  --qa-link-hover: #75cfff;
+  --md-default-bg-color: #0f141a;
+}
+
+body,
+input,
+.md-typeset {
+  font-family: var(--qa-font);
+  -webkit-font-smoothing: antialiased;
+}
+.md-typeset {
+  color: var(--qa-ink);
+}
+
+/* Header and tabs: white bar with a hairline border, no gradient */
+.md-header {
+  box-shadow: none;
+  border-bottom: 1px solid var(--qa-border);
+}
+.md-header::after {
+  display: none;
+}
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: #0f141a;
+}
+.md-tabs {
+  border-bottom: 1px solid var(--qa-border);
+}
+.md-tabs__link {
+  font-weight: 400;
+}
+.md-tabs__item--active,
+.md-tabs__item:hover {
+  text-decoration: none;
+}
+.md-tabs__item--active .md-tabs__link {
+  box-shadow: inset 0 -2px 0 var(--qa-ink);
+}
+.md-search__form {
+  border-radius: 999px;
+}
+
+/* Headings: solid ink, medium weight, no gradient rule */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  color: var(--qa-ink);
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 {
+  font-weight: 500;
+}
+.md-typeset h2 {
+  font-weight: 500;
+  border-bottom: none;
+  border-image: none;
+  padding-bottom: 0;
+}
+.md-typeset h3 {
+  font-weight: 600;
+}
+[data-md-color-scheme="slate"] .md-typeset h1 {
+  color: var(--qa-ink);
+}
+
+/* Links */
+.md-typeset a {
+  color: var(--qa-link);
+  text-decoration-color: currentColor;
+}
+.md-typeset a:hover {
+  color: var(--qa-link-hover);
+}
+[data-md-color-scheme="slate"] .md-typeset a {
+  color: var(--qa-link);
+}
+[data-md-color-scheme="slate"] .md-typeset a:hover {
+  color: var(--qa-link-hover);
+}
+
+/* Buttons: ink pill (primary) and outlined pill (secondary) */
+.md-typeset .md-button {
+  border-radius: 999px;
+  border: 1.5px solid var(--qa-ink);
+  color: var(--qa-ink) !important;
+  background: transparent;
+  font-weight: 500;
+  padding: 0.55em 1.4em;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.md-typeset .md-button:hover,
+.md-typeset .md-button:focus {
+  background: var(--qa-surface);
+  border-color: var(--qa-ink);
+  color: var(--qa-ink) !important;
+}
+.md-typeset .md-button--primary {
+  background: var(--qa-ink);
+  border-color: var(--qa-ink);
+  color: #fff !important;
+  filter: none;
+  transform: none;
+}
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
+  background: var(--qa-ink-2);
+  border-color: var(--qa-ink-2);
+  color: #fff !important;
+  filter: none;
+  transform: none;
+}
+[data-md-color-scheme="slate"] .md-typeset .md-button {
+  color: var(--qa-ink) !important;
+}
+[data-md-color-scheme="slate"] .md-typeset .md-button--primary,
+[data-md-color-scheme="slate"] .md-typeset .md-button--primary:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #161d26 !important;
+}
+
+/* Inline code, tables, admonitions, selection, footer */
+.md-typeset code {
+  color: var(--qa-ink);
+  background-color: var(--qa-surface);
+}
+[data-md-color-scheme="slate"] .md-typeset code {
+  color: var(--qa-ink);
+  background-color: var(--qa-surface);
+}
+.md-typeset table:not([class]) {
+  border: 1px solid var(--qa-border);
+  border-radius: 8px;
+}
+.md-typeset table:not([class]) th {
+  background: var(--qa-surface);
+  color: var(--qa-ink);
+}
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 8px;
+}
+::selection {
+  background: rgba(0, 108, 224, 0.18);
+}
+.md-footer-meta {
+  border-top: 1px solid var(--qa-border);
+  border-image: none;
+}
+
+/* Landing hero: neutral surface, ink type, outlined eyebrow */
+.qh-hero {
+  background: var(--qa-surface-warm);
+  border: none;
+  border-radius: 24px;
+}
+.qh-hero::after {
+  display: none;
+}
+.qh-hero__eyebrow {
+  background: transparent;
+  color: var(--qa-ink);
+  border: 1px solid var(--qa-ink);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+.qh-hero__title.qh-hero__title {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--qa-ink);
+}
+[data-md-color-scheme="slate"] .qh-hero__title.qh-hero__title {
+  color: var(--qa-ink);
+}
+.qh-hero__lead {
+  color: var(--qa-ink-2);
+}
+[data-md-color-scheme="slate"] .qh-hero__lead {
+  color: var(--qa-muted);
+}
+.qh-hero__stats span {
+  color: var(--qa-muted);
+}
+.qh-hero__stats strong,
+[data-md-color-scheme="slate"] .qh-hero__stats strong {
+  font-weight: 500;
+  color: var(--qa-ink);
+}
+
+/* Category, solution and link cards: hairline border, 16px radius,
+   neutral hover shadow, no gradient stripe */
+.qh-cat,
+.qh-card,
+.qh-link {
+  border: 1px solid var(--qa-border);
+  border-radius: 16px;
+}
+.qh-link {
+  border-radius: 12px;
+}
+.qh-card::before,
+.qh-link::before {
+  display: none;
+}
+.qh-cat:hover,
+.qh-card:hover,
+.qh-link:hover {
+  transform: none;
+  border-color: var(--qa-ink);
+  box-shadow: 0 0.4rem 1.2rem rgba(22, 29, 38, 0.1);
+}
+.qh-cat__count {
+  background: var(--qa-ink);
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 500;
+}
+[data-md-color-scheme="slate"] .qh-cat__count {
+  background: #ffffff;
+  color: #161d26;
+}
+.qh-cat__name,
+.qh-card__title,
+.qh-link__name {
+  font-weight: 500;
+  color: var(--qa-ink);
+}
+.qh-cat__desc,
+.qh-card__desc,
+.qh-link__host {
+  color: var(--qa-muted);
+}
+.qh-cat__go,
+[data-md-color-scheme="slate"] .qh-cat__go {
+  font-weight: 500;
+  color: var(--qa-link);
+}
+.qh-card__tags span,
+[data-md-color-scheme="slate"] .qh-card__tags span {
+  color: var(--qa-ink-2);
+  background: var(--qa-surface);
+  border: 1px solid var(--qa-border);
+  font-weight: 500;
+}
+[data-md-color-scheme="slate"] .qh-card__tags span {
+  color: var(--qa-ink);
+}
+
+/* Header logo: visible at every width, vertically centered */
+.md-header__button.md-logo {
+  display: flex;
+  align-items: center;
+  height: 2.4rem;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+@media screen and (max-width: 76.2344em) {
+  .md-header__button.md-logo {
+    display: flex;
+  }
+}
+@media screen and (max-width: 30em) {
+  .md-header__button.md-logo img {
+    height: 1.4rem;
+  }
+}
+
+/* Header: site name sits on the logo's "aws quick" baseline */
+.md-header__title {
+  margin-left: 0.6rem;
+  height: 2.4rem;
+  line-height: 2.4rem;
+}
+.md-header__title .md-header__topic {
+  transform: translateY(-0.12rem);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Landing layout in the aws.amazon.com/quick style: two-column hero
+   with a product-style visual, alternating feature rows, card grid,
+   bordered tab bar, dark footer. Left navigation is unchanged.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Page H1 stays for search and screen readers; the hero carries the title */
+.md-content:has(.qh-hero) .md-typeset > h1:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Tab bar: bordered, rounded strip under the header */
+.md-tabs {
+  border-bottom: none;
+  background: transparent;
+}
+@media screen and (min-width: 76.25em) {
+  .md-tabs .md-grid {
+    margin-top: 0.5rem;
+    margin-bottom: 0.3rem;
+    border: 1px solid var(--qa-border);
+    border-radius: 16px;
+    padding: 0 0.8rem;
+  }
+  .md-tabs__list {
+    margin-left: 0;
+  }
+}
+.md-header {
+  border-bottom: none;
+}
+
+/* Landing type scale */
+.md-content:has(.qh-hero) .md-typeset h2 {
+  font-size: 1.7rem;
+  font-weight: 500;
+  margin: 2.6rem 0 1.2rem;
+}
+
+/* Hero: text left, visual right */
+.qh-hero {
+  display: block;
+  padding: 2.4rem 0 1.6rem;
+  margin: 0 0 1rem;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+.qh-hero__inner {
+  max-width: 44rem;
+}
+.qh-hero__eyebrow {
+  display: none;
+}
+.qh-hero__title.qh-hero__title {
+  font-size: 2.6rem;
+  line-height: 1.1;
+  margin-top: 0;
+}
+.qh-hero__lead {
+  font-size: 1rem;
+}
+@media screen and (max-width: 60em) {
+  .qh-hero__title.qh-hero__title {
+    font-size: 2rem;
+  }
+}
+
+/* Feature rows: alternating text and panel */
+.qh-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  margin: 1rem 0 2rem;
+}
+.qh-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 2.4rem;
+  align-items: center;
+  padding: 2rem;
+  border-radius: 24px;
+  background: var(--qa-surface-warm);
+}
+.qh-row:nth-child(even) .qh-row__text {
+  order: 2;
+}
+.md-typeset .qh-row__title {
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0 0 0.6rem;
+}
+.md-typeset .qh-row__desc {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--qa-ink-2);
+  margin: 0 0 1.2rem;
+}
+[data-md-color-scheme="slate"] .md-typeset .qh-row__desc {
+  color: var(--qa-muted);
+}
+.qh-row__panel {
+  border-radius: 12px;
+  padding: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qh-row:nth-child(4n + 1) .qh-row__panel {
+  background: #ffd9c7;
+}
+.qh-row:nth-child(4n + 2) .qh-row__panel {
+  background: #e3d6ff;
+}
+.qh-row:nth-child(4n + 3) .qh-row__panel {
+  background: #cdf3d6;
+}
+.qh-row:nth-child(4n + 4) .qh-row__panel {
+  background: #cfe6ff;
+}
+.qh-row__card {
+  width: 100%;
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 0.4rem 1.2rem rgba(15, 20, 26, 0.12);
+}
+.qh-row__label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #656871;
+  margin-bottom: 0.6rem;
+}
+.qh-row__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.md-typeset a.qh-row__item {
+  font-size: 0.72rem;
+  color: #161d26;
+  background: #f3f3f7;
+  border: 1px solid #dedee3;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  text-decoration: none;
+}
+.md-typeset a.qh-row__item:hover {
+  border-color: #161d26;
+  color: #161d26;
+}
+.qh-row__more {
+  font-size: 0.72rem;
+  color: #656871;
+  padding: 0.25rem 0.3rem;
+}
+@media screen and (max-width: 60em) {
+  .qh-row {
+    grid-template-columns: 1fr;
+    padding: 1.4rem;
+  }
+  .qh-row:nth-child(even) .qh-row__text {
+    order: 0;
+  }
+}
+
+/* Featured cards: larger, flatter, like the product card collection */
+.qh-card {
+  padding: 1.5rem 1.4rem 1.3rem;
+  border-radius: 16px;
+}
+.qh-card__title {
+  font-size: 1.1rem;
+}
+
+/* Footer: dark ink band */
+.md-footer {
+  background-color: #161d26;
+  color: #fff;
+}
+.md-footer-meta {
+  background-color: #0f141a;
+  border-top: none;
 }

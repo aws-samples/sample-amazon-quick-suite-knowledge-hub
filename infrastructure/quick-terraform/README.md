@@ -1,6 +1,6 @@
-# Amazon Quick Bootstrap - Terraform
+# AWS Quick Bootstrap - Terraform
 
-This Terraform project sets up Amazon Quick. It ships in two layers:
+This Terraform project sets up AWS Quick. It ships in two layers:
 
 - **Modular blueprints** (recommended) - pick a blueprint, fill a `.tfvars`, and deploy.
   Each blueprint composes small reusable modules via feature flags, so you choose VPC
@@ -13,16 +13,18 @@ This Terraform project sets up Amazon Quick. It ships in two layers:
 
 | Blueprint | IDC | VPC | KMS | Custom permissions | Use when |
 | --- | --- | --- | --- | --- | --- |
-| [`minimal`](blueprints/minimal) | ✗ | ✗ | ✗ | ✗ | Quick evaluation account, native QuickSight identity |
-| [`idc-centralized`](blueprints/idc-centralized) | ✓ | ✗ | ✓ | ✓ | Recommended centralized enterprise setup |
-| [`vpc-no-idc`](blueprints/vpc-no-idc) | ✗ | ✓ | ✓ | ✗ | Network-isolated Quick without Identity Center |
-| [`idc-vpc-governed`](blueprints/idc-vpc-governed) | ✓ | ✓ | ✓ | ✓ | Full governance; every capability is a flag |
-| [`locked-down`](blueprints/locked-down) | ✓* | ✗ | ✓ | ✓ (deny-by-default) | Secure-by-default: readers view-only, authors cannot share, out of the box |
+| [`minimal`](blueprints/minimal/README.md) | ✗ | ✗ | ✗ | ✗ | Quick evaluation account, native Quick Sight identity |
+| [`idc-centralized`](blueprints/idc-centralized/README.md) | ✓ | ✗ | ✓ | ✓ | Recommended centralized enterprise setup |
+| [`vpc-no-idc`](blueprints/vpc-no-idc/README.md) | ✗ | ✓ | ✓ | ✗ | Network-isolated Quick without Identity Center |
+| [`idc-vpc-governed`](blueprints/idc-vpc-governed/README.md) | ✓ | ✓ | ✓ | ✓ | Full governance; every capability is a flag |
+| [`locked-down`](blueprints/locked-down/README.md) | ✓* | ✗ | ✓ | ✓ (deny-by-default) | Secure-by-default: readers view-only, authors cannot share, out of the box |
 
-`idc-vpc-governed` is the superset: the other three are thin presets over it (or over the
+`idc-vpc-governed` is the superset: the other blueprints are thin presets over it (or over the
 modules directly), so turning its flags off reproduces the simpler topologies.
 
 ### Deploy a blueprint
+
+Copy the example variables file, edit it, and apply:
 
 ```bash
 cd blueprints/idc-centralized
@@ -40,15 +42,15 @@ Under `modules/`, each is self-contained and independently composable:
 | --- | --- | --- |
 | `quick-account` | Account subscription + namespace (native `aws_quicksight_account_subscription`) | `authentication_method` (IDC vs `IAM_AND_QUICKSIGHT`), `create_namespace` |
 | `identity-center` | Create or reference IDC groups | per-group `create` |
-| `service-roles` | QuickSight service role (Athena/S3 data access) | `attach_athena_access`, `s3_bucket_arns` |
-| `kms` | CMK + QuickSight key registration, IDC-aware key policy | `multi_region`, `allow_identity_center` |
-| `vpc-access` | Type 1 PrivateLink endpoint + Type 2 QuickSight VPC connection | `enable_privatelink`, `enable_vpc_connection` |
+| `service-roles` | Quick Sight service role (Athena/S3 data access) | `attach_athena_access`, `s3_bucket_arns` |
+| `kms` | CMK + Quick Sight key registration, IDC-aware key policy | `multi_region`, `allow_identity_center` |
+| `vpc-access` | Type 1 PrivateLink endpoint + Type 2 Quick Sight VPC connection | `enable_privatelink`, `enable_vpc_connection` |
 | `custom-permissions` | Custom-permission profiles + role binding | `use_cloudformation` (fallback) |
 | `account-governance` | Account settings, IP/VPC restrictions, IAM policy assignments | `enable_account_settings`, `enable_ip_restriction` |
 
 ### Custom permissions: deny-by-default, presets, and raw control
 
-The `custom-permissions` module models the full QuickSight capability surface (20
+The `custom-permissions` module models the full Quick Sight capability surface (20
 capabilities) with three ergonomic layers, so you rarely hand-list flags. Each profile
 accepts:
 
@@ -75,7 +77,7 @@ custom_permission_role_assignments = {
 }
 ```
 
-Semantics: QuickSight expresses a capability as DENY or unset (unset = account default =
+Semantics: Quick Sight expresses a capability as DENY or unset (unset = account default =
 permitted). "allow" means "leave unset" (not denied); it does not grant beyond the
 account default. The `locked-down` blueprint ships this hardened out of the box.
 
@@ -85,14 +87,14 @@ The `account-governance` module adds account-wide admin controls, each behind it
 toggle, wired into the `idc-vpc-governed` superset:
 
 - **Account settings** (`enable_account_settings`) - set the `default_namespace` and
-  `termination_protection_enabled` so the Amazon Quick subscription cannot be deleted
+  `termination_protection_enabled` so the AWS Quick subscription cannot be deleted
   accidentally.
 - **IP / VPC restrictions** (`enable_ip_restriction`) - gate console and API access to an
   allowlist. Supply any of `ip_restriction_rule_map` (CIDR => description),
   `vpc_id_restriction_rule_map`, or `vpc_endpoint_id_restriction_rule_map`. The
-  `ip_restriction_enabled` flag enforces (or just stages) the rules.
+  `ip_restriction_enabled` flag enforces (or only stages) the rules.
 - **IAM policy assignments** (`iam_policy_assignments`) - bind an IAM managed policy to
-  QuickSight users/groups within a namespace, with `status` ENABLED/DISABLED/DRAFT.
+  Quick Sight users/groups within a namespace, with `status` ENABLED/DISABLED/DRAFT.
 
 ```hcl
 enable_account_settings        = true
@@ -118,10 +120,12 @@ Capabilities use first-class AWS provider resources where available
 `aws_quicksight_vpc_connection`, `aws_quicksight_key_registration`, `aws_vpc_endpoint`,
 `aws_kms_key`, `aws_identitystore_group`, `aws_quicksight_account_settings`,
 `aws_quicksight_ip_restriction`, `aws_quicksight_iam_policy_assignment`). Where a resource is not yet in the provider,
-the module falls back to a CloudFormation stack (e.g. `custom-permissions` with
+the module falls back to a CloudFormation stack (for example, `custom-permissions` with
 `use_cloudformation = true` uses `AWS::QuickSight::CustomPermissions`).
 
 ## Legacy features
+
+The legacy root module does the following:
 
 - Creates or uses existing IAM Identity Center instance
 - Sets up Quick Sight account subscription
@@ -137,12 +141,16 @@ the module falls back to a CloudFormation stack (e.g. `custom-permissions` with
 
 ### Prerequisites
 
+The legacy root module needs the following:
+
 - AWS CLI configured with appropriate credentials
 - Terraform >= 1.0.0
 - Python 3.12 (for Lambda function)
 - pip (for installing Lambda dependencies)
 
 ## Quick Start
+
+Follow these steps to deploy the legacy root module:
 
 1. **Clone and navigate to the module:**
 
@@ -222,7 +230,7 @@ identity_center_instance_arn = "arn:aws:sso:::instance/ssoins-1234567890abcdef"
 
 ## Force Re-run Setup
 
-To force the Lambda to re-run the setup (e.g., after configuration changes):
+To force the Lambda to re-run the setup (for example, after configuration changes):
 
 ```bash
 terraform apply -var="force_update=true"
@@ -239,6 +247,8 @@ terraform destroy
 **Note:** This will attempt to delete the Quick Sight subscription and related resources.
 
 ## Troubleshooting
+
+These issues apply to the legacy root module.
 
 ### Lambda Build Fails
 
@@ -263,6 +273,8 @@ This project is licensed under the [MIT-0 (MIT No Attribution)](https://github.c
 
 ## Related Resources
 
-- [Amazon Quick Documentation](https://docs.aws.amazon.com/quick/latest/userguide/)
+For more on the services this project configures, see:
+
+- [AWS Quick Documentation](https://docs.aws.amazon.com/quick/latest/userguide/)
 - [IAM Identity Center Documentation](https://docs.aws.amazon.com/singlesignon/)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)

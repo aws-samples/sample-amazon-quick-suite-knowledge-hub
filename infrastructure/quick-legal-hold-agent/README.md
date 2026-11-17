@@ -1,31 +1,33 @@
-# Amazon Quick Legal Hold Agent
+# AWS Quick Legal Hold Agent
 
-A deployable **legal-hold management agent for Amazon Quick**. From inside Amazon Quick
+A deployable **legal-hold management agent for AWS Quick**. From inside AWS Quick
 chat, a Legal administrator can search identities, place and release legal holds on
-users and groups, and list active holds - with every action attributed to the individual
+users and groups, and list active holds. Every action is attributed to the individual
 admin who performed it (chain-of-custody).
 
-The agent's tools are exposed to Amazon Quick over the **Model Context Protocol (MCP)**
-through an **Amazon Bedrock AgentCore Gateway**, secured with **OAuth 2.0 per-user login
-(3LO)** through Amazon Cognito. Amazon Quick connects to it as an **MCP connector**. When a
-hold is placed, it is written to an Amazon DynamoDB table that a preservation data path
-(Amazon Data Firehose to a filter AWS Lambda function to a write-once-read-many (WORM)
-Amazon S3 bucket) reads, so held users' chat records are automatically preserved to an
-Object Lock bucket.
+The agent's tools are exposed to AWS Quick over the **Model Context Protocol (MCP)**
+through an **Amazon Bedrock AgentCore Gateway**. The Gateway is secured with **OAuth 2.0
+per-user sign-in (3LO)** through Amazon Cognito, and AWS Quick connects to it as an **MCP
+connector**. When a hold is placed, it is written to an Amazon DynamoDB table. A
+preservation data path reads that table. In that path, Amazon Data Firehose sends chat logs to a filter
+AWS Lambda function, which writes to a write-once-read-many (WORM) Amazon S3 bucket. As a
+result, held users' chat records are automatically preserved to an Object Lock bucket.
 
 This is a sample intended for evaluation and as a starting point. Review it against your
 own security and compliance requirements before using it with production data.
 
 ## Contents
 
+This README covers the following sections:
+
 1. [Architecture](#architecture)
 2. [What gets created](#what-gets-created)
 3. [The agent's tools](#the-agents-tools)
 4. [Prerequisites](#prerequisites)
-5. [Step 1 - Deploy the agent backend](#step-1---deploy-the-agent-backend)
-6. [Step 2 - Connect the agent to Amazon Quick](#step-2---connect-the-agent-to-amazon-quick)
-7. [Step 3 - Create the Legal Hold agent in Amazon Quick](#step-3---create-the-legal-hold-agent-in-amazon-quick)
-8. [Step 4 - Validate](#step-4---validate)
+5. [Step 1: Deploy the agent backend](#step-1-deploy-the-agent-backend)
+6. [Step 2: Connect the agent to AWS Quick](#step-2-connect-the-agent-to-aws-quick)
+7. [Step 3: Create the Legal Hold agent in AWS Quick](#step-3-create-the-legal-hold-agent-in-aws-quick)
+8. [Step 4: Validate](#step-4-validate)
 9. [Cleanup](#cleanup)
 10. [Repository layout](#repository-layout)
 11. [Contributing](#contributing)
@@ -33,9 +35,9 @@ own security and compliance requirements before using it with production data.
 
 ## Architecture
 
-![Amazon Quick Legal Hold Agent architecture. Data path (top): a user under legal hold's Amazon Quick prompts and AI outputs flow as CHAT_LOGS to Amazon CloudWatch vended logs, then to Amazon Data Firehose and a filter AWS Lambda function that keeps only active-hold users (matched by Amazon QuickSight ARN) and partitions by group and user, into an Amazon S3 Object Lock (WORM) bucket encrypted by an AWS KMS key for e-discovery retrieval. Control path (bottom): a Legal admin asks in Amazon Quick, which connects through an OAuth 2.0 and Amazon Cognito MCP connector to an Amazon Bedrock AgentCore Gateway exposing the search_identities, list_group_members, place_hold, release_hold, and list_holds tools, which directly invokes the Hold Manager AWS Lambda function that resolves users and expands groups through AWS IAM Identity Center and idempotently writes and releases holds in an Amazon DynamoDB held-user table. The filter function looks up user_arn in that same Amazon DynamoDB table.](images/quick_legal_hold_architecture.png)
+![AWS Quick Legal Hold Agent architecture. Data path (top): a user under legal hold's AWS Quick prompts and AI outputs flow as CHAT_LOGS to Amazon CloudWatch vended logs. From there they go to Amazon Data Firehose and a filter AWS Lambda function. The filter keeps only active-hold users (matched by AWS Quick Sight ARN) and partitions by group and user. Records land in an Amazon S3 Object Lock (WORM) bucket encrypted by an AWS KMS key for e-discovery retrieval. Control path (bottom): a Legal admin asks in AWS Quick, which connects through an OAuth 2.0 and Amazon Cognito MCP connector to an Amazon Bedrock AgentCore Gateway. The Gateway exposes the search_identities, list_group_members, place_hold, release_hold, and list_holds tools and directly invokes the Hold Manager AWS Lambda function. That function resolves users and expands groups through AWS IAM Identity Center, and idempotently writes and releases holds in an Amazon DynamoDB held-user table. The filter function looks up user_arn in that same Amazon DynamoDB table.](images/quick_legal_hold_architecture.png)
 
-- **Control path:** Amazon Quick -> Gateway -> Hold Manager Lambda -> DynamoDB.
+- **Control path:** AWS Quick -> Gateway -> Hold Manager Lambda -> DynamoDB.
 - **Data path:** chat logs -> Firehose -> filter (keep only active-hold users) -> WORM S3 (original).
 - **Redaction path (optional):** new WORM object -> redact Lambda (Comprehend) -> redacted-copy bucket. The agent's `get_held_document` serves only the redacted copy; the original is reachable only via the break-glass role when configured.
 - Placing a hold via the agent immediately governs what the data path preserves.
@@ -46,12 +48,16 @@ All resources share the prefix `quick-legalhold-mcp-`.
 
 ### Control path (the agent)
 
-- `quick-legalhold-mcp-hold-manager` AWS Lambda function - the seven tools (identity search, hold place/release/list, and held-document list/get).
+The control path is the agent backend that AWS Quick calls:
+
+- `quick-legalhold-mcp-hold-manager` AWS Lambda function - the agent's tools (identity search, hold place/release/list, and held-document list/get).
 - `quick-legalhold-mcp-interceptor` AWS Lambda function - REQUEST interceptor that injects caller identity.
 - `quick-legalhold-mcp-gateway-role` - Gateway execution role.
 - `AWS::BedrockAgentCore::Gateway` `quick-legalhold-mcp-gw` (MCP, CUSTOM_JWT) + Lambda target.
 
 ### Preservation data path
+
+The preservation data path stores held users' chat records:
 
 - AWS KMS key for the WORM bucket, DynamoDB, and Firehose - either a customer-managed CMK
   the stack creates (rotation enabled, **retained** on delete) or a bring-your-own key
@@ -69,6 +75,8 @@ All resources share the prefix `quick-legalhold-mcp-`.
 
 ### PII-redaction path (only when `redactPii=true`)
 
+The optional redaction path writes a masked copy of each preserved record:
+
 - `quick-legalhold-mcp-redact` AWS Lambda function - triggered by S3 `OBJECT_CREATED` on the
   WORM bucket; runs Amazon Comprehend `DetectPiiEntities` over the chat text fields, masks the
   detected spans, and writes a redacted copy. Fails closed (masks the whole field on error).
@@ -76,6 +84,8 @@ All resources share the prefix `quick-legalhold-mcp-`.
   readable, not Object-Locked - the redacted copy is a derived artifact).
 
 ### Authentication (Amazon Cognito)
+
+Cognito provides the per-user sign-in for the connector:
 
 - User pool `quick-legalhold-mcp-pool` + hosted-UI domain + resource server `holds-api`
   (scope `invoke`).
@@ -88,9 +98,9 @@ All resources share the prefix `quick-legalhold-mcp-`.
   evaluation only.
 
 Authentication is **per-user (3LO) only**, so every hold is attributed to the individual
-logged-in Legal admin.
+signed-in Legal admin.
 
-> **Identity provider note:** This sample uses **Amazon Cognito as the OIDC identity provider** so it works out of the box. In a real deployment you should instead use **whichever identity provider your organization already uses** (for example AWS IAM Identity Center, Okta, Microsoft Entra ID / Azure AD, Ping, or any OIDC-compliant IdP). The AgentCore Gateway uses a `CUSTOM_JWT` authorizer, so point its OIDC discovery URL and allowed client/audience at your IdP, and configure the Quick MCP connector with that IdP's authorize/token URLs — Cognito is only the stand-in for this reference implementation.
+> **Identity provider note:** This sample uses **Amazon Cognito as the OIDC identity provider** so it works out of the box. In a real deployment, use **whichever identity provider your organization already uses** instead. Examples are AWS IAM Identity Center, Okta, Microsoft Entra ID / Azure AD, Ping, or any OIDC-compliant IdP. The AgentCore Gateway uses a `CUSTOM_JWT` authorizer, so point its OIDC discovery URL and allowed client/audience at your IdP. Then configure the Quick MCP connector with that IdP's authorize/token URLs. Cognito is only the stand-in for this reference implementation.
 
 ## The agent's tools
 
@@ -112,8 +122,8 @@ sample default, so a bare deploy works. For a production posture, set the values
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `kmsKeyArn` | *(create a CMK)* | Bring your own KMS key for the WORM bucket, DynamoDB, and Firehose. If omitted, the stack creates a customer-managed CMK (rotation enabled). The created key is **retained** on stack delete so retained evidence stays readable. |
-| `objectLockMode` | `GOVERNANCE` | S3 Object Lock mode on the WORM evidence bucket. **Set `COMPLIANCE` for production** — COMPLIANCE cannot be shortened or bypassed by anyone (including root) until retention expires. GOVERNANCE is the safe sample default (an admin with `s3:BypassGovernanceRetention` can still clean up a trial). |
-| `objectLockDays` | `1` | Default retention days for the WORM bucket. **Set to your legal retention period (e.g. `2555` ≈ 7 years) for production.** |
+| `objectLockMode` | `GOVERNANCE` | S3 Object Lock mode on the WORM evidence bucket. **Set `COMPLIANCE` for production.** COMPLIANCE cannot be shortened or bypassed by anyone (including root) until retention expires. GOVERNANCE is the safe sample default (an admin with `s3:BypassGovernanceRetention` can still clean up a trial). |
+| `objectLockDays` | `1` | Default retention days for the WORM bucket. **Set to your legal retention period (for example, `2555` ≈ 7 years) for production.** |
 | `redactPii` | `false` | When `true`, an S3-triggered Lambda runs **Amazon Comprehend** `DetectPiiEntities` over each delivered WORM object and writes a **separate redacted copy** to a reviewer-readable bucket (`…-redacted-<account>`). The original in the WORM bucket is never modified. Off by default to preserve evidence fidelity (redacting the only copy can constitute spoliation). |
 | `comprehendLanguage` | `en` | Language code for Comprehend PII detection. |
 | `breakGlassRoleArn` | *(none)* | When set, a bucket policy **denies reading the un-redacted WORM evidence to every principal except this role** (and the account root). e-discovery production of originals goes through this role; day-to-day review uses the redacted copies. |
@@ -134,20 +144,24 @@ cdk deploy \
 ```
 
 > **PII redaction and evidentiary integrity:** redaction never alters the original. The
-> authoritative record stays immutable in the WORM bucket (accessible only via the
-> break-glass role when one is set); the redacted copy is a derived artifact for reviewer /
+> authoritative record stays immutable in the WORM bucket, accessible only through the
+> break-glass role when one is set. The redacted copy is a derived artifact for reviewer /
 > agent access. The `get_held_document` tool serves only the redacted copy.
 
 ## Prerequisites
+
+Before you deploy, make sure you have the following:
 
 - **Node.js** 18 or later, **npm**, **AWS CLI v2**, and **Python 3**, all on your PATH.
 - AWS credentials for your target account (`aws configure`, IAM Identity Center / SSO, or
   environment variables). The deploy script verifies these with `aws sts get-caller-identity`.
 - Permissions to create the resources listed above and to run `cdk bootstrap` if the
   environment is not already bootstrapped (the script bootstraps only if needed).
-- An **Amazon Quick** account where you can add MCP connectors and create agents (admin access).
+- An **AWS Quick** account where you can add MCP connectors and create agents (admin access).
 
-## Step 1 - Deploy the agent backend
+## Step 1: Deploy the agent backend
+
+Clone the repository and run the deploy script from the project folder:
 
 ```bash
 git clone <this-repo>
@@ -173,6 +187,8 @@ infrastructure.
 
 ### Manual equivalent
 
+To run the same steps yourself instead of the script:
+
 ```bash
 npm install
 npx cdk diff
@@ -181,15 +197,15 @@ npx cdk deploy --require-approval never
 # npx cdk deploy -c quickRedirectUri=<uri> --require-approval never
 ```
 
-## Step 2 - Connect the agent to Amazon Quick
+## Step 2: Connect the agent to AWS Quick
 
-This step registers the deployed AgentCore Gateway as an **MCP connector** in Amazon Quick.
+This step registers the deployed AgentCore Gateway as an **MCP connector** in AWS Quick.
 
-> **CLI availability:** Amazon Quick exposes `aws quicksight create-action-connector`, but
+> **CLI availability:** AWS Quick exposes `aws quicksight create-action-connector`, but
 > its connector `--type` values are HTTP and SaaS integrations (`GENERIC_HTTP`,
 > `SALESFORCE_CRM`, `JIRA_CLOUD`, `AMAZON_S3`, and similar) - there is **no MCP connector
 > type**. So an MCP connector cannot be created from the CLI today and must be added in the
-> Amazon Quick console. Everything up to the paste is automated below.
+> AWS Quick console. Everything up to the paste is automated below.
 
 Run the helper to print exact, ready-to-paste values pulled live from your deployed stack
 (it also retrieves the app client secret from Cognito):
@@ -215,7 +231,7 @@ It prints the following and writes `outputs/quick-connector.json`:
 **Your deployed connector values.** Read them from this stack's CloudFormation
 **Outputs** (Console → CloudFormation → the `quick-legalhold-mcp` stack →
 Outputs, or `aws cloudformation describe-stacks`). Every field the connector
-needs is an output — including the client secret (`ThreeLoClientSecret`):
+needs is an output, including the client secret (`ThreeLoClientSecret`):
 
 | Field | Stack output |
 | --- | --- |
@@ -232,9 +248,9 @@ needs is an output — including the client secret (`ThreeLoClientSecret`):
 Or run `./scripts/quick-connector-info.sh` to print them ready-to-paste and
 write `outputs/quick-connector.json`.
 
-In the Amazon Quick console:
+In the AWS Quick console:
 
-1. Open Amazon Quick and go to the left nav **Integrations** (Admins may find it under
+1. Open AWS Quick and go to the left nav **Integrations** (Admins may find it under
    **Manage Quick > Connectors**). Select the **Actions** tab.
 2. Under **Set up a new integration**, find the **Model Context Protocol (MCP)** tile and
    choose the plus (**+**) sign.
@@ -248,24 +264,24 @@ In the Amazon Quick console:
    (`https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback`). If your account uses a
    different regional callback, redeploy with `-c quickRedirectUri=<uri>` and re-run the helper.
 6. Choose **Create and continue.** Quick performs OAuth protected-resource-metadata
-   discovery, then runs MCP `initialize` and `tools/list` and surfaces the five tools
+   discovery, then runs MCP `initialize` and `tools/list` and surfaces the hold tools
    (`search_identities`, `list_group_members`, `place_hold`, `release_hold`, `list_holds`).
 7. Complete the **Authenticate** step: you are redirected to the Cognito hosted UI to sign
    in as a Legal admin. The registry/connector does not store your credentials; each admin
-   logs in with their own.
+   signs in with their own.
 8. **Share** the connector with your Legal-admin role or user group so only Legal can invoke
    holds. If you skip sharing, only you can use it and teammates will not see the tools.
 
 Each Legal admin authenticates individually through the Cognito hosted UI the first time
 they use the agent, and their holds are attributed to them.
 
-**Tip (optional): make the connector a pre-configured card.** If you publish the Gateway to
-an **AWS Agent Registry** that is linked to your Amazon Quick account, its MCP record appears as a
-pre-configured connector card on the Connectors page, so admins create the connector from
-the card instead of typing every field. See
+**Tip (optional): make the connector a pre-configured card.** You can publish the Gateway to
+an **AWS Agent Registry** that is linked to your AWS Quick account. Its MCP record then appears
+as a pre-configured connector card on the Connectors page, so admins create the connector
+from the card instead of typing every field. See
 [AWS Agent Registry integration](https://docs.aws.amazon.com/quick/latest/userguide/aws-agent-registry-integration.html).
 
-## Step 3 - Create the Legal Hold agent in Amazon Quick
+## Step 3: Create the Legal Hold agent in AWS Quick
 
 After the connector exists (Step 2), create the agent and attach the connector as an action.
 This can be done in the console or with the AWS CLI.
@@ -288,7 +304,7 @@ below) into a `NewPrompt.CustomInstructions` JSON file:
 cat > custom-prompt.json <<'JSON'
 {
   "NewPrompt": {
-    "CustomInstructions": "You are the Legal Hold Assistant for the Legal and e-discovery team. You help authorized Legal administrators place, release, and review legal holds on Amazon Quick users and groups by calling the connected hold-management tools. You never manage holds any other way.\n\nTools available to you:\n- search_identities(query): find IAM Identity Center users and groups by name substring. Use this first when the admin refers to a person or team by name and you need to confirm the exact identity before acting.\n- list_group_members(group_name): expand a group to its member users. Use this to show the admin exactly who a group hold will cover before you place it.\n- place_hold(type, name, matter_id): place an active hold on a user or group. type is \"user\" or \"group\". For a group, the tool expands membership and writes one hold per member user. matter_id is the legal matter the hold belongs to.\n- release_hold(type, name): set the matching holds to released.\n- list_holds(): list all current holds.\n\nHow to behave:\n1. Confirm before you write. Before calling place_hold or release_hold, restate the target and, for a hold, the matter_id, and ask the admin to confirm. Do not place or release a hold until they confirm.\n2. Resolve names first. If the admin gives a name rather than an exact identifier, call search_identities (and list_group_members for a group) and show what you found. If a name is ambiguous or returns no match, ask the admin to clarify rather than guessing.\n3. Always require a matter_id before placing a hold. If the admin does not provide one, ask for it. Never invent a matter_id.\n4. Groups. When the target is a group, expand it with list_group_members, show the members, and only after confirmation call place_hold with type \"group\". Report how many members were covered.\n5. Never place a hold on yourself, and never place holds on everyone or on wildcard targets. If asked to do either, decline and ask for a specific, scoped target.\n6. Report back precisely. After any action, report the resolved user_arns, the matter_id, the recorded custodian (the signed-in admin), and the resulting status. If a hold already existed, say so instead of implying a new one was created.\n7. Read-only on the directory. Identity resolution is read-only; you cannot modify IAM Identity Center users or groups. Say so if asked.\n8. Fail closed. If a tool returns an error or you cannot resolve a target, stop and report the error plainly. Do not fabricate a success, an ARN, or a hold that was not written.\n9. Stay in scope. You only handle legal-hold search, place, release, and list. For anything else, tell the admin it is outside your scope.\n\nEvery hold you place is attributed to the signed-in administrator for chain-of-custody, so be accurate and deliberate.",
+    "CustomInstructions": "You are the Legal Hold Assistant for the Legal and e-discovery team. You help authorized Legal administrators place, release, and review legal holds on AWS Quick users and groups by calling the connected hold-management tools. You never manage holds any other way.\n\nTools available to you:\n- search_identities(query): find IAM Identity Center users and groups by name substring. Use this first when the admin refers to a person or team by name and you need to confirm the exact identity before acting.\n- list_group_members(group_name): expand a group to its member users. Use this to show the admin exactly who a group hold will cover before you place it.\n- place_hold(type, name, matter_id): place an active hold on a user or group. type is \"user\" or \"group\". For a group, the tool expands membership and writes one hold per member user. matter_id is the legal matter the hold belongs to.\n- release_hold(type, name): set the matching holds to released.\n- list_holds(): list all current holds.\n\nHow to behave:\n1. Confirm before you write. Before calling place_hold or release_hold, restate the target and, for a hold, the matter_id, and ask the admin to confirm. Do not place or release a hold until they confirm.\n2. Resolve names first. If the admin gives a name rather than an exact identifier, call search_identities (and list_group_members for a group) and show what you found. If a name is ambiguous or returns no match, ask the admin to clarify rather than guessing.\n3. Always require a matter_id before placing a hold. If the admin does not provide one, ask for it. Never invent a matter_id.\n4. Groups. When the target is a group, expand it with list_group_members, show the members, and only after confirmation call place_hold with type \"group\". Report how many members were covered.\n5. Never place a hold on yourself, and never place holds on everyone or on wildcard targets. If asked to do either, decline and ask for a specific, scoped target.\n6. Report back precisely. After any action, report the resolved user_arns, the matter_id, the recorded custodian (the signed-in admin), and the resulting status. If a hold already existed, say so instead of implying a new one was created.\n7. Read-only on the directory. Identity resolution is read-only; you cannot modify IAM Identity Center users or groups. Say so if asked.\n8. Fail closed. If a tool returns an error or you cannot resolve a target, stop and report the error plainly. Do not fabricate a success, an ARN, or a hold that was not written.\n9. Stay in scope. You only handle legal-hold search, place, release, and list. For anything else, tell the admin it is outside your scope.\n\nEvery hold you place is attributed to the signed-in administrator for chain-of-custody, so be accurate and deliberate.",
     "Identity": "A precise, security-conscious Legal Hold assistant for the Legal and e-discovery team.",
     "Tone": "Professional, concise, and deliberate."
   }
@@ -335,24 +351,26 @@ Notes:
 - If you created the agent before the connector existed, attach it later with
   `aws quicksight update-agent --action-connectors <connector-arn> ...`.
 
-### Option B - Amazon Quick console
+### Option B - AWS Quick console
+
+In the AWS Quick console, create the agent as follows:
 
 1. Go to **Agents** and choose **Create agent** (or **Create custom agent**).
 2. Name it, for example **Legal Hold Assistant**.
-3. Under **Actions**, add the MCP connector from Step 2 so the agent can call the five hold tools.
+3. Under **Actions**, add the MCP connector from Step 2 so the agent can call the hold tools.
 4. Paste the **agent prompt** below into the agent's **Instructions** field.
 5. Restrict the agent's visibility and sharing to the Legal-admin role or group.
-6. Save and publish the agent to the Legal team's Amazon Quick workspace.
+6. Save and publish the agent to the Legal team's AWS Quick workspace.
 
 ### Agent prompt
 
 Paste this into the agent's **Instructions** (system prompt). It tells the agent how and
-when to use each of the five tools, and enforces confirm-before-write and chain-of-custody
+when to use each hold tool, and enforces confirm-before-write and chain-of-custody
 behavior.
 
 ```text
 You are the Legal Hold Assistant for the Legal and e-discovery team. You help authorized
-Legal administrators place, release, and review legal holds on Amazon Quick users and
+Legal administrators place, release, and review legal holds on AWS Quick users and
 groups by calling the connected hold-management tools. You never manage holds any other way.
 
 Tools available to you:
@@ -396,8 +414,8 @@ be accurate and deliberate.
 ```
 
 > Tip: keep a short **welcome message** such as "Ask me to search identities or place,
-> release, and list legal holds," and a couple of **starter prompts** like
-> "List all current holds" and "Search for users named smith."
+> release, and list legal holds" in the agent settings. Add a couple of **starter prompts**
+> like "List all current holds" and "Search for users named smith" as well.
 
 Example prompts a Legal admin can use in chat:
 
@@ -406,9 +424,9 @@ Example prompts a Legal admin can use in chat:
 - "List all current holds."
 - "Release the hold on user *jdoe*."
 
-## Step 4 - Validate
+## Step 4: Validate
 
-Test the agent from inside Amazon Quick — the same way real Legal admins will use it.
+Test the agent from inside AWS Quick, the same way real Legal admins will use it.
 In the Quick chat with the Legal Hold agent:
 
 1. Ask it to **`list holds`** (expect an empty list on a fresh deploy).
@@ -416,14 +434,16 @@ In the Quick chat with the Legal Hold agent:
 3. Ask it to **`list holds`** again to confirm the hold now appears.
 4. Optionally ask it to **`release the hold`** and list again.
 
-Because the connector uses per-user 3LO login, each hold is attributed to the
-signed-in admin — you can confirm this in the DynamoDB `quick-legalhold-mcp-users`
-table (the `custodian` / `custodian_source` attributes reflect the logged-in user).
+Because the connector uses per-user 3LO sign-in, each hold records the signed-in
+admin as its custodian. You can confirm this in the DynamoDB `quick-legalhold-mcp-users`
+table, where the `custodian` / `custodian_source` attributes reflect the signed-in user.
 
 Real IAM Identity Center users and groups are only ever resolved read-only; holds
 are written keyed on the resolved user ARN.
 
 ## Cleanup
+
+Run the teardown script to remove the stack:
 
 ```bash
 ./scripts/teardown.sh
@@ -436,6 +456,8 @@ Object Lock in GOVERNANCE mode (never COMPLIANCE), so an administrator can remov
 versions and everything is deletable. The script is safe to re-run.
 
 ## Repository layout
+
+The project folder is organized as follows:
 
 ```text
 quick-legal-hold-agent/
@@ -451,7 +473,7 @@ quick-legal-hold-agent/
 │   └── delivery_wiring/handler.py          # vended-log delivery binding (custom resource)
 ├── scripts/
 │   ├── deploy.sh                           # one-command deploy (preflight, identity, install, bootstrap, deploy, outputs)
-│   ├── quick-connector-info.sh             # print Amazon Quick MCP connector values (3LO)
+│   ├── quick-connector-info.sh             # print AWS Quick MCP connector values (3LO)
 │   └── teardown.sh                         # WORM cleanup + cdk destroy (this stack only)
 ├── outputs/                                # generated at deploy time (gitignored)
 ├── images/                                 # architecture diagram used in this README
@@ -461,9 +483,9 @@ quick-legal-hold-agent/
 
 ## Contributing
 
-See [How to Contribute](/HOW-TO-CONTRIBUTE.md).
+See [How to Contribute](https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/HOW-TO-CONTRIBUTE/).
 
 ## License
 
-This library is licensed under the MIT-0 License. See the [LICENSE](/LICENSE)
+This library is licensed under the MIT-0 License. See the [LICENSE](https://github.com/aws-samples/sample-amazon-quick-suite-knowledge-hub/blob/main/LICENSE)
 file.
