@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses>
+        <apexClass>QuickchatAgentwAPIController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description>Grants access to the quickchatAgentwAPI component's Apex controller and the Quick_Chat_Embed_API credential</description>
+    <externalCredentialPrincipalAccesses>
+        <enabled>true</enabled>
+        <externalCredentialPrincipal>Quick_Chat_Embed_API-ApiKeyPrincipal</externalCredentialPrincipal>
+    </externalCredentialPrincipalAccesses>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Quickchat Agent wAPI User</label>
+</PermissionSet>

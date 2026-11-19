@@ -1,0 +1,293 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Quick chat agent embed URL service for Salesforce. API Gateway (REST, API key
+  required) -> Lambda -> Amazon Quick GenerateEmbedUrlForRegisteredUser.
+  The API key value is never exposed in stack outputs; retrieve it from the
+  API Gateway console.
+
+Parameters:
+  StageName:
+    Type: String
+    Default: prod
+    AllowedPattern: "^[a-zA-Z0-9_]+$"
+    Description: API Gateway stage name.
+
+  QuickNamespace:
+    Type: String
+    Default: default
+    Description: Quick namespace that holds the registered users.
+
+  QuickIdentityRegion:
+    Type: String
+    Default: ""
+    Description: Region that hosts Quick users (identity region). Blank = this stack's region.
+
+  QuickEmbedRegion:
+    Type: String
+    Default: ""
+    Description: Region that hosts the Quick chat agent. Blank = this stack's region.
+
+  AllowedDomains:
+    Type: String
+    Default: ""
+    Description: >
+      Comma-separated origins allowed to embed the chat (max 3), e.g.
+      https://myorg.lightning.force.com. Blank = use the domains configured in Quick.
+
+  SessionLifetimeMinutes:
+    Type: Number
+    Default: 600
+    MinValue: 15
+    MaxValue: 600
+    Description: Quick session lifetime for the embedded chat.
+
+  ThrottleRateLimit:
+    Type: Number
+    Default: 10
+    Description: Steady-state requests per second allowed for the API key.
+
+  ThrottleBurstLimit:
+    Type: Number
+    Default: 20
+    Description: Burst requests allowed for the API key.
+
+  LogRetentionDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 180, 365]
+
+  ReservedConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    Description: Maximum concurrent Lambda executions (caps blast radius and cost).
+
+Conditions:
+  UseStackRegionForIdentity: !Equals [!Ref QuickIdentityRegion, ""]
+  UseStackRegionForEmbed: !Equals [!Ref QuickEmbedRegion, ""]
+
+Resources:
+  # ---------------------------------------------------------------- Lambda
+  EmbedFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: QuickEmbed
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt EmbedFunctionLogGroup.Arn
+              - Sid: DescribeQuickUser
+                Effect: Allow
+                Action: quicksight:DescribeUser
+                Resource: !Sub
+                  - arn:${AWS::Partition}:quicksight:${Region}:${AWS::AccountId}:user/${QuickNamespace}/*
+                  - Region:
+                      !If [UseStackRegionForIdentity, !Ref AWS::Region, !Ref QuickIdentityRegion]
+              - Sid: GenerateEmbedUrl
+                Effect: Allow
+                Action: quicksight:GenerateEmbedUrlForRegisteredUser
+                Resource: !Sub arn:${AWS::Partition}:quicksight:*:${AWS::AccountId}:user/${QuickNamespace}/*
+
+  # Customer-managed key for the Lambda and API Gateway access log groups.
+  LogsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub Encrypts CloudWatch log groups for ${AWS::StackName}
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdmin
+            Effect: Allow
+            Principal: { AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root" }
+            Action: kms:*
+            Resource: "*"
+          - Sid: CloudWatchLogs
+            Effect: Allow
+            Principal: { Service: !Sub "logs.${AWS::Region}.${AWS::URLSuffix}" }
+            Action:
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Resource: "*"
+            Condition:
+              ArnLike:
+                kms:EncryptionContext:aws:logs:arn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+
+  EmbedFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-embed-url
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !GetAtt LogsKey.Arn
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-access
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !GetAtt LogsKey.Arn
+
+  EmbedFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: The execution role grants logs:CreateLogStream and logs:PutLogEvents on the function's own pre-created log group.
+          - id: W89
+            reason: The function only calls the public Amazon Quick API and reaches no private resources; a VPC would add a NAT gateway without reducing exposure.
+    Properties:
+      ReservedConcurrentExecutions: !Ref ReservedConcurrency
+      FunctionName: !Sub ${AWS::StackName}-embed-url
+      Description: Mints Amazon Quick chat agent embed URLs for Salesforce
+      Runtime: python3.13
+      Handler: index.handler
+      Code: lambda/ # packaged to S3 by `aws cloudformation package`
+      Role: !GetAtt EmbedFunctionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref EmbedFunctionLogGroup
+      Environment:
+        Variables:
+          QUICK_ACCOUNT_ID: !Ref AWS::AccountId
+          QUICK_NAMESPACE: !Ref QuickNamespace
+          QUICK_IDENTITY_REGION:
+            !If [UseStackRegionForIdentity, !Ref AWS::Region, !Ref QuickIdentityRegion]
+          QUICK_EMBED_REGION: !If [UseStackRegionForEmbed, !Ref AWS::Region, !Ref QuickEmbedRegion]
+          ALLOWED_DOMAINS: !Ref AllowedDomains
+          SESSION_LIFETIME_MINUTES: !Ref SessionLifetimeMinutes
+
+  # ----------------------------------------------------------- API Gateway
+  Api:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub ${AWS::StackName}-api
+      Description: Quick chat agent embed URL API (API key required)
+      EndpointConfiguration:
+        Types: [REGIONAL]
+
+  EmbedUrlResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !GetAtt Api.RootResourceId
+      PathPart: embed-url
+
+  EmbedUrlPostMethod:
+    Type: AWS::ApiGateway::Method
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W59
+            reason: Callers are gated by a required API key (ApiKeyRequired) with usage-plan throttling. Switching to AWS_IAM (SigV4 from a Salesforce Named Credential) is the stronger option; see README Security notes.
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref EmbedUrlResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${EmbedFunction.Arn}/invocations
+
+  ApiInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EmbedFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/POST/embed-url
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: EmbedUrlPostMethod
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W68
+            reason: The deployment is served only through ApiStage, which UsagePlan references.
+    Properties:
+      RestApiId: !Ref Api
+
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref Api
+      DeploymentId: !Ref ApiDeployment
+      StageName: !Ref StageName
+      TracingEnabled: true # AWS X-Ray tracing for every request through the stage
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingRateLimit: !Ref ThrottleRateLimit
+          ThrottlingBurstLimit: !Ref ThrottleBurstLimit
+      # Logs the API key ID (never the key value) and caller IP per request.
+      # Requires the account-level API Gateway CloudWatch Logs role to be set.
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","apiKeyId":"$context.identity.apiKeyId","method":"$context.httpMethod","path":"$context.resourcePath","status":"$context.status","latencyMs":"$context.responseLatency","time":"$context.requestTime"}'
+
+  # ----------------------------------------------------- API key + usage plan
+  # The key value is generated by API Gateway and intentionally NOT output.
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: A stable name lets operators find the key in the console (ApiKeyName output). Replacing the key would change its value and break the Salesforce credential, so it should never be replaced silently.
+    Properties:
+      Name: !Sub ${AWS::StackName}-salesforce
+      Description: Used by the Salesforce Named Credential Quick_Chat_Embed_API
+      Enabled: true
+
+  UsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub ${AWS::StackName}-usage-plan
+      ApiStages:
+        - ApiId: !Ref Api
+          Stage: !Ref ApiStage # Ref returns the stage name; links the stage to this plan
+      Throttle:
+        RateLimit: !Ref ThrottleRateLimit
+        BurstLimit: !Ref ThrottleBurstLimit
+
+  UsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref UsagePlan
+
+Outputs:
+  ApiBaseUrl:
+    Description: Base URL for the Salesforce Named Credential (no trailing slash)
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
+  EmbedUrlEndpoint:
+    Description: Full POST endpoint
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}/embed-url
+  ApiKeyName:
+    Description: Name of the API key to copy from the API Gateway console (value is not output)
+    Value: !Sub ${AWS::StackName}-salesforce
+  ApiKeyConsoleUrl:
+    Description: Where to reveal and copy the API key value
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/apigateway/main/api-keys/${ApiKey}?region=${AWS::Region}
+  EmbedFunctionName:
+    Value: !Ref EmbedFunction

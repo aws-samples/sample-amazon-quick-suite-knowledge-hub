@@ -1,0 +1,14 @@
+.chat-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.chat-container iframe {
+  border: 0;
+  display: block;
+}

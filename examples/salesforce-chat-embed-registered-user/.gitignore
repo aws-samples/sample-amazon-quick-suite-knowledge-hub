@@ -1,0 +1,7 @@
+# Downloaded by scripts/deploy.sh from npm (amazon-quicksight-embedding-sdk)
+force-app/main/default/staticresources/QuickChatEmbeddingSDK.js
+# CloudFormation package output
+aws/.build/
+# Salesforce CLI state
+.sf/
+.sfdx/
