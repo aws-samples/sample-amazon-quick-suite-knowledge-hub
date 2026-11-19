@@ -1,0 +1,4 @@
+# Exclude non-metadata files from Salesforce deploys
+**/jsconfig.json
+**/.eslintrc.json
+**/__tests__/**

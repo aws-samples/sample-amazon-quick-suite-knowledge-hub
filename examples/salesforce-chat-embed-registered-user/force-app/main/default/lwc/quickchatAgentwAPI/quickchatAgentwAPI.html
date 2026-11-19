@@ -1,0 +1,34 @@
+<template>
+  <lightning-card title="{cardTitle}" icon-name="utility:chat">
+    <lightning-button-icon
+      slot="actions"
+      icon-name="utility:refresh"
+      alternative-text="Reload chat agent"
+      title="Reload chat agent"
+      onclick="
+        {
+          handleReload;
+        }
+      "
+      disabled="{isLoading}"
+    ></lightning-button-icon>
+
+    <div class="chat-wrapper slds-is-relative" style="{containerStyle}">
+      <template lwc:if="{isLoading}">
+        <lightning-spinner alternative-text="Loading chat agent" size="medium"></lightning-spinner>
+      </template>
+
+      <template lwc:if="{errorMessage}">
+        <div class="slds-p-around_medium">
+          <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">
+            <span class="slds-assistive-text">Error</span>
+            <h2>{errorMessage}</h2>
+          </div>
+        </div>
+      </template>
+
+      <!-- The embedding SDK appends its iframe here. -->
+      <div class="chat-container" lwc:ref="container" lwc:dom="manual"></div>
+    </div>
+  </lightning-card>
+</template>
