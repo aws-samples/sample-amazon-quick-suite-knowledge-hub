@@ -362,7 +362,7 @@ DESTROY_WORD = "DESTROY"
 
 
 def now():
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return datetime.datetime.now(datetime.UTC).isoformat()
 
 
 # Short region codes for the default bucket name, e.g. us-east-1 -> use1, ap-southeast-2 -> apse2.
@@ -508,7 +508,7 @@ class Setup:
                     f"Bucket {self.bucket} exists but isn't owned by account {self.account}, "
                     "or you can't access it.\n  Bucket names are global. Re-run with "
                     "--bucket <another name>."
-                )
+                ) from e
             raise
 
     def get_or_none(self, fn, key, **kwargs):
@@ -701,7 +701,7 @@ class Setup:
                 raise Abort(
                     "Stopped while choosing the dataset owner. To skip this question, re-run "
                     "with --quick-admin-arn."
-                )
+                ) from None
             if not answer:
                 continue
             if answer.lower() == STOP_WORD:
@@ -742,7 +742,7 @@ class Setup:
 
     def choose_admin(self, admins):
         print("\nThis Quick account has several admins. Which one should own the datasets?")
-        for i, (a, user_name, role) in enumerate(admins, start=1):
+        for i, (_arn, user_name, role) in enumerate(admins, start=1):
             print(f"  {i}. {user_name} ({role})")
         print(f"  (Type a number, or '{STOP_WORD}' to stop.)")
         while True:
@@ -750,7 +750,7 @@ class Setup:
                 answer = input("> ").strip()
             except (EOFError, KeyboardInterrupt):
                 print()
-                raise Abort("Stopped while choosing the dataset owner.")
+                raise Abort("Stopped while choosing the dataset owner.") from None
             if answer.lower() == STOP_WORD:
                 raise Abort("Stopped while choosing the dataset owner.")
             if answer.isdigit() and 1 <= int(answer) <= len(admins):
@@ -2412,7 +2412,7 @@ class Setup:
                 todo[OWNER_ACCESS] = owner_missing
                 lines.append(f"dataset owner's access: not set up yet (missing: {', '.join(owner_missing)})")
             else:
-                lines.append(f"dataset owner's access: IAM role and policy assignment in place")
+                lines.append("dataset owner's access: IAM role and policy assignment in place")
         shared = []
         if not self.glue_database_present():
             shared.append("Glue database")
@@ -3329,7 +3329,7 @@ class Setup:
                     f"  Press Enter to check again, or type {SKIP_WORD} to leave it and continue: "
                 )
             except (EOFError, KeyboardInterrupt):
-                raise Abort("Stopped while removing Quick's access to the bucket.")
+                raise Abort("Stopped while removing Quick's access to the bucket.") from None
             if again.strip().upper() == SKIP_WORD:
                 print("  Left in place.")
                 self.log.write(event="quick_access_kept")
@@ -11009,7 +11009,7 @@ def ask_retention(default, log):
             raw = ""  # non-interactive run (e.g. piped stdin): fall back to the default
         except KeyboardInterrupt:
             print()
-            raise Abort("Stopped at the retention question. Nothing was changed.")
+            raise Abort("Stopped at the retention question. Nothing was changed.") from None
         if not raw:
             days = default
         elif raw.isdigit() and int(raw) >= 1:
@@ -11208,7 +11208,6 @@ def parse_args():
 
 def resolve_region(args, session):
     """Region to use, and where it came from."""
-    import os
 
     if args.region:
         return args.region, "from --region"
@@ -11301,7 +11300,7 @@ def main():
                     "Couldn't read the bucket's tags or lifecycle to work out the log retention "
                     f"({e.response['Error']['Code']}). Re-run with --retention-days to set it "
                     "explicitly."
-                )
+                ) from e
     except Abort as e:
         print(f"\nStopped: {e}\nNothing was changed.")
         log.write(event="run_aborted", reason=str(e))
@@ -11719,7 +11718,6 @@ def print_resume(log, args, step):
 
 def describe_profile(args):
     """Which profile boto3 will use, and why."""
-    import os
 
     if args.profile:
         return args.profile, "from --profile"

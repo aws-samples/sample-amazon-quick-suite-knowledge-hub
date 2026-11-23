@@ -433,7 +433,7 @@ DESTROY_WORD = "DESTROY"
 
 
 def now():
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return datetime.datetime.now(datetime.UTC).isoformat()
 
 
 # Short region codes for the default bucket name, e.g. us-east-1 -> use1, ap-southeast-2 -> apse2.
@@ -600,7 +600,7 @@ class Setup:
                     f"Bucket {bucket} exists but isn't owned by account {self.account}, or you "
                     "can't access it.\n  Kiro only writes to a bucket in the account where users "
                     "are subscribed. Re-run with --reports-s3-uri s3://<another name>/<prefix>/."
-                )
+                ) from e
             raise
 
     def get_or_none(self, fn, key, **kwargs):
@@ -635,7 +635,7 @@ class Setup:
             try:
                 bucket, prefix = parse_s3_uri(self.args.reports_s3_uri)
             except ValueError as e:
-                raise Abort(f"--reports-s3-uri {self.args.reports_s3_uri} isn't usable: {e}.")
+                raise Abort(f"--reports-s3-uri {self.args.reports_s3_uri} isn't usable: {e}.") from e
             return bucket, prefix, "from --reports-s3-uri"
         default = self.default_bucket()
         if self.bucket_exists(default) and self.bucket_has_our_tag(default):
@@ -655,7 +655,7 @@ class Setup:
                 answer = input("> ").strip()
             except (EOFError, KeyboardInterrupt):
                 print()
-                raise Abort("Stopped while choosing the reports bucket.")
+                raise Abort("Stopped while choosing the reports bucket.") from None
             if not answer:
                 continue
             if answer.lower() == STOP_WORD:
@@ -831,7 +831,7 @@ class Setup:
                 raise Abort(
                     "Stopped while choosing the dataset owner. To skip this question, re-run "
                     "with --quick-admin-arn."
-                )
+                ) from None
             if not answer:
                 continue
             if answer.lower() == STOP_WORD:
@@ -877,7 +877,7 @@ class Setup:
                 answer = input("> ").strip()
             except (EOFError, KeyboardInterrupt):
                 print()
-                raise Abort("Stopped while choosing the dataset owner.")
+                raise Abort("Stopped while choosing the dataset owner.") from None
             if answer.lower() == STOP_WORD:
                 raise Abort("Stopped while choosing the dataset owner.")
             if answer.isdigit() and 1 <= int(answer) <= len(admins):
@@ -1144,7 +1144,7 @@ class Setup:
             if self.needs_tls_only(self.bucket_policy()):
                 lines.append("  - a bucket policy statement that refuses requests made without TLS is added")
         lines += [
-            f"Add this statement to the bucket policy (existing statements are kept). It is the",
+            "Add this statement to the bucket policy (existing statements are kept). It is the",
             "policy the Kiro documentation asks for: only Kiro, for this account and region, may",
             f"write, and only under {self.reports_prefix}/:",
             *[f"  {line}" for line in statement],
@@ -1618,7 +1618,7 @@ class Setup:
         ]
         if self.quick_bucket and any(d in JOIN_DATASETS for d in self.selected):
             lines += [
-                f"    For the join on user_id it also reads the Quick usage logs in",
+                "    For the join on user_id it also reads the Quick usage logs in",
                 f"    s3://{self.quick_bucket}/{QUICK_PREFIX_ROOT}/ and the {QUICK_GLUE_DATABASE} tables.",
             ]
         lines += [
@@ -2627,7 +2627,7 @@ def report_records_cte(table, header_first):
     file ("$path"), never by position. Columns a file doesn't have read as NULL (element_at).
     """
     return (
-        "raw AS (\n"
+        "raw AS (\n"  # noqa: S608 - names are constants defined in this script, never user input
         f'  SELECT "$path" AS path, {CSV_SPLIT} AS cells\n'
         f'  FROM "{GLUE_DATABASE}"."{table}"\n'
         "  WHERE trim(line) <> ''\n"
@@ -2760,7 +2760,7 @@ SELECT coalesce(k.day, q.day) AS "day",
        coalesce(k.kiro_messages, 0) AS "kiro_messages",
        IF(q.user_id IS NULL, 0, 1) AS "uses_quick",
        IF(k.user_id IS NULL, 0, 1) AS "uses_kiro"
-FROM kiro k FULL OUTER JOIN quick q ON k.user_id = q.user_id AND k.day = q.day"""
+FROM kiro k FULL OUTER JOIN quick q ON k.user_id = q.user_id AND k.day = q.day"""  # noqa: S608 - names are constants defined in this script, never user input
 
 
 def column_description_transforms(descriptions):
@@ -9008,7 +9008,7 @@ def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternat
     while True:
         attempt += 1
 
-        def record(outcome, typed):
+        def record(outcome, typed, attempt=attempt):
             log.write(event="confirmation", step=step, step_name=step_name, prompt=expected,
                       typed=typed, attempt=attempt, outcome=outcome)
 

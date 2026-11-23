@@ -29,6 +29,7 @@ You need all of these:
 3. **Upload the script.** In CloudShell, choose **Actions > Upload file** and pick the script.
 
 4. **Run the script in CloudShell.**
+
    ```bash
    python3 quick_usage_datasets_setup.py
    ```
@@ -83,7 +84,7 @@ the daily full refresh set up by the script keeps everything accurate in the mea
 ## Troubleshooting
 
 | You see | What to do |
-|---|---|
+| --- | --- |
 | The script seems slow at "Looking for Quick admins" | You typed SEARCH, so it reads every Quick user to find the admins and prints a running count. To skip it, type the admin's Quick user name at the question instead, or pass `--quick-admin-arn`. |
 | A dataset shows no rows | No logs of that kind have arrived yet. The dataset refreshes to 0 rows until then (this is normal, not an error). Use Quick, wait a few minutes, and refresh again. |
 | A `"wrong identity region"` message | Your Quick account was created in a different region. Re-run with `--region` set to that region. |
@@ -106,7 +107,7 @@ Kiro writes one CSV report per user and day to an S3 bucket you own (see
 [Kiro user activity reports](https://kiro.dev/docs/enterprise/monitor-and-track/user-activity/)).
 The script reads those reports in place with Athena, just like the Quick usage logs.
 
-### Before you start
+### Before you start (Kiro)
 
 - **Finish the main setup above first.** The Quick + Kiro dataset and the dashboard read the
   Quick usage Glue tables and `quick-usage-*` datasets, so the script checks for them in its
@@ -116,9 +117,10 @@ The script reads those reports in place with Athena, just like the Quick usage l
 - Your AWS console and CloudShell set to the **region of your Kiro profile**. Kiro only writes to
   a bucket in that region and in this account.
 
-### Run the script in CloudShell
+### Run the Kiro script in CloudShell
 
 1. **Upload** `kiro_usage_datasets_setup.py` (**Actions > Upload file**) and run it:
+
    ```bash
    python3 kiro_usage_datasets_setup.py
    ```
@@ -156,7 +158,7 @@ The script reads those reports in place with Athena, just like the Quick usage l
 ### What you get
 
 | Dataset | What one row means |
-|---|---|
+| --- | --- |
 | `kiro-usage-user_report` | One user, one day, one Kiro client (IDE, CLI or plugin): credits used, overage, messages, conversations, subscription tier, email. |
 | `kiro-usage-model_messages` | Messages per user, day, client and model (Kiro adds one column per model to its reports; this dataset turns them into rows). |
 | `kiro-usage-by_user_analytic` | The legacy Kiro report: chat, inline suggestions, code review and `/dev`, `/doc`, `/test`, `/transform` use per user and day. |
@@ -169,6 +171,7 @@ The dashboard, **Amazon Quick and Kiro usage**, has the tabs **Overview**, **Kir
 **Quick + Kiro by user** and **Monthly report**.
 
 Notes:
+
 - Quick and Kiro users are matched on `user_id`, the IAM Identity Center principal id that
   both record (Kiro calls it `UserId`). People in a different identity store than Kiro's don't
   match, and show up as two rows (one Quick, one Kiro).
@@ -194,7 +197,7 @@ reports on during setup, it asks you to turn them off in the Kiro console first.
 After the setup is done, you can add an org view with a second script, `quick_usage_org.py`. It
 runs on its own: upload just that file and run it.
 
-### Before you start
+### Before you start (organization view)
 
 - **Finish the main setup above first.** The org view joins the `quick-usage-*` datasets.
 - **Quick must sign in through IAM Identity Center.**
@@ -208,7 +211,7 @@ runs on its own: upload just that file and run it.
 
   The org dashboard groups usage by **Division**, **Department** and **Cost center**.
 
-### Run the script in CloudShell
+### Run the organization script in CloudShell
 
 ```bash
 python3 quick_usage_org.py
@@ -217,7 +220,7 @@ python3 quick_usage_org.py
 It works out the same settings as the setup script and asks you to confirm. Then it creates:
 
 | Dataset | What it holds | Who gets it |
-|---|---|---|
+| --- | --- | --- |
 | `quick-org-identity-center-users` | One row per IAM Identity Center user, with every field Identity Center has: names, email, phone, address, job fields (title, department, cost center, manager, ...) and preferences. **This is personal data (PII).** | Only the dataset owner |
 | `quick-usage-<dataset>-with-org` (one per usage dataset) | Every usage record, LEFT-joined to its user. It adds only the job fields, prefixed `org_`: `user_name`, `quick_user_arn` (the join key), `title`, `user_type`, `cost_center`, `organization`, `division`, `department`, `manager_user_name` and `snapshot_time`. | Only the dataset owner |
 
@@ -246,7 +249,7 @@ the setup, because the joined datasets read the usage datasets.
 The AWS services each script calls:
 
 | Service | `quick_usage_datasets_setup.py` | `kiro_usage_datasets_setup.py` | `quick_usage_org.py` |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Amazon Quick (`quicksight`) | ✓ | ✓ | ✓ |
 | Amazon S3 | ✓ | ✓ | ✓ |
 | AWS Glue | ✓ | ✓ | ✓ |

@@ -239,7 +239,7 @@ DESTROY_WORD = "DESTROY"
 
 
 def now():
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return datetime.datetime.now(datetime.UTC).isoformat()
 
 
 # Short region codes for the default bucket name, e.g. us-east-1 -> use1, ap-southeast-2 -> apse2.
@@ -10127,7 +10127,7 @@ class Setup:
                     f"Bucket {self.bucket} exists but isn't owned by account {self.account}, "
                     "or you can't access it.\n  Bucket names are global. Re-run with "
                     "--bucket <another name>."
-                )
+                ) from e
             raise
 
     def get_or_none(self, fn, key, **kwargs):
@@ -10298,7 +10298,7 @@ class Setup:
                 raise Abort(
                     "Stopped while choosing the dataset owner. To skip this question, re-run "
                     "with --quick-admin-arn."
-                )
+                ) from None
             if not answer:
                 continue
             if answer.lower() == STOP_WORD:
@@ -10339,7 +10339,7 @@ class Setup:
 
     def choose_admin(self, admins):
         print("\nThis Quick account has several admins. Which one should own the datasets?")
-        for i, (a, user_name, role) in enumerate(admins, start=1):
+        for i, (_arn, user_name, role) in enumerate(admins, start=1):
             print(f"  {i}. {user_name} ({role})")
         print(f"  (Type a number, or '{STOP_WORD}' to stop.)")
         while True:
@@ -10347,7 +10347,7 @@ class Setup:
                 answer = input("> ").strip()
             except (EOFError, KeyboardInterrupt):
                 print()
-                raise Abort("Stopped while choosing the dataset owner.")
+                raise Abort("Stopped while choosing the dataset owner.") from None
             if answer.lower() == STOP_WORD:
                 raise Abort("Stopped while choosing the dataset owner.")
             if answer.isdigit() and 1 <= int(answer) <= len(admins):
@@ -11199,7 +11199,7 @@ class Setup:
             raise Abort("The org part needs the dataset owner; re-run with --quick-admin-arn.")
         self.require_bucket_blocks_public_access()
         self.ensure_org_role()
-        started = datetime.datetime.now(datetime.timezone.utc)
+        started = datetime.datetime.now(datetime.UTC)
         try:
             self.upload_org_files(rows)
             data_source_arn = self.ensure_org_data_source()
@@ -11351,7 +11351,7 @@ class Setup:
         )
 
     def run_org_joined_data_sets(self):
-        started = datetime.datetime.now(datetime.timezone.utc)
+        started = datetime.datetime.now(datetime.UTC)
         joined = self.usage_data_sets_to_join()
         for d in joined:
             self.ensure_org_joined_data_set(d)
