@@ -242,7 +242,7 @@ DESTROY_WORD = "DESTROY"
 
 
 def now():
-    return datetime.datetime.now(datetime.UTC).isoformat()
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()  # noqa: UP017 - CloudShell runs Python 3.9
 
 
 # Short region codes for the default bucket name, e.g. us-east-1 -> use1, ap-southeast-2 -> apse2.
@@ -11509,7 +11509,7 @@ class Setup:
             )
         self.require_bucket_blocks_public_access()
         self.ensure_org_role()
-        started = datetime.datetime.now(datetime.UTC)
+        started = datetime.datetime.now(datetime.timezone.utc)  # noqa: UP017 - CloudShell runs Python 3.9
         try:
             self.upload_org_files(rows)
             data_source_arn = self.ensure_org_data_source()
@@ -11713,7 +11713,7 @@ class Setup:
         )
 
     def run_org_joined_data_sets(self):
-        started = datetime.datetime.now(datetime.UTC)
+        started = datetime.datetime.now(datetime.timezone.utc)  # noqa: UP017 - CloudShell runs Python 3.9
         joined = self.usage_data_sets_to_join()
         for d in joined:
             self.ensure_org_joined_data_set(d)

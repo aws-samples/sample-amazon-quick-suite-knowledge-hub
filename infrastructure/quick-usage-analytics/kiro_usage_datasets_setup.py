@@ -441,7 +441,7 @@ DESTROY_WORD = "DESTROY"
 
 
 def now():
-    return datetime.datetime.now(datetime.UTC).isoformat()
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()  # noqa: UP017 - CloudShell runs Python 3.9
 
 
 # Short region codes for the default bucket name, e.g. us-east-1 -> use1, ap-southeast-2 -> apse2.
