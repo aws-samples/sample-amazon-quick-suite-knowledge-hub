@@ -20,6 +20,7 @@ Optional overrides:
   --dry-run               print the plan, change nothing
   --destroy               remove what this script created (asks before each removal)
 """
+
 import argparse
 import csv
 import datetime
@@ -41,7 +42,9 @@ from botocore.exceptions import ClientError, ParamValidationError
 # throttling on large accounts; explicit timeouts (botocore's 60s read default, 10s connect)
 # keep a dead connection from hanging forever. Progress lines show which call is running.
 BOTO_CONFIG = Config(
-    retries={"mode": "standard", "max_attempts": 10}, connect_timeout=10, read_timeout=60
+    retries={"mode": "standard", "max_attempts": 10},
+    connect_timeout=10,
+    read_timeout=60,
 )
 
 
@@ -7550,7 +7553,11 @@ STEPS = [
     ("Pre-checks", "precheck", False),
     ("Create or prepare the S3 bucket", "bucket", True),
     ("Start log delivery to the bucket", "deliveries", True),
-    ("Deny default access to AWS data (optional, recommended, manual)", "deny_default", True),
+    (
+        "Deny default access to AWS data (optional, recommended, manual)",
+        "deny_default",
+        True,
+    ),
     ("Grant Quick access to the bucket (not needed, skipped)", "quick_access", True),
     ("Create the Athena and Glue resources", "athena", True),
     ("Create Quick data sources and datasets", "datasets", True),
@@ -7591,13 +7598,17 @@ def mismatch_hint(expected, typed):
         return f"Almost there. It needs CAPITAL letters: {expected}"
     if " ".join(t.split()).upper() == expected:
         return f"Check the spacing: one space between each word, like this: {expected}"
-    return f"That doesn't match. Type it exactly as shown, in CAPITAL letters: {expected}"
+    return (
+        f"That doesn't match. Type it exactly as shown, in CAPITAL letters: {expected}"
+    )
 
 
 SKIP_WORD = "SKIP"
 
 
-def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternatives=None):
+def ask_until(
+    log, step, step_name, prompt, expected, allow_skip=False, alternatives=None
+):
     """Ask until the exact phrase is typed.
 
     Returns True (confirmed), False (stopped), "skip" (only when allow_skip is set), or the
@@ -7610,7 +7621,9 @@ def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternat
         print(f"  Or type: {phrase}")
     if allow_skip:
         print(f"  Or type {SKIP_WORD} to skip this optional step.")
-    print(f"  (To stop without changing anything else, type '{STOP_WORD}' or press Ctrl-C.)")
+    print(
+        f"  (To stop without changing anything else, type '{STOP_WORD}' or press Ctrl-C.)"
+    )
     attempt = 0
     while True:
         attempt += 1
@@ -7718,7 +7731,11 @@ def describe_error(e):
         err = e.response.get("Error", {})
         op = getattr(e, "operation_name", "AWS call")
         hint = ""
-        if err.get("Code") in ("ExpiredToken", "ExpiredTokenException", "RequestExpired"):
+        if err.get("Code") in (
+            "ExpiredToken",
+            "ExpiredTokenException",
+            "RequestExpired",
+        ):
             hint = " Your AWS credentials expired; refresh them and re-run."
         elif "AccessDenied" in err.get("Code", ""):
             hint = " Your AWS identity is missing a permission for this call."
@@ -7769,7 +7786,12 @@ ORG_DASHBOARD_ID = "quick-usage-org-dashboard"
 ORG_DASHBOARD_NAME = "Amazon Quick usage by organization"
 
 
-ORG_DASHBOARD_COLUMNS = ["org_department", "org_division", "org_cost_center", "org_user_name"]
+ORG_DASHBOARD_COLUMNS = [
+    "org_department",
+    "org_division",
+    "org_cost_center",
+    "org_user_name",
+]
 
 
 # Version of the org definition, tagged like DASHBOARD_VERSION. Bump it whenever
@@ -7786,7 +7808,10 @@ ORG_DASHBOARD_VERSION_TAG = "quick-usage-org-dashboard-version"
 
 
 ORG_DASHBOARD = DashboardSpec(
-    ORG_ANALYSIS_ID, ORG_DASHBOARD_ID, ORG_DASHBOARD_NAME, ORG_DASHBOARD_VERSION,
+    ORG_ANALYSIS_ID,
+    ORG_DASHBOARD_ID,
+    ORG_DASHBOARD_NAME,
+    ORG_DASHBOARD_VERSION,
     ORG_DASHBOARD_VERSION_TAG,
 )
 
@@ -7854,18 +7879,56 @@ ORG_NO_REFRESH_NOTE = "Note: the org data does not refresh on its own. To refres
 # The org dashboard needs department, division, cost center and user name; quick_user_arn is
 # the join key; the rest are job fields useful for grouping and filtering.
 ORG_JOINED_COLUMNS = [
-    "user_name", "quick_user_arn", "title", "user_type", "cost_center", "organization",
-    "division", "department", "manager_user_name", "snapshot_time",
+    "user_name",
+    "quick_user_arn",
+    "title",
+    "user_type",
+    "cost_center",
+    "organization",
+    "division",
+    "department",
+    "manager_user_name",
+    "snapshot_time",
 ]
 
 
 ORG_COLUMNS = [
-    "user_id", "user_name", "quick_user_arn", "user_status", "email", "given_name", "family_name",
-    "display_name", "nickname", "phone_number", "website", "user_type", "title", "roles",
-    "employee_number", "cost_center", "organization", "division", "department",
-    "manager_user_id", "manager_user_name", "street_address", "locality", "region",
-    "postal_code", "country", "formatted_address", "preferred_language", "locale", "timezone",
-    "photo_url", "external_id", "external_id_issuer", "created_at", "updated_at", "snapshot_time",
+    "user_id",
+    "user_name",
+    "quick_user_arn",
+    "user_status",
+    "email",
+    "given_name",
+    "family_name",
+    "display_name",
+    "nickname",
+    "phone_number",
+    "website",
+    "user_type",
+    "title",
+    "roles",
+    "employee_number",
+    "cost_center",
+    "organization",
+    "division",
+    "department",
+    "manager_user_id",
+    "manager_user_name",
+    "street_address",
+    "locality",
+    "region",
+    "postal_code",
+    "country",
+    "formatted_address",
+    "preferred_language",
+    "locale",
+    "timezone",
+    "photo_url",
+    "external_id",
+    "external_id_issuer",
+    "created_at",
+    "updated_at",
+    "snapshot_time",
 ]
 
 
@@ -7876,7 +7939,9 @@ def _common_descriptions(camel, event="the event happened", unit="milliseconds")
         "For dates and times, use event_datetime.",
         ("logType" if camel else "log_type"): "Log type of the record. "
         "It is the same on every row of this dataset.",
-        ("accountId" if camel else "account_id"): "AWS account ID of your Quick account.",
+        (
+            "accountId" if camel else "account_id"
+        ): "AWS account ID of your Quick account.",
         "event_datetime": f"When {event}, as a UTC date and time.",
     }
 
@@ -7938,7 +8003,9 @@ COLUMN_DESCRIPTIONS = {
         "rating": "Rating the user gave, when there is one.",
     },
     "agent_hours": {
-        **_common_descriptions(camel=True, event="the usage was reported", unit="seconds"),
+        **_common_descriptions(
+            camel=True, event="the usage was reported", unit="seconds"
+        ),
         "user_arn": "Quick user ARN of the person whose work used the agent hours. "
         "It includes the Quick user name.",
         "user_id": _USER_ID,
@@ -8046,7 +8113,9 @@ def org_identity_and_contact_fields(user):
         "family_name": name.get("FamilyName", ""),
         "display_name": user.get("DisplayName", ""),
         "nickname": user.get("NickName", ""),
-        "phone_number": primary_or_first_entry(user.get("PhoneNumbers")).get("Value", ""),
+        "phone_number": primary_or_first_entry(user.get("PhoneNumbers")).get(
+            "Value", ""
+        ),
         "website": user.get("Website", ""),
         "photo_url": primary_or_first_entry(user.get("Photos")).get("Value", ""),
         "external_id": external_id.get("Id", ""),
@@ -8110,7 +8179,9 @@ def org_rows_for_identity_center_users(user_pages, quick_user_arn_prefix=""):
             user_name_by_user_id[user["UserId"]] = user.get("UserName", "")
             row = org_row_for_identity_center_user(user, {}, snapshot_time)
             row["quick_user_arn"] = (
-                f"{quick_user_arn_prefix}{row['user_name']}" if quick_user_arn_prefix and row["user_name"] else ""
+                f"{quick_user_arn_prefix}{row['user_name']}"
+                if quick_user_arn_prefix and row["user_name"]
+                else ""
             )
             rows.append(row)
     for row in rows:  # a manager can be on a later page than their reports
@@ -8137,7 +8208,10 @@ def org_manifest(bucket):
     return {
         "fileLocations": [{"URIs": [f"s3://{bucket}/{ORG_CSV_KEY}"]}],
         "globalUploadSettings": {
-            "format": "CSV", "delimiter": ",", "textqualifier": "\"", "containsHeader": "true",
+            "format": "CSV",
+            "delimiter": ",",
+            "textqualifier": '"',
+            "containsHeader": "true",
         },
     }
 
@@ -8175,8 +8249,14 @@ def org_dashboard_definition(dataset_arns):
             for element in elements:
                 if element["RowIndex"] >= insert["RowIndex"]:
                     element["RowIndex"] += insert["RowSpan"]
-        upsert(sheet["Visuals"], addition.get("Visuals", []), lambda v: v[next(iter(v))]["VisualId"])
-        sheet.setdefault("FilterControls", []).extend(addition.get("FilterControls", []))
+        upsert(
+            sheet["Visuals"],
+            addition.get("Visuals", []),
+            lambda v: v[next(iter(v))]["VisualId"],
+        )
+        sheet.setdefault("FilterControls", []).extend(
+            addition.get("FilterControls", [])
+        )
         upsert(elements, addition.get("Elements", []), lambda e: e["ElementId"])
     return definition
 
@@ -10048,11 +10128,14 @@ def run_org_dataset(setup, log, args):
     print("\n  Reading IAM Identity Center users (read-only)...", flush=True)
     identity_store_id = setup.org_identity_store_id()
     rows = org_rows_for_identity_center_users(
-        setup.org_identity_center_users(identity_store_id), setup.quick_user_arn_prefix()
+        setup.org_identity_center_users(identity_store_id),
+        setup.quick_user_arn_prefix(),
     )
     for line in setup.org_column_fill_lines(rows):
         print(f"  {line}")
-    log.write(event="org_users_read", identity_store_id=identity_store_id, users=len(rows))
+    log.write(
+        event="org_users_read", identity_store_id=identity_store_id, users=len(rows)
+    )
     if args.dry_run:
         return True
     if not confirm(log, "Org", name, "LOAD ORG DATASET"):
@@ -10076,7 +10159,10 @@ def run_org_dashboard(setup, log):
     if outdated:
         for line in setup.plan_org_dashboard_update(outdated):
             print(f"  {line}")
-        if confirm(log, "Org", name, "UPDATE ORG DASHBOARD", allow_skip=True) is not True:
+        if (
+            confirm(log, "Org", name, "UPDATE ORG DASHBOARD", allow_skip=True)
+            is not True
+        ):
             print("  Kept. Your current org analysis and dashboard stay as they are.")
             log.write(event="org_dashboard_update_skipped")
             outdated = {}
@@ -10094,16 +10180,23 @@ class Setup:
         self.session = session
         self.s3 = session.client("s3", region_name=self.region, config=BOTO_CONFIG)
         self.logs = session.client("logs", region_name=self.region, config=BOTO_CONFIG)
-        self.qs = session.client("quicksight", region_name=self.region, config=BOTO_CONFIG)
+        self.qs = session.client(
+            "quicksight", region_name=self.region, config=BOTO_CONFIG
+        )
         # botocore's standard retries treat LimitExceededException (no SPICE capacity) as a
         # throttle and retry it for ~75s. Org dataset create/update use this client to fail at once.
         self.qs_single_try = session.client(
-            "quicksight", region_name=self.region,
-            config=BOTO_CONFIG.merge(Config(retries={"mode": "standard", "max_attempts": 1})),
+            "quicksight",
+            region_name=self.region,
+            config=BOTO_CONFIG.merge(
+                Config(retries={"mode": "standard", "max_attempts": 1})
+            ),
         )
         self.iam = session.client("iam", config=BOTO_CONFIG)
         self.glue = session.client("glue", region_name=self.region, config=BOTO_CONFIG)
-        self.athena = session.client("athena", region_name=self.region, config=BOTO_CONFIG)
+        self.athena = session.client(
+            "athena", region_name=self.region, config=BOTO_CONFIG
+        )
         self.partition = identity["Arn"].split(":")[1]
         self.resource_arn = (
             f"arn:{self.partition}:quicksight:{self.region}:"
@@ -10135,7 +10228,11 @@ class Setup:
         try:
             return fn(**kwargs)[key]
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("ResourceNotFoundException", "NoSuchKey", "404"):
+            if e.response["Error"]["Code"] in (
+                "ResourceNotFoundException",
+                "NoSuchKey",
+                "404",
+            ):
                 return None
             raise
 
@@ -10147,22 +10244,33 @@ class Setup:
         In accounts with thousands of users that takes a while, so it prints progress.
         """
         print("  Looking for Quick admins to own the datasets. To find them,")
-        print("  the script reads every Quick user in the account (100 per call). In accounts")
-        print("  with many users this takes a minute or more. To skip it next time, pass")
+        print(
+            "  the script reads every Quick user in the account (100 per call). In accounts"
+        )
+        print(
+            "  with many users this takes a minute or more. To skip it next time, pass"
+        )
         print("  --quick-admin-arn with the owner's Quick user ARN.", flush=True)
         found, seen = [], 0
         try:
             for page in self.qs.get_paginator("list_users").paginate(
-                AwsAccountId=self.account, Namespace="default", PaginationConfig={"PageSize": 100}
+                AwsAccountId=self.account,
+                Namespace="default",
+                PaginationConfig={"PageSize": 100},
             ):
                 for u in page["UserList"]:
                     if u.get("Role", "").startswith("ADMIN") and u.get("Active", True):
                         found.append((u["Arn"], u["UserName"], u["Role"]))
                 seen += len(page["UserList"])
-                progress(f"    {seen} Quick users checked, {len(found)} admins found so far...")
+                progress(
+                    f"    {seen} Quick users checked, {len(found)} admins found so far..."
+                )
         except ClientError as e:
             self.raise_quick_error(e)
-        progress(f"    Done: {seen} Quick users checked, {len(found)} admins found.", done=True)
+        progress(
+            f"    Done: {seen} Quick users checked, {len(found)} admins found.",
+            done=True,
+        )
         self.log.write(event="admin_scan", users_checked=seen, admins_found=len(found))
         return found
 
@@ -10201,9 +10309,9 @@ class Setup:
         if not namespace or not user_name:
             return None
         try:
-            return self.quick_call(self.qs.describe_user, Namespace=namespace, UserName=user_name)[
-                "User"
-            ]
+            return self.quick_call(
+                self.qs.describe_user, Namespace=namespace, UserName=user_name
+            )["User"]
         except ClientError as e:
             if e.response["Error"]["Code"] in (
                 "ResourceNotFoundException",
@@ -10240,12 +10348,19 @@ class Setup:
         if arn:
             marker = ":user/"
             if marker not in arn:
-                raise Abort(f"--quick-admin-arn does not look like a Quick user ARN: {arn}")
+                raise Abort(
+                    f"--quick-admin-arn does not look like a Quick user ARN: {arn}"
+                )
             namespace, _, user_name = arn.split(marker, 1)[1].partition("/")
-            print(f"  Checking the Quick user in --quick-admin-arn ({user_name})...", flush=True)
+            print(
+                f"  Checking the Quick user in --quick-admin-arn ({user_name})...",
+                flush=True,
+            )
             user = self.describe_quick_user(namespace, user_name)
             if not user:
-                raise Abort(f"No Quick user matches --quick-admin-arn {arn} in this account.")
+                raise Abort(
+                    f"No Quick user matches --quick-admin-arn {arn} in this account."
+                )
             if not user.get("Active", True):
                 raise Abort(
                     f"The Quick user in --quick-admin-arn ({user_name}) isn't active yet, so it "
@@ -10274,7 +10389,11 @@ class Setup:
         try:
             name = self.caller_quick_user_name(caller_arn)
             user = self.describe_quick_user("default", name) if name else None
-            if user and user.get("Role", "").startswith("ADMIN") and user.get("Active", True):
+            if (
+                user
+                and user.get("Role", "").startswith("ADMIN")
+                and user.get("Active", True)
+            ):
                 return user["Arn"], user["Role"], "that's you"
         except Exception as e:  # noqa: BLE001 - a failed lookup never stops the run
             self.log.write(event="caller_admin_check_failed", error=repr(e))
@@ -10283,11 +10402,19 @@ class Setup:
     def ask_admin(self):
         """Ask for the dataset owner by Quick user name or ARN; SEARCH lists every admin."""
         print("\nWhich Quick admin should own the datasets?")
-        print("  Type the admin's Quick user name or Quick user ARN. You can find user names")
-        print("  in Quick under Manage account > Manage users. In Identity Center accounts the")
+        print(
+            "  Type the admin's Quick user name or Quick user ARN. You can find user names"
+        )
+        print(
+            "  in Quick under Manage account > Manage users. In Identity Center accounts the"
+        )
         print("  user name is usually the person's email.")
-        print(f"  Or type {SEARCH_WORD} to have the script find the admins for you. This reads")
-        print("  every Quick user in the account, so it can take several minutes depending on")
+        print(
+            f"  Or type {SEARCH_WORD} to have the script find the admins for you. This reads"
+        )
+        print(
+            "  every Quick user in the account, so it can take several minutes depending on"
+        )
         print("  how many Quick users you have.")
         print(f"  (Type '{STOP_WORD}' to stop.)")
         while True:
@@ -10308,17 +10435,23 @@ class Setup:
             namespace, user_name = self.parse_quick_user(answer)
             user = self.describe_quick_user(namespace, user_name)
             if not user:
-                print(f"  No Quick user named '{user_name}' in this account. Try again, or "
-                      f"type {SEARCH_WORD}.")
+                print(
+                    f"  No Quick user named '{user_name}' in this account. Try again, or "
+                    f"type {SEARCH_WORD}."
+                )
                 continue
             role = user.get("Role", "")
             if not role.startswith("ADMIN"):
-                print(f"  {user_name} is a Quick {role or 'user'}, not an admin. Type an "
-                      f"admin, or {SEARCH_WORD}.")
+                print(
+                    f"  {user_name} is a Quick {role or 'user'}, not an admin. Type an "
+                    f"admin, or {SEARCH_WORD}."
+                )
                 continue
             if not user.get("Active", True):
-                print(f"  {user_name} hasn't signed in to Quick yet, so it can't own the "
-                      f"datasets. Type another admin, or {SEARCH_WORD}.")
+                print(
+                    f"  {user_name} hasn't signed in to Quick yet, so it can't own the "
+                    f"datasets. Type another admin, or {SEARCH_WORD}."
+                )
                 continue
             self.log.write(event="admin_typed", arn=user["Arn"], typed=answer)
             return user["Arn"], role, "typed by you"
@@ -10338,7 +10471,9 @@ class Setup:
         return (*self.choose_admin(admins), "chosen by you")
 
     def choose_admin(self, admins):
-        print("\nThis Quick account has several admins. Which one should own the datasets?")
+        print(
+            "\nThis Quick account has several admins. Which one should own the datasets?"
+        )
         for i, (_arn, user_name, role) in enumerate(admins, start=1):
             print(f"  {i}. {user_name} ({role})")
         print(f"  (Type a number, or '{STOP_WORD}' to stop.)")
@@ -10382,7 +10517,9 @@ class Setup:
 
     def bucket_state(self):
         try:
-            return "exists in this account" if self.bucket_exists() else "will be created"
+            return (
+                "exists in this account" if self.bucket_exists() else "will be created"
+            )
         except ClientError as e:
             return f"can't check: {e.response['Error']['Code']}"
 
@@ -10392,7 +10529,9 @@ class Setup:
         status = sub["AccountInfo"].get("AccountSubscriptionStatus")
         edition = sub["AccountInfo"].get("Edition")
         auth_type = sub["AccountInfo"].get("AuthenticationType")
-        print(f"  Quick subscription status: {status}, edition: {edition}, sign-in: {auth_type}")
+        print(
+            f"  Quick subscription status: {status}, edition: {edition}, sign-in: {auth_type}"
+        )
         if status != "ACCOUNT_CREATED":
             raise Abort(f"Quick subscription is {status}; it must be ACCOUNT_CREATED.")
         if edition and "ENTERPRISE" not in edition and "PROFESSIONAL" not in edition:
@@ -10409,7 +10548,8 @@ class Setup:
         conflicts = {
             lt: n
             for lt, n in existing.items()
-            if lt in self.selected_log_types() and n != self.source_name(self.dataset_of(lt))
+            if lt in self.selected_log_types()
+            and n != self.source_name(self.dataset_of(lt))
         }
         if conflicts:
             raise Abort(
@@ -10429,9 +10569,9 @@ class Setup:
         try:
             offered = {
                 t.get("logType")
-                for page in self.logs.get_paginator("describe_configuration_templates").paginate(
-                    service="quicksight", deliveryDestinationTypes=["S3"]
-                )
+                for page in self.logs.get_paginator(
+                    "describe_configuration_templates"
+                ).paginate(service="quicksight", deliveryDestinationTypes=["S3"])
                 for t in page.get("configurationTemplates", [])
             }
         except ClientError as e:
@@ -10439,10 +10579,16 @@ class Setup:
                 "  Couldn't list the log types Quick offers here "
                 f"({e.response['Error']['Code']}); step 3 will tell if one is missing."
             )
-            self.log.write(event="log_types_unchecked", error=e.response["Error"]["Code"])
+            self.log.write(
+                event="log_types_unchecked", error=e.response["Error"]["Code"]
+            )
             return
         missing = sorted(self.selected_log_types() - offered)
-        self.log.write(event="log_types_offered", offered=sorted(t for t in offered if t), missing=missing)
+        self.log.write(
+            event="log_types_offered",
+            offered=sorted(t for t in offered if t),
+            missing=missing,
+        )
         if missing:
             print(
                 f"  WARNING: CloudWatch Logs doesn't list {', '.join(missing)} for Quick in "
@@ -10450,7 +10596,9 @@ class Setup:
                 "region yet. If so, step 3 stops\n           before anything is delivered."
             )
         else:
-            print(f"  Usage log types offered in {self.region}: {', '.join(sorted(self.selected_log_types()))}")
+            print(
+                f"  Usage log types offered in {self.region}: {', '.join(sorted(self.selected_log_types()))}"
+            )
 
     def dataset_of(self, log_type):
         return next(d for d, (lt, _) in DATASETS.items() if lt == log_type)
@@ -10550,7 +10698,10 @@ class Setup:
                 )
             athena = params["AthenaParameters"]
             role_arn = athena.get("RoleArn")
-            if athena.get("WorkGroup") != ATHENA_WORKGROUP or role_arn != self.data_source_role_arn():
+            if (
+                athena.get("WorkGroup") != ATHENA_WORKGROUP
+                or role_arn != self.data_source_role_arn()
+            ):
                 raise Abort(
                     f"Quick data source {ds_id} already exists but uses workgroup "
                     f"{athena.get('WorkGroup')} / role {role_arn},\n  not {ATHENA_WORKGROUP} / "
@@ -10558,7 +10709,10 @@ class Setup:
                     "source and its dataset, then re-run."
                 )
         data_set = self.get_or_none(
-            self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=ds_id
+            self.qs.describe_data_set,
+            "DataSet",
+            AwsAccountId=self.account,
+            DataSetId=ds_id,
         )
         if data_set is None:
             missing.append("dataset")
@@ -10580,21 +10734,26 @@ class Setup:
         """Data source creation is asynchronous; wait until it settles before using it."""
         deadline = time.monotonic() + timeout
         while True:
-            status = self.qs.describe_data_source(AwsAccountId=self.account, DataSourceId=ds_id)[
-                "DataSource"
-            ].get("Status", "")
+            status = self.qs.describe_data_source(
+                AwsAccountId=self.account, DataSourceId=ds_id
+            )["DataSource"].get("Status", "")
             if not status.endswith("IN_PROGRESS"):
                 if status.endswith("FAILED"):
                     raise Abort(
                         f"Quick couldn't create data source {ds_id} ({status}). "
-                        + (failure_hint or (
-                            f"Check that IAM role {self.data_source_role_name()} can assume and "
-                            f"run Athena over s3://{self.bucket}/{PREFIX_ROOT}/, then re-run."
-                        ))
+                        + (
+                            failure_hint
+                            or (
+                                f"Check that IAM role {self.data_source_role_name()} can assume and "
+                                f"run Athena over s3://{self.bucket}/{PREFIX_ROOT}/, then re-run."
+                            )
+                        )
                     )
                 return
             if time.monotonic() > deadline:
-                raise Abort(f"Data source {ds_id} is still {status} after {timeout}s. Re-run later.")
+                raise Abort(
+                    f"Data source {ds_id} is still {status} after {timeout}s. Re-run later."
+                )
             time.sleep(3)
 
     def check_datasets(self):
@@ -10603,19 +10762,26 @@ class Setup:
             missing, _ = self.dataset_state(d)
             if missing:
                 todo[d] = missing
-                lines.append(f"quick-usage-{d}: not set up yet (missing: {', '.join(missing)})")
+                lines.append(
+                    f"quick-usage-{d}: not set up yet (missing: {', '.join(missing)})"
+                )
             else:
                 lines.append(f"quick-usage-{d}: Athena data source and dataset exist")
         return StepState(not todo, lines, todo)
 
     def quick_link(self, kind, asset_id):
-        return link(f"https://{self.region}.quicksight.aws.amazon.com/sn/{kind}/{asset_id}")
+        return link(
+            f"https://{self.region}.quicksight.aws.amazon.com/sn/{kind}/{asset_id}"
+        )
 
     def asset_state(self, kind, asset_id):
         """None if missing, else the status. Stops on a failed or still-running asset."""
         if kind == "analysis":
             asset = self.get_or_none(
-                self.qs.describe_analysis, "Analysis", AwsAccountId=self.account, AnalysisId=asset_id
+                self.qs.describe_analysis,
+                "Analysis",
+                AwsAccountId=self.account,
+                AnalysisId=asset_id,
             )
             status = asset and asset.get("Status", "")
             delete = f"delete-analysis --analysis-id {asset_id} --force-delete-without-recovery"
@@ -10656,7 +10822,9 @@ class Setup:
     def asset_version(self, kind, asset_id, version_tag=DASHBOARD_VERSION_TAG):
         """Dashboard version an existing asset was built from, or None if unreadable."""
         try:
-            tags = self.qs.list_tags_for_resource(ResourceArn=self.asset_arn(kind, asset_id))
+            tags = self.qs.list_tags_for_resource(
+                ResourceArn=self.asset_arn(kind, asset_id)
+            )
         except ClientError as e:
             self.log.write(
                 event="dashboard_version_unreadable",
@@ -10697,10 +10865,14 @@ class Setup:
                     f"newer version {spec.version} available"
                 )
             else:
-                lines.append(f"{kind} {asset_id}: already exists (version {version}), kept as is")
+                lines.append(
+                    f"{kind} {asset_id}: already exists (version {version}), kept as is"
+                )
         return outdated
 
-    def wait_for_asset(self, kind, asset_id, version_number=None, resume_at_dashboard_step=True):
+    def wait_for_asset(
+        self, kind, asset_id, version_number=None, resume_at_dashboard_step=True
+    ):
         """Creation and updates are asynchronous. Wait, and turn a failed definition into a
         clear stop. version_number waits for that dashboard version (after an update).
         resume_at_dashboard_step=False resumes at the step that was running instead."""
@@ -10708,9 +10880,9 @@ class Setup:
         deadline = time.monotonic() + CREATE_TIMEOUT_SECONDS
         while True:
             if kind == "analysis":
-                asset = self.qs.describe_analysis(AwsAccountId=self.account, AnalysisId=asset_id)[
-                    "Analysis"
-                ]
+                asset = self.qs.describe_analysis(
+                    AwsAccountId=self.account, AnalysisId=asset_id
+                )["Analysis"]
             else:
                 extra = {"VersionNumber": version_number} if version_number else {}
                 asset = self.qs.describe_dashboard(
@@ -10735,7 +10907,9 @@ class Setup:
             for e in asset.get("Errors") or []
         ]
         if errors:
-            self.log.write(event="asset_errors", kind=kind, asset_id=asset_id, errors=errors)
+            self.log.write(
+                event="asset_errors", kind=kind, asset_id=asset_id, errors=errors
+            )
         if status.endswith("FAILED"):
             details = "\n".join(
                 f"    - {e['type']}: {e['message']}"
@@ -10769,11 +10943,17 @@ class Setup:
             if self.asset_state(kind, asset_id) is None:
                 self.create_asset(spec, kind, common, resume_at_dashboard_step)
             elif kind in outdated:
-                self.update_asset(spec, kind, common, outdated[kind], resume_at_dashboard_step)
+                self.update_asset(
+                    spec, kind, common, outdated[kind], resume_at_dashboard_step
+                )
             else:
                 print(f"  {kind} {asset_id} already exists, kept")
-        print(f"  Open the dashboard: {self.quick_link('dashboards', spec.dashboard_id)}")
-        print(f"  Edit it in the analysis: {self.quick_link('analyses', spec.analysis_id)}")
+        print(
+            f"  Open the dashboard: {self.quick_link('dashboards', spec.dashboard_id)}"
+        )
+        print(
+            f"  Edit it in the analysis: {self.quick_link('analyses', spec.analysis_id)}"
+        )
 
     def create_asset(self, spec, kind, common, resume_at_dashboard_step):
         asset_id = dict(spec.assets)[kind]
@@ -10787,7 +10967,9 @@ class Setup:
             Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": actions}],
             Tags=self.version_tags(spec),
         )
-        self.wait_for_asset(kind, asset_id, resume_at_dashboard_step=resume_at_dashboard_step)
+        self.wait_for_asset(
+            kind, asset_id, resume_at_dashboard_step=resume_at_dashboard_step
+        )
         print(f"  {kind} {asset_id} created")
         self.log.write(event="resource", **{kind: asset_id})
 
@@ -10797,7 +10979,9 @@ class Setup:
         published, extra = "", {}
         if kind == "analysis":
             self.qs.update_analysis(**common, AnalysisId=asset_id)
-            self.wait_for_asset(kind, asset_id, resume_at_dashboard_step=resume_at_dashboard_step)
+            self.wait_for_asset(
+                kind, asset_id, resume_at_dashboard_step=resume_at_dashboard_step
+            )
         else:
             version_number = self.update_and_publish_dashboard(
                 asset_id, common, resume_at_dashboard_step
@@ -10817,14 +11001,20 @@ class Setup:
             **extra,
         )
 
-    def update_and_publish_dashboard(self, dashboard_id, common, resume_at_dashboard_step):
+    def update_and_publish_dashboard(
+        self, dashboard_id, common, resume_at_dashboard_step
+    ):
         """Returns the new Quick dashboard version number."""
         response = self.qs.update_dashboard(**common, DashboardId=dashboard_id)
         version_number = int(response["VersionArn"].rsplit("/", 1)[1])
-        self.wait_for_asset("dashboard", dashboard_id, version_number, resume_at_dashboard_step)
+        self.wait_for_asset(
+            "dashboard", dashboard_id, version_number, resume_at_dashboard_step
+        )
         # An update creates a new dashboard version; viewers see it once it's published.
         self.qs.update_dashboard_published_version(
-            AwsAccountId=self.account, DashboardId=dashboard_id, VersionNumber=version_number
+            AwsAccountId=self.account,
+            DashboardId=dashboard_id,
+            VersionNumber=version_number,
         )
         return version_number
 
@@ -10838,7 +11028,11 @@ class Setup:
             fn(**kwargs)
             return True
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("ResourceNotFoundException", "NoSuchKey", "404"):
+            if e.response["Error"]["Code"] in (
+                "ResourceNotFoundException",
+                "NoSuchKey",
+                "404",
+            ):
                 return False
             raise
 
@@ -10853,7 +11047,10 @@ class Setup:
             todo["dashboard"] = [spec.dashboard_id]
             lines.append(f"dashboard {spec.dashboard_id}")
         analysis = self.get_or_none(
-            self.qs.describe_analysis, "Analysis", AwsAccountId=self.account, AnalysisId=spec.analysis_id
+            self.qs.describe_analysis,
+            "Analysis",
+            AwsAccountId=self.account,
+            AnalysisId=spec.analysis_id,
         )
         if analysis is not None:
             todo["analysis"] = [spec.analysis_id]
@@ -10870,7 +11067,9 @@ class Setup:
     def remove_assets(self, spec, state):
         if "dashboard" in state.todo:
             self.delete_if_present(
-                self.qs.delete_dashboard, AwsAccountId=self.account, DashboardId=spec.dashboard_id
+                self.qs.delete_dashboard,
+                AwsAccountId=self.account,
+                DashboardId=spec.dashboard_id,
             )
             print(f"  dashboard {spec.dashboard_id} deleted")
             self.log.write(event="resource_deleted", dashboard=spec.dashboard_id)
@@ -10914,9 +11113,19 @@ class Setup:
                     "Resource": [bucket_arn],
                     "Condition": {"StringLike": {"s3:prefix": [f"{ORG_PREFIX}/*"]}},
                 },
-                {"Sid": "LocateBucket", "Effect": "Allow", "Action": ["s3:GetBucketLocation"], "Resource": [bucket_arn]},
+                {
+                    "Sid": "LocateBucket",
+                    "Effect": "Allow",
+                    "Action": ["s3:GetBucketLocation"],
+                    "Resource": [bucket_arn],
+                },
                 # Quick's S3 checks list bucket names; this shows names only, no contents.
-                {"Sid": "ListBucketNames", "Effect": "Allow", "Action": ["s3:ListAllMyBuckets"], "Resource": "*"},
+                {
+                    "Sid": "ListBucketNames",
+                    "Effect": "Allow",
+                    "Action": ["s3:ListAllMyBuckets"],
+                    "Resource": "*",
+                },
             ],
         }
 
@@ -10935,7 +11144,9 @@ class Setup:
         """The identity store behind this Quick account: --org-identity-store-id, else looked up."""
         if self.args.org_identity_store_id:
             return self.args.org_identity_store_id
-        account_info = self.qs.describe_account_subscription(AwsAccountId=self.account)["AccountInfo"]
+        account_info = self.qs.describe_account_subscription(AwsAccountId=self.account)[
+            "AccountInfo"
+        ]
         instance_arn = account_info.get("IAMIdentityCenterInstanceArn")
         if not instance_arn:
             raise Abort(
@@ -10943,7 +11154,9 @@ class Setup:
                 f"through Identity Center (sign-in: {account_info.get('AuthenticationType')})."
             )
         region = self.org_identity_center_region()
-        sso_admin = self.session.client("sso-admin", region_name=region, config=BOTO_CONFIG)
+        sso_admin = self.session.client(
+            "sso-admin", region_name=region, config=BOTO_CONFIG
+        )
         for page in sso_admin.get_paginator("list_instances").paginate():
             for instance in page["Instances"]:
                 if instance["InstanceArn"] == instance_arn:
@@ -10959,9 +11172,12 @@ class Setup:
     def org_identity_center_users(self, identity_store_id):
         """Yields Identity Center users a page at a time, printing progress every 10 pages."""
         region = self.org_identity_center_region()
-        identitystore = self.session.client("identitystore", region_name=region, config=BOTO_CONFIG)
+        identitystore = self.session.client(
+            "identitystore", region_name=region, config=BOTO_CONFIG
+        )
         pages = identitystore.get_paginator("list_users").paginate(
-            IdentityStoreId=identity_store_id, Extensions=[IDENTITY_STORE_ENTERPRISE_EXTENSION]
+            IdentityStoreId=identity_store_id,
+            Extensions=[IDENTITY_STORE_ENTERPRISE_EXTENSION],
         )
         count = 0
         for number, page in enumerate(pages, start=1):
@@ -11023,18 +11239,30 @@ class Setup:
         ]
 
     def org_column_fill_lines(self, rows):
-        lines = [f"{len(rows)} Identity Center users. Filled in per column (no values shown):"]
-        lines += [f"  {c}: {sum(1 for row in rows if row[c])}/{len(rows)}" for c in ORG_COLUMNS]
+        lines = [
+            f"{len(rows)} Identity Center users. Filled in per column (no values shown):"
+        ]
+        lines += [
+            f"  {c}: {sum(1 for row in rows if row[c])}/{len(rows)}"
+            for c in ORG_COLUMNS
+        ]
         return lines
 
     def require_bucket_blocks_public_access(self):
         try:
-            block = self.s3.get_public_access_block(Bucket=self.bucket)["PublicAccessBlockConfiguration"]
+            block = self.s3.get_public_access_block(Bucket=self.bucket)[
+                "PublicAccessBlockConfiguration"
+            ]
         except ClientError as e:
             if e.response["Error"]["Code"] != "NoSuchPublicAccessBlockConfiguration":
                 raise
             block = {}
-        settings = ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets")
+        settings = (
+            "BlockPublicAcls",
+            "IgnorePublicAcls",
+            "BlockPublicPolicy",
+            "RestrictPublicBuckets",
+        )
         if not all(block.get(setting) for setting in settings):
             raise Abort(
                 f"Bucket {self.bucket} doesn't block all public access, so this script won't write PII "
@@ -11061,52 +11289,84 @@ class Setup:
             PolicyDocument=json.dumps(self.org_role_policy_document()),
         )
         verb = "created" if role is None else "kept; read policy re-applied"
-        print(f"  IAM role {self.org_role_name()} {verb} (only Quick can use it; reads only {ORG_PREFIX}/)")
+        print(
+            f"  IAM role {self.org_role_name()} {verb} (only Quick can use it; reads only {ORG_PREFIX}/)"
+        )
         self.log.write(event="resource", org_iam_role=self.org_role_arn())
 
     def upload_org_files(self, rows):
-        encrypted = {"ServerSideEncryption": "AES256", "ExpectedBucketOwner": self.account}
+        encrypted = {
+            "ServerSideEncryption": "AES256",
+            "ExpectedBucketOwner": self.account,
+        }
         # An unnamed temp file (removed when closed, even on a crash), uploaded in parts, so the
         # CSV isn't held in memory as text and again as bytes.
         with tempfile.TemporaryFile("w+", encoding="utf-8", newline="") as csv_file:
             write_org_csv(rows, csv_file)
             csv_file.seek(0)
             self.s3.upload_fileobj(
-                csv_file.buffer, self.bucket, ORG_CSV_KEY, ExtraArgs={"ContentType": "text/csv", **encrypted}
+                csv_file.buffer,
+                self.bucket,
+                ORG_CSV_KEY,
+                ExtraArgs={"ContentType": "text/csv", **encrypted},
             )
         self.s3.put_object(
-            Bucket=self.bucket, Key=ORG_MANIFEST_KEY, Body=json.dumps(org_manifest(self.bucket)).encode(),
-            ContentType="application/json", **encrypted,
+            Bucket=self.bucket,
+            Key=ORG_MANIFEST_KEY,
+            Body=json.dumps(org_manifest(self.bucket)).encode(),
+            ContentType="application/json",
+            **encrypted,
         )
         print(f"  Uploaded s3://{self.bucket}/{ORG_CSV_KEY} and its manifest")
 
     def org_data_source_parameters(self):
         manifest = {"Bucket": self.bucket, "Key": ORG_MANIFEST_KEY}
-        return {"S3Parameters": {"ManifestFileLocation": manifest, "RoleArn": self.org_role_arn()}}
+        return {
+            "S3Parameters": {
+                "ManifestFileLocation": manifest,
+                "RoleArn": self.org_role_arn(),
+            }
+        }
 
     def ensure_org_data_source(self, attempts=4, delay=15):
         """Create or repoint the org data source, retrying while the new role propagates."""
         existing = self.get_or_none(
-            self.qs.describe_data_source, "DataSource", AwsAccountId=self.account, DataSourceId=ORG_DATA_SET_ID
+            self.qs.describe_data_source,
+            "DataSource",
+            AwsAccountId=self.account,
+            DataSourceId=ORG_DATA_SET_ID,
         )
         common = {
-            "AwsAccountId": self.account, "DataSourceId": ORG_DATA_SET_ID, "Name": ORG_DATA_SET_NAME,
+            "AwsAccountId": self.account,
+            "DataSourceId": ORG_DATA_SET_ID,
+            "Name": ORG_DATA_SET_NAME,
             "DataSourceParameters": self.org_data_source_parameters(),
         }
 
         def create_or_update():
             if existing:
                 return self.qs.update_data_source(**common)
-            permissions = [{"Principal": self.args.quick_admin_arn, "Actions": DATA_SOURCE_ACTIONS}]
-            return self.qs.create_data_source(Type="S3", Permissions=permissions, **common)
+            permissions = [
+                {"Principal": self.args.quick_admin_arn, "Actions": DATA_SOURCE_ACTIONS}
+            ]
+            return self.qs.create_data_source(
+                Type="S3", Permissions=permissions, **common
+            )
 
         def role_not_ready(error):
-            return error["Code"] == "AccessDeniedException" and "assume" in error.get("Message", "").lower()
+            return (
+                error["Code"] == "AccessDeniedException"
+                and "assume" in error.get("Message", "").lower()
+            )
 
         def on_retry(attempt, error):
-            print(f"  Quick can't use the new role yet (IAM takes a few seconds); checking again in {delay}s...")
+            print(
+                f"  Quick can't use the new role yet (IAM takes a few seconds); checking again in {delay}s..."
+            )
 
-        arn = retry_on_client_error(create_or_update, role_not_ready, attempts, delay, on_retry=on_retry)["Arn"]
+        arn = retry_on_client_error(
+            create_or_update, role_not_ready, attempts, delay, on_retry=on_retry
+        )["Arn"]
         print(f"  Data source {ORG_DATA_SET_ID} {'updated' if existing else 'created'}")
         self.wait_for_data_source(
             ORG_DATA_SET_ID,
@@ -11117,30 +11377,51 @@ class Setup:
 
     def ensure_org_data_set(self, data_source_arn):
         exists = self.get_or_none(
-            self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=ORG_DATA_SET_ID
+            self.qs.describe_data_set,
+            "DataSet",
+            AwsAccountId=self.account,
+            DataSetId=ORG_DATA_SET_ID,
         )
         upload_settings = {
-            "Format": "CSV", "ContainsHeader": True, "Delimiter": ",",
-            "TextQualifier": "DOUBLE_QUOTE", "StartFromRow": 1,
+            "Format": "CSV",
+            "ContainsHeader": True,
+            "Delimiter": ",",
+            "TextQualifier": "DOUBLE_QUOTE",
+            "StartFromRow": 1,
         }
         common = {
-            "AwsAccountId": self.account, "DataSetId": ORG_DATA_SET_ID, "Name": ORG_DATA_SET_NAME,
+            "AwsAccountId": self.account,
+            "DataSetId": ORG_DATA_SET_ID,
+            "Name": ORG_DATA_SET_NAME,
             "ImportMode": "SPICE",
-            "PhysicalTableMap": {"users": {"S3Source": {
-                "DataSourceArn": data_source_arn,
-                "UploadSettings": upload_settings,
-                "InputColumns": [{"Name": c, "Type": "STRING"} for c in ORG_COLUMNS],
-            }}},
-            "LogicalTableMap": {"l": {
-                "Alias": ORG_DATA_SET_ID,
-                "Source": {"PhysicalTableId": "users"},
-                "DataTransforms": column_description_transforms(ORG_COLUMN_DESCRIPTIONS),
-            }},
+            "PhysicalTableMap": {
+                "users": {
+                    "S3Source": {
+                        "DataSourceArn": data_source_arn,
+                        "UploadSettings": upload_settings,
+                        "InputColumns": [
+                            {"Name": c, "Type": "STRING"} for c in ORG_COLUMNS
+                        ],
+                    }
+                }
+            },
+            "LogicalTableMap": {
+                "l": {
+                    "Alias": ORG_DATA_SET_ID,
+                    "Source": {"PhysicalTableId": "users"},
+                    "DataTransforms": column_description_transforms(
+                        ORG_COLUMN_DESCRIPTIONS
+                    ),
+                }
+            },
         }
+
         def create_or_update():
             if exists:
                 return self.qs_single_try.update_data_set(**common)
-            permissions = [{"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}]
+            permissions = [
+                {"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}
+            ]
             return self.qs_single_try.create_data_set(Permissions=permissions, **common)
 
         def throttled(error):
@@ -11150,17 +11431,27 @@ class Setup:
             retry_on_client_error(create_or_update, throttled, attempts=5, delay=5)
         except ClientError as exc:
             error = exc.response["Error"]
-            if error["Code"] == "LimitExceededException" and "spice" in error.get("Message", "").lower():
+            if (
+                error["Code"] == "LimitExceededException"
+                and "spice" in error.get("Message", "").lower()
+            ):
                 raise org_spice_capacity_abort(self.account) from exc
             raise
         print(f"  Dataset {ORG_DATA_SET_ID} {'updated' if exists else 'created'}")
-        self.log.write(event="resource", org_data_set=ORG_DATA_SET_ID, created=not exists)
+        self.log.write(
+            event="resource", org_data_set=ORG_DATA_SET_ID, created=not exists
+        )
 
     def latest_org_ingestion_since(self, started, data_set_id=ORG_DATA_SET_ID):
         pages = self.qs.get_paginator("list_ingestions").paginate(
             AwsAccountId=self.account, DataSetId=data_set_id
         )
-        recent = [i for page in pages for i in page["Ingestions"] if i["CreatedTime"] >= started]
+        recent = [
+            i
+            for page in pages
+            for i in page["Ingestions"]
+            if i["CreatedTime"] >= started
+        ]
         return max(recent, key=lambda i: i["CreatedTime"], default=None)
 
     def wait_for_org_ingestion(self, started, data_set_id=ORG_DATA_SET_ID):
@@ -11171,32 +11462,51 @@ class Setup:
             ingestion = self.latest_org_ingestion_since(started, data_set_id)
             if ingestion is None and time.monotonic() > start_wait_until:
                 self.qs.create_ingestion(
-                    AwsAccountId=self.account, DataSetId=data_set_id, IngestionId=str(uuid.uuid4())
+                    AwsAccountId=self.account,
+                    DataSetId=data_set_id,
+                    IngestionId=str(uuid.uuid4()),
                 )
                 start_wait_until = deadline
             status = ingestion["IngestionStatus"] if ingestion else "QUEUED"
             if status == "COMPLETED":
                 rows = ingestion.get("RowInfo", {})
-                print(f"  {data_set_id}: SPICE load complete: {rows.get('RowsIngested')} rows, "
-                      f"{rows.get('RowsDropped')} dropped")
-                self.log.write(event="org_ingestion_complete", data_set=data_set_id, rows=rows)
+                print(
+                    f"  {data_set_id}: SPICE load complete: {rows.get('RowsIngested')} rows, "
+                    f"{rows.get('RowsDropped')} dropped"
+                )
+                self.log.write(
+                    event="org_ingestion_complete", data_set=data_set_id, rows=rows
+                )
                 return
             if status in ("FAILED", "CANCELLED"):
-                if ingestion.get("ErrorInfo", {}).get("Type") == "ACCOUNT_CAPACITY_LIMIT_EXCEEDED":
+                if (
+                    ingestion.get("ErrorInfo", {}).get("Type")
+                    == "ACCOUNT_CAPACITY_LIMIT_EXCEEDED"
+                ):
                     raise org_spice_capacity_abort(self.account)
-                raise Abort(f"The SPICE load of {data_set_id} {status}: {ingestion.get('ErrorInfo')}")
+                raise Abort(
+                    f"The SPICE load of {data_set_id} {status}: {ingestion.get('ErrorInfo')}"
+                )
             time.sleep(5)
-        raise Abort(f"The SPICE load of {data_set_id} didn't finish in {CREATE_TIMEOUT_SECONDS}s. Check it in Quick.")
+        raise Abort(
+            f"The SPICE load of {data_set_id} didn't finish in {CREATE_TIMEOUT_SECONDS}s. Check it in Quick."
+        )
 
     def delete_org_csv(self):
-        self.delete_if_present(self.s3.delete_object, Bucket=self.bucket, Key=ORG_CSV_KEY,
-                               ExpectedBucketOwner=self.account)
+        self.delete_if_present(
+            self.s3.delete_object,
+            Bucket=self.bucket,
+            Key=ORG_CSV_KEY,
+            ExpectedBucketOwner=self.account,
+        )
         print(f"  Deleted s3://{self.bucket}/{ORG_CSV_KEY} (SPICE keeps its own copy)")
         self.log.write(event="org_csv_deleted", key=ORG_CSV_KEY)
 
     def run_org(self, rows):
         if not self.args.quick_admin_arn:
-            raise Abort("The org part needs the dataset owner; re-run with --quick-admin-arn.")
+            raise Abort(
+                "The org part needs the dataset owner; re-run with --quick-admin-arn."
+            )
         self.require_bucket_blocks_public_access()
         self.ensure_org_role()
         started = datetime.datetime.now(datetime.UTC)
@@ -11222,12 +11532,16 @@ class Setup:
         records name Identity Center users in the default namespace.
         """
         if not self.args.quick_admin_arn:
-            raise Abort("The org part needs the dataset owner; re-run with --quick-admin-arn.")
+            raise Abort(
+                "The org part needs the dataset owner; re-run with --quick-admin-arn."
+            )
         return self.args.quick_admin_arn.split(":user/", 1)[0] + ":user/default/"
 
     def usage_output_columns(self, d):
         """Column names of quick-usage-<d> as Quick has them, so the joined dataset keeps them all."""
-        data_set = self.qs.describe_data_set(AwsAccountId=self.account, DataSetId=f"quick-usage-{d}")
+        data_set = self.qs.describe_data_set(
+            AwsAccountId=self.account, DataSetId=f"quick-usage-{d}"
+        )
         return [c["Name"] for c in data_set["DataSet"]["OutputColumns"]]
 
     def org_joined_logical_table_map(self, d):
@@ -11242,12 +11556,20 @@ class Setup:
             f"{ORG_JOINED_COLUMN_PREFIX}{c}" for c in ORG_JOINED_COLUMNS
         ]
         renamed_org_columns = [
-            {"RenameColumnOperation": {"ColumnName": c, "NewColumnName": f"{ORG_JOINED_COLUMN_PREFIX}{c}"}}
+            {
+                "RenameColumnOperation": {
+                    "ColumnName": c,
+                    "NewColumnName": f"{ORG_JOINED_COLUMN_PREFIX}{c}",
+                }
+            }
             for c in ORG_COLUMNS
         ]
         descriptions = {
             **{c: t for c, t in COLUMN_DESCRIPTIONS[d].items() if c in kept_columns},
-            **{f"{ORG_JOINED_COLUMN_PREFIX}{c}": ORG_COLUMN_DESCRIPTIONS[c] for c in ORG_JOINED_COLUMNS},
+            **{
+                f"{ORG_JOINED_COLUMN_PREFIX}{c}": ORG_COLUMN_DESCRIPTIONS[c]
+                for c in ORG_JOINED_COLUMNS
+            },
         }
         return {
             "usage": {
@@ -11261,13 +11583,15 @@ class Setup:
             },
             "joined": {
                 "Alias": self.org_joined_data_set_id(d),
-                "Source": {"JoinInstruction": {
-                    "LeftOperand": "usage",
-                    "RightOperand": "org",
-                    "Type": "LEFT",
-                    "OnClause": f"{{user_arn}} = {{{ORG_JOINED_COLUMN_PREFIX}{ORG_JOIN_KEY_COLUMN}}}",
-                    "RightJoinKeyProperties": {"UniqueKey": True},
-                }},
+                "Source": {
+                    "JoinInstruction": {
+                        "LeftOperand": "usage",
+                        "RightOperand": "org",
+                        "Type": "LEFT",
+                        "OnClause": f"{{user_arn}} = {{{ORG_JOINED_COLUMN_PREFIX}{ORG_JOIN_KEY_COLUMN}}}",
+                        "RightJoinKeyProperties": {"UniqueKey": True},
+                    }
+                },
                 "DataTransforms": [
                     {"ProjectOperation": {"ProjectedColumns": kept_columns}},
                     *column_description_transforms(descriptions),
@@ -11280,30 +11604,47 @@ class Setup:
         present = []
         for d in self.selected:
             if self.get_or_none(
-                self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=f"quick-usage-{d}"
+                self.qs.describe_data_set,
+                "DataSet",
+                AwsAccountId=self.account,
+                DataSetId=f"quick-usage-{d}",
             ):
                 present.append(d)
             else:
-                print(f"  quick-usage-{d} doesn't exist, so it gets no org-joined dataset")
+                print(
+                    f"  quick-usage-{d} doesn't exist, so it gets no org-joined dataset"
+                )
         return present
 
     def ensure_org_joined_data_set(self, d):
         data_set_id = self.org_joined_data_set_id(d)
         exists = self.get_or_none(
-            self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=data_set_id
+            self.qs.describe_data_set,
+            "DataSet",
+            AwsAccountId=self.account,
+            DataSetId=data_set_id,
         )
         common = {
-            "AwsAccountId": self.account, "DataSetId": data_set_id,
-            "Name": f"Quick usage - {d} with organization", "ImportMode": "SPICE",
-            "PhysicalTableMap": {}, "LogicalTableMap": self.org_joined_logical_table_map(d),
+            "AwsAccountId": self.account,
+            "DataSetId": data_set_id,
+            "Name": f"Quick usage - {d} with organization",
+            "ImportMode": "SPICE",
+            "PhysicalTableMap": {},
+            "LogicalTableMap": self.org_joined_logical_table_map(d),
         }
         if exists:
             self.qs.update_data_set(**common)
         else:
-            permissions = [{"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}]
+            permissions = [
+                {"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}
+            ]
             self.qs.create_data_set(Permissions=permissions, **common)
-        print(f"  Dataset {data_set_id} {'updated' if exists else 'created'} (quick-usage-{d} + org columns)")
-        self.log.write(event="resource", org_joined_data_set=data_set_id, created=not exists)
+        print(
+            f"  Dataset {data_set_id} {'updated' if exists else 'created'} (quick-usage-{d} + org columns)"
+        )
+        self.log.write(
+            event="resource", org_joined_data_set=data_set_id, created=not exists
+        )
 
     def usage_refresh_schedule(self, d):
         """ScheduleFrequency of quick-usage-<d>'s refresh (the script's own one first), or None."""
@@ -11325,29 +11666,50 @@ class Setup:
         data_set_id = self.org_joined_data_set_id(d)
         usage = self.usage_refresh_schedule(d)
         if usage is None:
-            print(f"  {data_set_id}: no daily refresh, because quick-usage-{d} has no refresh schedule")
-            self.log.write(event="refresh_skipped", data_set=data_set_id, reason="usage dataset has no schedule")
+            print(
+                f"  {data_set_id}: no daily refresh, because quick-usage-{d} has no refresh schedule"
+            )
+            self.log.write(
+                event="refresh_skipped",
+                data_set=data_set_id,
+                reason="usage dataset has no schedule",
+            )
             return
         time_of_day = (
-            datetime.datetime.strptime(usage["TimeOfTheDay"], "%H:%M") + ORG_JOINED_REFRESH_DELAY
+            datetime.datetime.strptime(usage["TimeOfTheDay"], "%H:%M")
+            + ORG_JOINED_REFRESH_DELAY
         ).strftime("%H:%M")
         timezone = usage.get("Timezone", DEFAULT_TIMEZONE)
         schedule = {
             "ScheduleId": REFRESH_SCHEDULE_ID,
-            "ScheduleFrequency": {"Interval": "DAILY", "TimeOfTheDay": time_of_day, "Timezone": timezone},
+            "ScheduleFrequency": {
+                "Interval": "DAILY",
+                "TimeOfTheDay": time_of_day,
+                "Timezone": timezone,
+            },
             "RefreshType": "FULL_REFRESH",
         }
         try:
-            self.qs.create_refresh_schedule(AwsAccountId=self.account, DataSetId=data_set_id, Schedule=schedule)
+            self.qs.create_refresh_schedule(
+                AwsAccountId=self.account, DataSetId=data_set_id, Schedule=schedule
+            )
             outcome = "created"
         except ClientError as e:
             if e.response["Error"]["Code"] != "ResourceExistsException":
                 raise
-            self.qs.update_refresh_schedule(AwsAccountId=self.account, DataSetId=data_set_id, Schedule=schedule)
+            self.qs.update_refresh_schedule(
+                AwsAccountId=self.account, DataSetId=data_set_id, Schedule=schedule
+            )
             outcome = "updated"
-        print(f"  {data_set_id}: daily full refresh at {time_of_day} ({timezone}), {outcome}")
+        print(
+            f"  {data_set_id}: daily full refresh at {time_of_day} ({timezone}), {outcome}"
+        )
         self.log.write(
-            event="refresh_schedule", data_set=data_set_id, outcome=outcome, time=time_of_day, timezone=timezone
+            event="refresh_schedule",
+            data_set=data_set_id,
+            outcome=outcome,
+            time=time_of_day,
+            timezone=timezone,
         )
 
     def run_org_joined_data_sets(self):
@@ -11368,9 +11730,12 @@ class Setup:
             self.org_joined_data_set_id(d)
             for d in DASHBOARD_DATASETS
             if self.get_or_none(
-                self.qs.describe_data_set, "DataSet", AwsAccountId=self.account,
+                self.qs.describe_data_set,
+                "DataSet",
+                AwsAccountId=self.account,
                 DataSetId=self.org_joined_data_set_id(d),
-            ) is None
+            )
+            is None
         ]
         if missing:
             return (
@@ -11394,9 +11759,15 @@ class Setup:
         ]
 
     def run_org_dashboard(self, outdated):
-        arns = {d: self.data_set_arn(self.org_joined_data_set_id(d)) for d in DASHBOARD_DATASETS}
+        arns = {
+            d: self.data_set_arn(self.org_joined_data_set_id(d))
+            for d in DASHBOARD_DATASETS
+        }
         self.ensure_assets(
-            ORG_DASHBOARD, org_dashboard_definition(arns), outdated, resume_at_dashboard_step=False
+            ORG_DASHBOARD,
+            org_dashboard_definition(arns),
+            outdated,
+            resume_at_dashboard_step=False,
         )
 
     # undoes the org dataset
@@ -11406,7 +11777,9 @@ class Setup:
             self.org_joined_data_set_id(d)
             for d in DATASETS
             if self.get_or_none(
-                self.qs.describe_data_set, "DataSet", AwsAccountId=self.account,
+                self.qs.describe_data_set,
+                "DataSet",
+                AwsAccountId=self.account,
                 DataSetId=self.org_joined_data_set_id(d),
             )
         ]
@@ -11417,7 +11790,9 @@ class Setup:
             ("data_set", self.qs.describe_data_set, "DataSet", "DataSetId"),
             ("data_source", self.qs.describe_data_source, "DataSource", "DataSourceId"),
         ):
-            if self.get_or_none(describe, key, AwsAccountId=self.account, **{id_name: ORG_DATA_SET_ID}):
+            if self.get_or_none(
+                describe, key, AwsAccountId=self.account, **{id_name: ORG_DATA_SET_ID}
+            ):
                 todo[kind] = [ORG_DATA_SET_ID]
                 lines.append(f"Org {kind.replace('_', ' ')} {ORG_DATA_SET_ID}")
         role = self.org_role()
@@ -11428,7 +11803,9 @@ class Setup:
             # Only the script's own two files: anything else under the prefix isn't ours.
             keys = [
                 o["Key"]
-                for page in self.s3.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=f"{ORG_PREFIX}/")
+                for page in self.s3.get_paginator("list_objects_v2").paginate(
+                    Bucket=self.bucket, Prefix=f"{ORG_PREFIX}/"
+                )
                 for o in page.get("Contents", [])
                 if o["Key"] in (ORG_CSV_KEY, ORG_MANIFEST_KEY)
             ]
@@ -11449,14 +11826,32 @@ class Setup:
 
     def remove_org(self, state):
         for data_set_id in state.todo.get("joined_data_sets", []):
-            self.delete_if_present(self.qs.delete_data_set, AwsAccountId=self.account, DataSetId=data_set_id)
+            self.delete_if_present(
+                self.qs.delete_data_set,
+                AwsAccountId=self.account,
+                DataSetId=data_set_id,
+            )
         if "data_set" in state.todo:
-            self.delete_if_present(self.qs.delete_data_set, AwsAccountId=self.account, DataSetId=ORG_DATA_SET_ID)
+            self.delete_if_present(
+                self.qs.delete_data_set,
+                AwsAccountId=self.account,
+                DataSetId=ORG_DATA_SET_ID,
+            )
         if "data_source" in state.todo:
-            self.delete_if_present(self.qs.delete_data_source, AwsAccountId=self.account, DataSourceId=ORG_DATA_SET_ID)
+            self.delete_if_present(
+                self.qs.delete_data_source,
+                AwsAccountId=self.account,
+                DataSourceId=ORG_DATA_SET_ID,
+            )
         if "role" in state.todo:
             for fn, kwargs in (
-                (self.iam.delete_role_policy, {"RoleName": self.org_role_name(), "PolicyName": ORG_ROLE_POLICY_NAME}),
+                (
+                    self.iam.delete_role_policy,
+                    {
+                        "RoleName": self.org_role_name(),
+                        "PolicyName": ORG_ROLE_POLICY_NAME,
+                    },
+                ),
                 (self.iam.delete_role, {"RoleName": self.org_role_name()}),
             ):
                 try:
@@ -11471,7 +11866,9 @@ class Setup:
 
     # undoes the org dashboard from this script
     def find_org_dashboard_to_remove(self):
-        return self.find_assets_to_remove(ORG_DASHBOARD, "no org dashboard or analysis from this script")
+        return self.find_assets_to_remove(
+            ORG_DASHBOARD, "no org dashboard or analysis from this script"
+        )
 
     def plan_remove_org_dashboard(self, state):
         return [
@@ -11489,14 +11886,20 @@ ORG_SCRIPT_VERSION = "0.1.0"
 # Destroy removes only what this script creates, in this order: (name, key, what it undoes).
 TEARDOWN = [
     ("Delete the org dashboard and analysis", "org_dashboard", "the org dashboard"),
-    ("Delete the org dataset, its joined datasets, role and files", "org", "the org dataset"),
+    (
+        "Delete the org dataset, its joined datasets, role and files",
+        "org",
+        "the org dataset",
+    ),
 ]
 # If you keep one of these, the parts that depend on it are kept too, so what remains keeps working.
 TEARDOWN_NEEDS = {"org": ["org_dashboard"]}
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     p.add_argument(
         "--region",
         help="AWS region (default: your session's region, e.g. CloudShell's region)",
@@ -11516,7 +11919,9 @@ def parse_args():
         action="store_true",
         help="remove what this script created (asks before each removal)",
     )
-    p.add_argument("--dry-run", action="store_true", help="print the plan, change nothing")
+    p.add_argument(
+        "--dry-run", action="store_true", help="print the plan, change nothing"
+    )
     p.add_argument("--profile", help="AWS CLI profile, if you run outside CloudShell")
     p.add_argument(
         "--org-identity-store-id",
@@ -11571,9 +11976,16 @@ def main():
             f"Note: this profile's default region is {profile_region}; the script uses "
             f"{args.region} for every call."
         )
-    log.write(event="identity", profile=profile, profile_source=source, profile_region=profile_region)
+    log.write(
+        event="identity",
+        profile=profile,
+        profile_source=source,
+        profile_region=profile_region,
+    )
 
-    print("\nWorking out the settings (read-only; nothing is changed yet)...", flush=True)
+    print(
+        "\nWorking out the settings (read-only; nothing is changed yet)...", flush=True
+    )
     try:
         setup.bucket, bucket_source = setup.resolve_bucket()
         args.bucket = setup.bucket
@@ -11659,13 +12071,20 @@ def main():
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 1
         except KeyboardInterrupt:
-            print("\n\nInterrupted. Part of the current destroy step may already be done.")
+            print(
+                "\n\nInterrupted. Part of the current destroy step may already be done."
+            )
             log.write(event="run_interrupted", mode="destroy")
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 130
         except Exception as e:
             print(f"\nDestroy failed: {describe_error(e)}")
-            log.write(event="run_failed", mode="destroy", error=repr(e), trace=traceback.format_exc())
+            log.write(
+                event="run_failed",
+                mode="destroy",
+                error=repr(e),
+                trace=traceback.format_exc(),
+            )
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 2
         log.close()
@@ -11695,7 +12114,9 @@ def main():
         code = 130
     except Exception as e:
         print(f"\nThe org dataset failed: {describe_error(e)}")
-        log.write(event="run_failed", step="Org", error=repr(e), trace=traceback.format_exc())
+        log.write(
+            event="run_failed", step="Org", error=repr(e), trace=traceback.format_exc()
+        )
         print_rerun(log, args)
         code = 2
     log.close()
@@ -11707,7 +12128,9 @@ def run_destroy(setup, log, args):
     """Undo what this script created. Returns the exit code."""
     account = setup.account
     print("\n=== Destroy: remove what this script created ===")
-    print("Only things this script creates are removed, under their fixed names. Nothing has")
+    print(
+        "Only things this script creates are removed, under their fixed names. Nothing has"
+    )
     print("been deleted yet. This is what the script finds in this account:")
     found = {}
     for number, (name, key, undoes) in enumerate(TEARDOWN, start=1):
@@ -11719,10 +12142,15 @@ def run_destroy(setup, log, args):
             print(f"       {line}")
     log.write(
         event="destroy_inventory",
-        found={k: {"done": s.done, "unknown": s.unknown, "details": s.lines} for k, s in found.items()},
+        found={
+            k: {"done": s.done, "unknown": s.unknown, "details": s.lines}
+            for k, s in found.items()
+        },
     )
     if all(s.done for s in found.values()):
-        print("\nNothing from this script is left in this account. Nothing was changed.")
+        print(
+            "\nNothing from this script is left in this account. Nothing was changed."
+        )
         log.write(event="destroy_complete", kept=[])
         return 0
     if args.dry_run:
@@ -11732,7 +12160,9 @@ def run_destroy(setup, log, args):
                 for line in getattr(setup, f"plan_remove_{key}")(found[key]):
                     print(f"  {line}")
         return 0
-    print("\nEach removal asks for its own confirmation, and you can type SKIP to keep it.")
+    print(
+        "\nEach removal asks for its own confirmation, and you can type SKIP to keep it."
+    )
     ok = ask_until(
         log,
         0,
@@ -11747,7 +12177,9 @@ def run_destroy(setup, log, args):
     for number, (name, key, _) in enumerate(TEARDOWN, start=1):
         step = f"D{number}"
         print(f"\n=== Destroy {number}/{len(TEARDOWN)}: {name} ===")
-        state = getattr(setup, f"find_{key}_to_remove")()  # re-read just before changing anything
+        state = getattr(
+            setup, f"find_{key}_to_remove"
+        )()  # re-read just before changing anything
         for line in state.lines:
             print(f"  {line}")
         if state.done:
@@ -11759,7 +12191,13 @@ def run_destroy(setup, log, args):
             what = ", ".join(n for n, k, _ in TEARDOWN if k in blocked)
             print(f"  Kept: you chose to keep '{what}', which needs this.")
             kept.append(key)
-            log.write(event="destroy_step_kept", step=step, step_name=name, reason="dependency", needs=blocked)
+            log.write(
+                event="destroy_step_kept",
+                step=step,
+                step_name=name,
+                reason="dependency",
+                needs=blocked,
+            )
             continue
         for line in getattr(setup, f"plan_remove_{key}")(state):
             print(f"  {line}")
@@ -11774,10 +12212,17 @@ def run_destroy(setup, log, args):
         if answer == "skip":
             print("  Kept.")
             kept.append(key)
-            log.write(event="destroy_step_kept", step=step, step_name=name, reason="typed SKIP")
+            log.write(
+                event="destroy_step_kept",
+                step=step,
+                step_name=name,
+                reason="typed SKIP",
+            )
             continue
         if not answer:
-            print(f"\nStopped at destroy step {number}. Nothing in this step was deleted.")
+            print(
+                f"\nStopped at destroy step {number}. Nothing in this step was deleted."
+            )
             log.write(event="destroy_stopped", step=step)
             print(f"To continue, run:\n    {destroy_command(args)}")
             print("Anything already removed is detected and skipped.")
@@ -11792,7 +12237,11 @@ def run_destroy(setup, log, args):
         log.write(event="destroy_step_done", step=step, step_name=name)
     log.write(event="destroy_complete", kept=kept)
     if kept:
-        print("\nDone. You chose to keep: " + ", ".join(n for n, k, _ in TEARDOWN if k in kept) + ".")
+        print(
+            "\nDone. You chose to keep: "
+            + ", ".join(n for n, k, _ in TEARDOWN if k in kept)
+            + "."
+        )
         print(f"To remove them later, run:\n    {destroy_command(args)}")
     else:
         print("\nDone. Everything this script created has been removed.")
@@ -11800,7 +12249,10 @@ def run_destroy(setup, log, args):
     return 0
 
 
-ORG_REMOVAL_PHRASES = {"org_dashboard": "DELETE ORG DASHBOARD", "org": "DELETE ORG DATASET"}
+ORG_REMOVAL_PHRASES = {
+    "org_dashboard": "DELETE ORG DASHBOARD",
+    "org": "DELETE ORG DATASET",
+}
 
 
 def destroy_command(args):
@@ -11836,7 +12288,9 @@ def print_rerun(log, args):
     command = rerun_command(args)
     print("\nTo continue, fix the problem above, then run:")
     print(f"    {command}")
-    print("Finished parts are detected and kept, so this is safe to run more than once.")
+    print(
+        "Finished parts are detected and kept, so this is safe to run more than once."
+    )
     log.write(event="resume_hint", step="Org", command=command)
 
 

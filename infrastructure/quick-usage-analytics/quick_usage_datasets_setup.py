@@ -33,6 +33,7 @@ account ID, then asks again before each removal (type SKIP to keep something). I
 removes things this script creates, under their fixed names, and only deletes the bucket
 if the script created it and nothing else is in it. Safe to re-run.
 """
+
 import argparse
 import copy
 import datetime
@@ -55,9 +56,15 @@ SCRIPT_VERSION = "0.9.0"
 # throttling on large accounts; explicit timeouts (botocore's 60s read default, 10s connect)
 # keep a dead connection from hanging forever. Progress lines show which call is running.
 # Errors worth waiting out while polling for eventually consistent changes.
-TRANSIENT_ERROR_CODES = {"ThrottlingException", "InternalFailureException", "ServiceUnavailableException"}
+TRANSIENT_ERROR_CODES = {
+    "ThrottlingException",
+    "InternalFailureException",
+    "ServiceUnavailableException",
+}
 BOTO_CONFIG = Config(
-    retries={"mode": "standard", "max_attempts": 10}, connect_timeout=10, read_timeout=60
+    retries={"mode": "standard", "max_attempts": 10},
+    connect_timeout=10,
+    read_timeout=60,
 )
 DEFAULT_REFRESH_TIME = "02:00"
 DEFAULT_TIMEZONE = "UTC"
@@ -177,7 +184,9 @@ def _common_descriptions(camel, event="the event happened", unit="milliseconds")
         "For dates and times, use event_datetime.",
         ("logType" if camel else "log_type"): "Log type of the record. "
         "It is the same on every row of this dataset.",
-        ("accountId" if camel else "account_id"): "AWS account ID of your Quick account.",
+        (
+            "accountId" if camel else "account_id"
+        ): "AWS account ID of your Quick account.",
         EVENT_DATETIME_COLUMN: f"When {event}, as a UTC date and time.",
     }
 
@@ -239,7 +248,9 @@ COLUMN_DESCRIPTIONS = {
         "rating": "Rating the user gave, when there is one.",
     },
     "agent_hours": {
-        **_common_descriptions(camel=True, event="the usage was reported", unit="seconds"),
+        **_common_descriptions(
+            camel=True, event="the usage was reported", unit="seconds"
+        ),
         "user_arn": "Quick user ARN of the person whose work used the agent hours. "
         "It includes the Quick user name.",
         "user_id": _USER_ID,
@@ -477,10 +488,14 @@ class Setup:
         self.log = log
         self.s3 = session.client("s3", region_name=self.region, config=BOTO_CONFIG)
         self.logs = session.client("logs", region_name=self.region, config=BOTO_CONFIG)
-        self.qs = session.client("quicksight", region_name=self.region, config=BOTO_CONFIG)
+        self.qs = session.client(
+            "quicksight", region_name=self.region, config=BOTO_CONFIG
+        )
         self.iam = session.client("iam", config=BOTO_CONFIG)
         self.glue = session.client("glue", region_name=self.region, config=BOTO_CONFIG)
-        self.athena = session.client("athena", region_name=self.region, config=BOTO_CONFIG)
+        self.athena = session.client(
+            "athena", region_name=self.region, config=BOTO_CONFIG
+        )
         self.partition = identity["Arn"].split(":")[1]
         self.resource_arn = (
             f"arn:{self.partition}:quicksight:{self.region}:"
@@ -516,7 +531,11 @@ class Setup:
         try:
             return fn(**kwargs)[key]
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("ResourceNotFoundException", "NoSuchKey", "404"):
+            if e.response["Error"]["Code"] in (
+                "ResourceNotFoundException",
+                "NoSuchKey",
+                "404",
+            ):
                 return None
             raise
 
@@ -525,14 +544,18 @@ class Setup:
 
     def manifest(self, d):
         return {
-            "fileLocations": [{"URIPrefixes": [f"s3://{self.bucket}/{self.prefix(d)}/"]}],
+            "fileLocations": [
+                {"URIPrefixes": [f"s3://{self.bucket}/{self.prefix(d)}/"]}
+            ],
             "globalUploadSettings": {"format": "JSON"},
         }
 
     def manifest_current(self, d):
         """True if our manifest for d exists in the bucket with the expected content."""
         try:
-            body = self.s3.get_object(Bucket=self.bucket, Key=self.manifest_key(d))["Body"].read()
+            body = self.s3.get_object(Bucket=self.bucket, Key=self.manifest_key(d))[
+                "Body"
+            ].read()
         except ClientError as e:
             if e.response["Error"]["Code"] in ("NoSuchKey", "404", "NoSuchBucket"):
                 return False
@@ -550,22 +573,33 @@ class Setup:
         In accounts with thousands of users that takes a while, so it prints progress.
         """
         print("  Looking for Quick admins to own the datasets. To find them,")
-        print("  the script reads every Quick user in the account (100 per call). In accounts")
-        print("  with many users this takes a minute or more. To skip it next time, pass")
+        print(
+            "  the script reads every Quick user in the account (100 per call). In accounts"
+        )
+        print(
+            "  with many users this takes a minute or more. To skip it next time, pass"
+        )
         print("  --quick-admin-arn with the owner's Quick user ARN.", flush=True)
         found, seen = [], 0
         try:
             for page in self.qs.get_paginator("list_users").paginate(
-                AwsAccountId=self.account, Namespace="default", PaginationConfig={"PageSize": 100}
+                AwsAccountId=self.account,
+                Namespace="default",
+                PaginationConfig={"PageSize": 100},
             ):
                 for u in page["UserList"]:
                     if u.get("Role", "").startswith("ADMIN") and u.get("Active", True):
                         found.append((u["Arn"], u["UserName"], u["Role"]))
                 seen += len(page["UserList"])
-                progress(f"    {seen} Quick users checked, {len(found)} admins found so far...")
+                progress(
+                    f"    {seen} Quick users checked, {len(found)} admins found so far..."
+                )
         except ClientError as e:
             self.raise_quick_error(e)
-        progress(f"    Done: {seen} Quick users checked, {len(found)} admins found.", done=True)
+        progress(
+            f"    Done: {seen} Quick users checked, {len(found)} admins found.",
+            done=True,
+        )
         self.log.write(event="admin_scan", users_checked=seen, admins_found=len(found))
         return found
 
@@ -604,9 +638,9 @@ class Setup:
         if not namespace or not user_name:
             return None
         try:
-            return self.quick_call(self.qs.describe_user, Namespace=namespace, UserName=user_name)[
-                "User"
-            ]
+            return self.quick_call(
+                self.qs.describe_user, Namespace=namespace, UserName=user_name
+            )["User"]
         except ClientError as e:
             if e.response["Error"]["Code"] in (
                 "ResourceNotFoundException",
@@ -643,12 +677,19 @@ class Setup:
         if arn:
             marker = ":user/"
             if marker not in arn:
-                raise Abort(f"--quick-admin-arn does not look like a Quick user ARN: {arn}")
+                raise Abort(
+                    f"--quick-admin-arn does not look like a Quick user ARN: {arn}"
+                )
             namespace, _, user_name = arn.split(marker, 1)[1].partition("/")
-            print(f"  Checking the Quick user in --quick-admin-arn ({user_name})...", flush=True)
+            print(
+                f"  Checking the Quick user in --quick-admin-arn ({user_name})...",
+                flush=True,
+            )
             user = self.describe_quick_user(namespace, user_name)
             if not user:
-                raise Abort(f"No Quick user matches --quick-admin-arn {arn} in this account.")
+                raise Abort(
+                    f"No Quick user matches --quick-admin-arn {arn} in this account."
+                )
             if not user.get("Active", True):
                 raise Abort(
                     f"The Quick user in --quick-admin-arn ({user_name}) isn't active yet, so it "
@@ -677,7 +718,11 @@ class Setup:
         try:
             name = self.caller_quick_user_name(caller_arn)
             user = self.describe_quick_user("default", name) if name else None
-            if user and user.get("Role", "").startswith("ADMIN") and user.get("Active", True):
+            if (
+                user
+                and user.get("Role", "").startswith("ADMIN")
+                and user.get("Active", True)
+            ):
                 return user["Arn"], user["Role"], "that's you"
         except Exception as e:  # noqa: BLE001 - a failed lookup never stops the run
             self.log.write(event="caller_admin_check_failed", error=repr(e))
@@ -686,11 +731,19 @@ class Setup:
     def ask_admin(self):
         """Ask for the dataset owner by Quick user name or ARN; SEARCH lists every admin."""
         print("\nWhich Quick admin should own the datasets?")
-        print("  Type the admin's Quick user name or Quick user ARN. You can find user names")
-        print("  in Quick under Manage account > Manage users. In Identity Center accounts the")
+        print(
+            "  Type the admin's Quick user name or Quick user ARN. You can find user names"
+        )
+        print(
+            "  in Quick under Manage account > Manage users. In Identity Center accounts the"
+        )
         print("  user name is usually the person's email.")
-        print(f"  Or type {SEARCH_WORD} to have the script find the admins for you. This reads")
-        print("  every Quick user in the account, so it can take several minutes depending on")
+        print(
+            f"  Or type {SEARCH_WORD} to have the script find the admins for you. This reads"
+        )
+        print(
+            "  every Quick user in the account, so it can take several minutes depending on"
+        )
         print("  how many Quick users you have.")
         print(f"  (Type '{STOP_WORD}' to stop.)")
         while True:
@@ -711,17 +764,23 @@ class Setup:
             namespace, user_name = self.parse_quick_user(answer)
             user = self.describe_quick_user(namespace, user_name)
             if not user:
-                print(f"  No Quick user named '{user_name}' in this account. Try again, or "
-                      f"type {SEARCH_WORD}.")
+                print(
+                    f"  No Quick user named '{user_name}' in this account. Try again, or "
+                    f"type {SEARCH_WORD}."
+                )
                 continue
             role = user.get("Role", "")
             if not role.startswith("ADMIN"):
-                print(f"  {user_name} is a Quick {role or 'user'}, not an admin. Type an "
-                      f"admin, or {SEARCH_WORD}.")
+                print(
+                    f"  {user_name} is a Quick {role or 'user'}, not an admin. Type an "
+                    f"admin, or {SEARCH_WORD}."
+                )
                 continue
             if not user.get("Active", True):
-                print(f"  {user_name} hasn't signed in to Quick yet, so it can't own the "
-                      f"datasets. Type another admin, or {SEARCH_WORD}.")
+                print(
+                    f"  {user_name} hasn't signed in to Quick yet, so it can't own the "
+                    f"datasets. Type another admin, or {SEARCH_WORD}."
+                )
                 continue
             self.log.write(event="admin_typed", arn=user["Arn"], typed=answer)
             return user["Arn"], role, "typed by you"
@@ -741,7 +800,9 @@ class Setup:
         return (*self.choose_admin(admins), "chosen by you")
 
     def choose_admin(self, admins):
-        print("\nThis Quick account has several admins. Which one should own the datasets?")
+        print(
+            "\nThis Quick account has several admins. Which one should own the datasets?"
+        )
         for i, (_arn, user_name, role) in enumerate(admins, start=1):
             print(f"  {i}. {user_name} ({role})")
         print(f"  (Type a number, or '{STOP_WORD}' to stop.)")
@@ -785,7 +846,9 @@ class Setup:
 
     def bucket_state(self):
         try:
-            return "exists in this account" if self.bucket_exists() else "will be created"
+            return (
+                "exists in this account" if self.bucket_exists() else "will be created"
+            )
         except ClientError as e:
             return f"can't check: {e.response['Error']['Code']}"
 
@@ -805,7 +868,9 @@ class Setup:
         status = sub["AccountInfo"].get("AccountSubscriptionStatus")
         edition = sub["AccountInfo"].get("Edition")
         auth_type = sub["AccountInfo"].get("AuthenticationType")
-        print(f"  Quick subscription status: {status}, edition: {edition}, sign-in: {auth_type}")
+        print(
+            f"  Quick subscription status: {status}, edition: {edition}, sign-in: {auth_type}"
+        )
         if status != "ACCOUNT_CREATED":
             raise Abort(f"Quick subscription is {status}; it must be ACCOUNT_CREATED.")
         if edition and "ENTERPRISE" not in edition and "PROFESSIONAL" not in edition:
@@ -822,7 +887,8 @@ class Setup:
         conflicts = {
             lt: n
             for lt, n in existing.items()
-            if lt in self.selected_log_types() and n != self.source_name(self.dataset_of(lt))
+            if lt in self.selected_log_types()
+            and n != self.source_name(self.dataset_of(lt))
         }
         if conflicts:
             raise Abort(
@@ -842,9 +908,9 @@ class Setup:
         try:
             offered = {
                 t.get("logType")
-                for page in self.logs.get_paginator("describe_configuration_templates").paginate(
-                    service="quicksight", deliveryDestinationTypes=["S3"]
-                )
+                for page in self.logs.get_paginator(
+                    "describe_configuration_templates"
+                ).paginate(service="quicksight", deliveryDestinationTypes=["S3"])
                 for t in page.get("configurationTemplates", [])
             }
         except ClientError as e:
@@ -852,10 +918,16 @@ class Setup:
                 "  Couldn't list the log types Quick offers here "
                 f"({e.response['Error']['Code']}); step 3 will tell if one is missing."
             )
-            self.log.write(event="log_types_unchecked", error=e.response["Error"]["Code"])
+            self.log.write(
+                event="log_types_unchecked", error=e.response["Error"]["Code"]
+            )
             return
         missing = sorted(self.selected_log_types() - offered)
-        self.log.write(event="log_types_offered", offered=sorted(t for t in offered if t), missing=missing)
+        self.log.write(
+            event="log_types_offered",
+            offered=sorted(t for t in offered if t),
+            missing=missing,
+        )
         if missing:
             print(
                 f"  WARNING: CloudWatch Logs doesn't list {', '.join(missing)} for Quick in "
@@ -863,7 +935,9 @@ class Setup:
                 "region yet. If so, step 3 stops\n           before anything is delivered."
             )
         else:
-            print(f"  Usage log types offered in {self.region}: {', '.join(sorted(self.selected_log_types()))}")
+            print(
+                f"  Usage log types offered in {self.region}: {', '.join(sorted(self.selected_log_types()))}"
+            )
 
     def dataset_of(self, log_type):
         return next(d for d, (lt, _) in DATASETS.items() if lt == log_type)
@@ -891,15 +965,21 @@ class Setup:
                 "missing and will be applied."
             )
             return StepState(False, lines)
-        if self.bucket_is_ours() and not self.has_tls_only(self.bucket_policy_document()):
-            lines.append("Its TLS-only bucket policy statement is missing and will be added.")
+        if self.bucket_is_ours() and not self.has_tls_only(
+            self.bucket_policy_document()
+        ):
+            lines.append(
+                "Its TLS-only bucket policy statement is missing and will be added."
+            )
             return StepState(False, lines)
         return StepState(True, lines)
 
     def bucket_is_ours(self):
         """True if the bucket carries the tag this script sets when it creates the bucket."""
         try:
-            return BUCKET_TAG in self.s3.get_bucket_tagging(Bucket=self.bucket)["TagSet"]
+            return (
+                BUCKET_TAG in self.s3.get_bucket_tagging(Bucket=self.bucket)["TagSet"]
+            )
         except ClientError as e:
             if e.response["Error"]["Code"] in ("NoSuchTagSet", "NoSuchTagSetError"):
                 return False
@@ -939,7 +1019,9 @@ class Setup:
         """True if some Deny statement refuses requests made without TLS."""
         statements = policy.get("Statement") or []
         for st in statements if isinstance(statements, list) else [statements]:
-            secure = (st.get("Condition") or {}).get("Bool", {}).get("aws:SecureTransport")
+            secure = (
+                (st.get("Condition") or {}).get("Bool", {}).get("aws:SecureTransport")
+            )
             if st.get("Effect") == "Deny" and str(secure).lower() == "false":
                 return True
         return False
@@ -954,15 +1036,21 @@ class Setup:
         policy = {"Version": policy.get("Version", "2012-10-17"), **policy}
         policy["Statement"] = statements + [self.tls_only_statement()]
         self.s3.put_bucket_policy(Bucket=self.bucket, Policy=json.dumps(policy))
-        print(f"  Bucket policy: statement {TLS_ONLY_SID} added (requests without TLS are refused)")
-        self.log.write(event="resource", bucket_policy_statement=TLS_ONLY_SID, bucket=self.bucket)
+        print(
+            f"  Bucket policy: statement {TLS_ONLY_SID} added (requests without TLS are refused)"
+        )
+        self.log.write(
+            event="resource", bucket_policy_statement=TLS_ONLY_SID, bucket=self.bucket
+        )
 
     def our_lifecycle_present(self):
         """True if every prefix we expire is already covered by an enabled expiration rule with
         the retention we want. Comparing the day count too means a changed --retention-days on an
         owned bucket is detected and re-applied, not silently ignored."""
         try:
-            rules = self.s3.get_bucket_lifecycle_configuration(Bucket=self.bucket).get("Rules", [])
+            rules = self.s3.get_bucket_lifecycle_configuration(Bucket=self.bucket).get(
+                "Rules", []
+            )
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchLifecycleConfiguration":
                 return False
@@ -985,12 +1073,16 @@ class Setup:
         retention instead of resetting it to the default.
         """
         try:
-            rules = self.s3.get_bucket_lifecycle_configuration(Bucket=self.bucket).get("Rules", [])
+            rules = self.s3.get_bucket_lifecycle_configuration(Bucket=self.bucket).get(
+                "Rules", []
+            )
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchLifecycleConfiguration":
                 return None
             raise
-        want_prefixes = {f"{self.prefix(d)}/" for d in DATASETS} | {f"{ATHENA_RESULTS_PREFIX}/"}
+        want_prefixes = {f"{self.prefix(d)}/" for d in DATASETS} | {
+            f"{ATHENA_RESULTS_PREFIX}/"
+        }
         days = [
             r["Expiration"]["Days"]
             for r in rules
@@ -1003,7 +1095,9 @@ class Setup:
     def bucket_warnings(self):
         """Settings on an existing bucket that the script doesn't change but you should know about."""
         warnings = []
-        location = self.s3.get_bucket_location(Bucket=self.bucket).get("LocationConstraint")
+        location = self.s3.get_bucket_location(Bucket=self.bucket).get(
+            "LocationConstraint"
+        )
         location = location or "us-east-1"
         if location != self.region:
             warnings.append(
@@ -1022,7 +1116,9 @@ class Setup:
         except ClientError as e:
             if e.response["Error"]["Code"] != "NoSuchPublicAccessBlockConfiguration":
                 raise
-            warnings.append("This bucket has no Block Public Access settings. Turn them on.")
+            warnings.append(
+                "This bucket has no Block Public Access settings. Turn them on."
+            )
         try:
             rules = self.s3.get_bucket_encryption(Bucket=self.bucket)[
                 "ServerSideEncryptionConfiguration"
@@ -1034,7 +1130,10 @@ class Setup:
                     "to that KMS key; this script hasn't been tested with KMS buckets."
                 )
         except ClientError as e:
-            if e.response["Error"]["Code"] != "ServerSideEncryptionConfigurationNotFoundError":
+            if (
+                e.response["Error"]["Code"]
+                != "ServerSideEncryptionConfigurationNotFoundError"
+            ):
                 raise
         if not self.bucket_is_ours():
             policy = self.readable_bucket_policy()
@@ -1058,13 +1157,17 @@ class Setup:
                     "day expiration on the usage logs and Athena results (manifests and setup logs "
                     "are kept). Nothing else is changed."
                 )
-            elif self.bucket_is_ours() and not self.has_tls_only(self.bucket_policy_document()):
+            elif self.bucket_is_ours() and not self.has_tls_only(
+                self.bucket_policy_document()
+            ):
                 lines.append(
                     f"Use existing bucket s3://{self.bucket}, and add a bucket policy statement "
                     "that refuses requests made without TLS. Nothing else is changed."
                 )
             else:
-                lines.append(f"Use existing bucket s3://{self.bucket}. Settings are not changed.")
+                lines.append(
+                    f"Use existing bucket s3://{self.bucket}. Settings are not changed."
+                )
         else:
             lines += [
                 f"Create bucket s3://{self.bucket} in {self.region} (if it does not exist)",
@@ -1116,21 +1219,25 @@ class Setup:
         every existing rule that isn't ours (by the OUR_RULE_ID_PREFIX id) and add ours back.
         """
         try:
-            existing = self.s3.get_bucket_lifecycle_configuration(Bucket=self.bucket).get(
-                "Rules", []
-            )
+            existing = self.s3.get_bucket_lifecycle_configuration(
+                Bucket=self.bucket
+            ).get("Rules", [])
         except ClientError as e:
             if e.response["Error"]["Code"] != "NoSuchLifecycleConfiguration":
                 raise
             existing = []
-        foreign = [r for r in existing if not r.get("ID", "").startswith(OUR_RULE_ID_PREFIX)]
+        foreign = [
+            r for r in existing if not r.get("ID", "").startswith(OUR_RULE_ID_PREFIX)
+        ]
         return {"Rules": foreign + self.bucket_lifecycle()["Rules"]}
 
     def run_bucket(self, state=None):
         if not self.bucket_exists():
             kwargs = {"Bucket": self.bucket, "ObjectOwnership": "BucketOwnerEnforced"}
             if self.region != "us-east-1":
-                kwargs["CreateBucketConfiguration"] = {"LocationConstraint": self.region}
+                kwargs["CreateBucketConfiguration"] = {
+                    "LocationConstraint": self.region
+                }
             self.s3.create_bucket(**kwargs)
             self.s3.put_public_access_block(
                 Bucket=self.bucket,
@@ -1144,10 +1251,18 @@ class Setup:
             self.s3.put_bucket_encryption(
                 Bucket=self.bucket,
                 ServerSideEncryptionConfiguration={
-                    "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+                    "Rules": [
+                        {
+                            "ApplyServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
                 },
             )
-            self.s3.put_bucket_tagging(Bucket=self.bucket, Tagging={"TagSet": [BUCKET_TAG]})
+            self.s3.put_bucket_tagging(
+                Bucket=self.bucket, Tagging={"TagSet": [BUCKET_TAG]}
+            )
             print(f"  Created s3://{self.bucket}")
             self.log.write(event="resource", bucket=self.bucket)
         else:
@@ -1163,7 +1278,9 @@ class Setup:
                 f"  Usage logs and Athena query results expire after {self.retention_days()} days; "
                 "manifests and setup logs are kept."
             )
-            self.log.write(event="resource", bucket_lifecycle_days=self.retention_days())
+            self.log.write(
+                event="resource", bucket_lifecycle_days=self.retention_days()
+            )
             self.ensure_tls_only()
 
     # ---------- deliveries step ----------
@@ -1184,7 +1301,9 @@ class Setup:
         """Parts of d's delivery that are missing. Stops if an existing part points elsewhere."""
         name, log_type = self.source_name(d), DATASETS[d][0]
         missing = []
-        src = self.get_or_none(self.logs.get_delivery_source, "deliverySource", name=name)
+        src = self.get_or_none(
+            self.logs.get_delivery_source, "deliverySource", name=name
+        )
         if src is None:
             missing.append("source")
         elif src.get("logType") != log_type or self.resource_arn not in src.get(
@@ -1202,7 +1321,9 @@ class Setup:
         if dest is None:
             missing.append("destination")
         else:
-            target = dest["deliveryDestinationConfiguration"]["destinationResourceArn"].rstrip("/")
+            target = dest["deliveryDestinationConfiguration"][
+                "destinationResourceArn"
+            ].rstrip("/")
             if target != self.expected_destination(d):
                 raise Abort(
                     f"Delivery destination {name} already sends {d} logs to {target},\n  not to "
@@ -1222,7 +1343,9 @@ class Setup:
                 todo[d] = missing
                 lines.append(f"{d}: not set up yet (missing: {', '.join(missing)})")
             else:
-                lines.append(f"{d}: delivery to s3://{self.bucket}/{self.prefix(d)}/ already set up")
+                lines.append(
+                    f"{d}: delivery to s3://{self.bucket}/{self.prefix(d)}/ already set up"
+                )
         return StepState(not todo, lines, todo)
 
     def plan_deliveries(self):
@@ -1236,7 +1359,9 @@ class Setup:
                 f"- {d}: delivery source {self.source_name(d)} ({lt}, {self.resource_arn})",
                 f"    -> destination s3://{self.bucket}/{self.prefix(d)}/ ({OUTPUT_FORMAT})",
             ]
-        lines += ["NOTE: " + IDENTITY_NOTE[0]] + [f"      {line}" for line in IDENTITY_NOTE[1:]]
+        lines += ["NOTE: " + IDENTITY_NOTE[0]] + [
+            f"      {line}" for line in IDENTITY_NOTE[1:]
+        ]
         lines += ["      Restrict who can read the bucket."]
         lines += [
             "CloudWatch Logs adds a write statement for delivery.logs.amazonaws.com to the bucket",
@@ -1248,7 +1373,9 @@ class Setup:
         for d in state.todo if state else self.selected:
             lt = DATASETS[d][0]
             name = self.source_name(d)
-            self.logs.put_delivery_source(name=name, resourceArn=self.resource_arn, logType=lt)
+            self.logs.put_delivery_source(
+                name=name, resourceArn=self.resource_arn, logType=lt
+            )
             dest = self.logs.put_delivery_destination(
                 name=name,
                 outputFormat=OUTPUT_FORMAT,
@@ -1291,7 +1418,9 @@ class Setup:
             Bucket=self.bucket, Prefix=LOG_PREFIX + "/"
         ):
             for obj in page.get("Contents", []):
-                body = self.s3.get_object(Bucket=self.bucket, Key=obj["Key"])["Body"].read()
+                body = self.s3.get_object(Bucket=self.bucket, Key=obj["Key"])[
+                    "Body"
+                ].read()
                 for line in body.decode("utf-8", "replace").splitlines():
                     try:
                         entries.append(json.loads(line))
@@ -1308,7 +1437,8 @@ class Setup:
         found = [
             e
             for e in self.earlier_log_entries()
-            if e.get("event") == "deny_default" and e.get("outcome") in ("denied", "already", "restored")
+            if e.get("event") == "deny_default"
+            and e.get("outcome") in ("denied", "already", "restored")
         ]
         if not found:
             return None
@@ -1324,14 +1454,28 @@ class Setup:
             "usage logs. With default access set to Deny, authors only reach the AWS data you",
             "assign to them.",
             "",
-            bold("WHAT THIS CHANGES. It applies to your WHOLE Quick account, not just this bucket:"),
-            bold("  - Every Quick user and group without an IAM policy assignment loses access to ALL"),
-            bold("    AWS data through Quick (Amazon S3, Athena, Redshift, RDS), including data they"),
-            bold("    use today. They can't create new data sources on those services."),
-            bold("  - That includes admins and you. The script keeps the dataset owner able to read"),
+            bold(
+                "WHAT THIS CHANGES. It applies to your WHOLE Quick account, not just this bucket:"
+            ),
+            bold(
+                "  - Every Quick user and group without an IAM policy assignment loses access to ALL"
+            ),
+            bold(
+                "    AWS data through Quick (Amazon S3, Athena, Redshift, RDS), including data they"
+            ),
+            bold(
+                "    use today. They can't create new data sources on those services."
+            ),
+            bold(
+                "  - That includes admins and you. The script keeps the dataset owner able to read"
+            ),
             bold("    THIS bucket's usage logs (see below), but nothing else."),
-            bold("  - To give someone access back, assign them an IAM policy in Quick:"),
-            bold("    Manage account > Security & permissions > IAM policy assignments."),
+            bold(
+                "  - To give someone access back, assign them an IAM policy in Quick:"
+            ),
+            bold(
+                "    Manage account > Security & permissions > IAM policy assignments."
+            ),
             "  Check with your Quick authors before you change it. You can switch it back to Allow",
             "  at any time on the same page, or by running this script with --destroy.",
             "",
@@ -1359,7 +1503,11 @@ class Setup:
         record = self.deny_default_record()
         if not (record and record[0] in ("denied", "already")):
             return StepState(False, ["No earlier run recorded default access as Deny."])
-        how = "you set it during setup" if record[0] == "denied" else "it was already Deny"
+        how = (
+            "you set it during setup"
+            if record[0] == "denied"
+            else "it was already Deny"
+        )
         lines = [
             f"An earlier run recorded on {record[1][:10]} that default access is Deny ({how}).",
             "This setting is managed in the Quick console, so the script relies on that record.",
@@ -1368,7 +1516,9 @@ class Setup:
         return StepState(True, lines)
 
     def run_deny_default(self, state=None):
-        outcome = "already" if getattr(self, "confirmed_as", True) == "already" else "denied"
+        outcome = (
+            "already" if getattr(self, "confirmed_as", True) == "already" else "denied"
+        )
         earlier = self.deny_default_record()
         if outcome == "already" and earlier and earlier[0] == "denied":
             # An earlier setup run had the customer switch it; keep that, so destroy offers to undo it.
@@ -1377,10 +1527,16 @@ class Setup:
         elif outcome == "denied":
             print("  Recorded: you set default access to Deny.")
         else:
-            print("  Recorded: default access was already Deny. Destroy won't change it.")
+            print(
+                "  Recorded: default access was already Deny. Destroy won't change it."
+            )
         self.log.write(event="deny_default", outcome=outcome)
-        print("  Quick users without an IAM policy assignment now can't reach AWS data through Quick.")
-        print(f"  Step {DATASETS_STEP} sets up read access to this bucket's logs for the datasets and their owner.")
+        print(
+            "  Quick users without an IAM policy assignment now can't reach AWS data through Quick."
+        )
+        print(
+            f"  Step {DATASETS_STEP} sets up read access to this bucket's logs for the datasets and their owner."
+        )
 
     # With default access Deny, a data source needs its own read access to the bucket.
     # Step 6 therefore creates each data source with S3Parameters.RoleArn set to a role that
@@ -1484,7 +1640,9 @@ class Setup:
 
     def owner_identity(self):
         """(namespace, user name) of the dataset owner, from its Quick user ARN."""
-        namespace, _, user = self.args.quick_admin_arn.split(":user/", 1)[1].partition("/")
+        namespace, _, user = self.args.quick_admin_arn.split(":user/", 1)[1].partition(
+            "/"
+        )
         return namespace, user
 
     def owner_policy_document(self):
@@ -1505,7 +1663,12 @@ class Setup:
                     "Resource": [bucket_arn],
                 },
                 # Quick's S3 checks list bucket names; this shows names only, no contents.
-                {"Sid": "ListBucketNames", "Effect": "Allow", "Action": ["s3:ListAllMyBuckets"], "Resource": "*"},
+                {
+                    "Sid": "ListBucketNames",
+                    "Effect": "Allow",
+                    "Action": ["s3:ListAllMyBuckets"],
+                    "Resource": "*",
+                },
             ],
         }
 
@@ -1518,10 +1681,16 @@ class Setup:
         bucket_arn = f"arn:{self.partition}:s3:::{self.bucket}"
         region, account = self.region, self.account
         wg = f"arn:{self.partition}:athena:{region}:{account}:workgroup/{ATHENA_WORKGROUP}"
-        catalog = f"arn:{self.partition}:athena:{region}:{account}:datacatalog/AwsDataCatalog"
+        catalog = (
+            f"arn:{self.partition}:athena:{region}:{account}:datacatalog/AwsDataCatalog"
+        )
         glue_cat = f"arn:{self.partition}:glue:{region}:{account}:catalog"
-        glue_db = f"arn:{self.partition}:glue:{region}:{account}:database/{GLUE_DATABASE}"
-        glue_tables = f"arn:{self.partition}:glue:{region}:{account}:table/{GLUE_DATABASE}/*"
+        glue_db = (
+            f"arn:{self.partition}:glue:{region}:{account}:database/{GLUE_DATABASE}"
+        )
+        glue_tables = (
+            f"arn:{self.partition}:glue:{region}:{account}:table/{GLUE_DATABASE}/*"
+        )
         return {
             "Version": "2012-10-17",
             "Statement": [
@@ -1537,7 +1706,12 @@ class Setup:
                     "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
                     "Resource": [bucket_arn],
                 },
-                {"Sid": "ListBucketNames", "Effect": "Allow", "Action": ["s3:ListAllMyBuckets"], "Resource": "*"},
+                {
+                    "Sid": "ListBucketNames",
+                    "Effect": "Allow",
+                    "Action": ["s3:ListAllMyBuckets"],
+                    "Resource": "*",
+                },
                 {
                     "Sid": "WriteAthenaResults",
                     "Effect": "Allow",
@@ -1614,7 +1788,9 @@ class Setup:
         if role is None:
             missing.append("data source role")
         elif not self.is_our_data_source_role(role):
-            self.log.write(event="data_source_role_mismatch", role=self.data_source_role_name())
+            self.log.write(
+                event="data_source_role_mismatch", role=self.data_source_role_name()
+            )
             raise Abort(
                 f"IAM role {self.data_source_role_name()} already exists but can be assumed by "
                 "something other than Quick.\n  The script won't change it. Delete or rename it, "
@@ -1622,9 +1798,13 @@ class Setup:
             )
         else:
             if not self.data_source_role_trust_current(role):
-                missing.append("data source role trust")  # role without sts:TagSession: add it
+                missing.append(
+                    "data source role trust"
+                )  # role without sts:TagSession: add it
             if not self.data_source_role_policy_current():
-                missing.append("data source role policy")  # add/refresh Athena+Glue grants
+                missing.append(
+                    "data source role policy"
+                )  # add/refresh Athena+Glue grants
         namespace, user = self.owner_identity()
         assignment = self.owner_assignment(namespace)
         if assignment is None:
@@ -1671,7 +1851,9 @@ class Setup:
                 Description="Lets the Quick usage dataset owner read the usage logs while "
                 "Quick default resource access is Deny. Created by quick_usage_datasets_setup.py.",
             )
-            print(f"  IAM policy {self.owner_policy_name()} created (read-only, this bucket's usage logs)")
+            print(
+                f"  IAM policy {self.owner_policy_name()} created (read-only, this bucket's usage logs)"
+            )
             self.log.write(event="resource", iam_policy=self.owner_policy_arn())
         if "data source role" in missing:
             self.iam.create_role(
@@ -1686,13 +1868,19 @@ class Setup:
                 PolicyName="QuickUsageLogsRead",
                 PolicyDocument=json.dumps(self.data_source_role_policy_document()),
             )
-            verb = "created" if "data source role" in missing else "given its read policy again"
+            verb = (
+                "created"
+                if "data source role" in missing
+                else "given its read policy again"
+            )
             print(
                 f"  IAM role {self.data_source_role_name()} {verb} (only Quick can use it; reads "
                 "this bucket's usage logs and runs Athena over them)"
             )
             self.log.write(event="resource", iam_role=self.data_source_role_arn())
-        if "data source role trust" in missing:  # add sts:TagSession so Athena can assume the role
+        if (
+            "data source role trust" in missing
+        ):  # add sts:TagSession so Athena can assume the role
             self.iam.update_assume_role_policy(
                 RoleName=self.data_source_role_name(),
                 PolicyDocument=json.dumps(self.data_source_role_trust()),
@@ -1701,7 +1889,10 @@ class Setup:
                 f"  IAM role {self.data_source_role_name()} trust updated so Quick can assume it "
                 "for Athena (added sts:TagSession)"
             )
-            self.log.write(event="data_source_role_trust_updated", role=self.data_source_role_name())
+            self.log.write(
+                event="data_source_role_trust_updated",
+                role=self.data_source_role_name(),
+            )
         if "IAM policy assignment" in missing:
             self.qs.create_iam_policy_assignment(
                 AwsAccountId=self.account,
@@ -1711,8 +1902,14 @@ class Setup:
                 Identities={"User": [user]},
                 Namespace=namespace,
             )
-            print(f"  Quick IAM policy assignment {self.owner_assignment_name()} created for {user}")
-            self.log.write(event="resource", iam_policy_assignment=self.owner_assignment_name(), user=user)
+            print(
+                f"  Quick IAM policy assignment {self.owner_assignment_name()} created for {user}"
+            )
+            self.log.write(
+                event="resource",
+                iam_policy_assignment=self.owner_assignment_name(),
+                user=user,
+            )
             # CreateIAMPolicyAssignment is eventually consistent: DescribeIAMPolicyAssignment can
             # still return ResourceNotFound for a short window right after. Wait for the read-back
             # so this step's own check_athena verification sees it instead of racing the create
@@ -1738,7 +1935,11 @@ class Setup:
         deadline = time.monotonic() + timeout
         while not self.owner_assignment_is(namespace, present):
             if time.monotonic() > deadline:
-                action, state = ("create", "doesn't list it yet") if present else ("delete", "still lists it")
+                action, state = (
+                    ("create", "doesn't list it yet")
+                    if present
+                    else ("delete", "still lists it")
+                )
                 print(
                     f"  The {action} request for IAM policy assignment {self.owner_assignment_name()} "
                     f"succeeded, but after {timeout} seconds Quick {state}. If this step stops, "
@@ -1763,20 +1964,31 @@ class Setup:
 
     def skip_quick_access(self, reason):
         print("  Not needed. The data sources read the bucket through IAM role")
-        print(f"  {self.data_source_role_name()} (step {DATASETS_STEP}), so Quick's own role needs no")
-        print("  access to it. If an earlier run had you tick this bucket under Quick's")
-        print("  'AWS resources > Amazon S3', you can untick it; nothing here needs it.")
+        print(
+            f"  {self.data_source_role_name()} (step {DATASETS_STEP}), so Quick's own role needs no"
+        )
+        print(
+            "  access to it. If an earlier run had you tick this bucket under Quick's"
+        )
+        print(
+            "  'AWS resources > Amazon S3', you can untick it; nothing here needs it."
+        )
         self.log.write(event="quick_access_skipped", reason=reason)
 
     def skip_deny_default(self, reason):
-        print("  Skipped. Default access isn't changed, so after the next step every Quick author")
+        print(
+            "  Skipped. Default access isn't changed, so after the next step every Quick author"
+        )
         print("  in this account can read the usage logs.")
         self.log.write(event="deny_default_skipped", reason=reason)
 
     def confirmation_alternatives(self, key):
         """Other phrases a step accepts besides its confirmation phrase: {phrase: answer}."""
         if key == "deny_default":
-            return {"IT WAS ALREADY DENIED": "already", "SKIP AND ACCEPT EXPOSURE": "skip"}
+            return {
+                "IT WAS ALREADY DENIED": "already",
+                "SKIP AND ACCEPT EXPOSURE": "skip",
+            }
         return {}
 
     # ---------- quick_access step (step 5): manual Quick console grant ----------
@@ -1802,9 +2014,9 @@ class Setup:
         try:
             own = [
                 p["PolicyName"]
-                for page in self.iam.get_paginator("list_attached_role_policies").paginate(
-                    RoleName=role_name
-                )
+                for page in self.iam.get_paginator(
+                    "list_attached_role_policies"
+                ).paginate(RoleName=role_name)
                 for p in page["AttachedPolicies"]
                 if not self.is_quick_managed_policy(p["PolicyArn"])
             ]
@@ -1816,8 +2028,11 @@ class Setup:
                 for name in page["PolicyNames"]
             ]
         except ClientError as e:
-            self.log.write(event="quick_role_policies", outcome="unchecked",
-                           error=e.response["Error"]["Code"])
+            self.log.write(
+                event="quick_role_policies",
+                outcome="unchecked",
+                error=e.response["Error"]["Code"],
+            )
             return role_name, None
         self.log.write(event="quick_role_policies", role=role_name, own_policies=own)
         return role_name, own
@@ -1826,11 +2041,17 @@ class Setup:
         """The 3 read statements the console grant adds, for customers who add them by hand."""
         bucket_arn = f"arn:{self.partition}:s3:::{self.bucket}"
         return [
-            {"Effect": "Allow", "Action": "s3:ListAllMyBuckets",
-             "Resource": f"arn:{self.partition}:s3:::*"},
+            {
+                "Effect": "Allow",
+                "Action": "s3:ListAllMyBuckets",
+                "Resource": f"arn:{self.partition}:s3:::*",
+            },
             {"Effect": "Allow", "Action": "s3:ListBucket", "Resource": bucket_arn},
-            {"Effect": "Allow", "Action": ["s3:GetObject", "s3:GetObjectVersion"],
-             "Resource": f"{bucket_arn}/*"},
+            {
+                "Effect": "Allow",
+                "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+                "Resource": f"{bucket_arn}/*",
+            },
         ]
 
     def plan_quick_access(self):
@@ -1848,14 +2069,20 @@ class Setup:
                 f"  So the console will refuse to save. {bold('Use B.')}",
             ]
         else:
-            found = [f"  The script checked {role_label}: it has only Quick's own policies. Use A."]
+            found = [
+                f"  The script checked {role_label}: it has only Quick's own policies. Use A."
+            ]
         bucket_arn = f"arn:{self.partition}:s3:::{self.bucket}"
         items = [json.dumps(st) for st in self.quick_access_statements()]
-        statements = [item + ("," if i < len(items) - 1 else "") for i, item in enumerate(items)]
+        statements = [
+            item + ("," if i < len(items) - 1 else "") for i, item in enumerate(items)
+        ]
         return [
             "MANUAL STEP (you do this yourself; the script waits for you, then checks the result):",
             "",
-            "  Quick reads S3 through its IAM role, " + role_label + ". This step gives that role",
+            "  Quick reads S3 through its IAM role, "
+            + role_label
+            + ". This step gives that role",
             "  read access to the bucket. Which way you do it depends on that role:",
             "  the Quick console only saves the grant if the role has no policies that you or your",
             "  admins attached yourselves. If it has any, Save fails with:",
@@ -1898,7 +2125,7 @@ class Setup:
             "       1. s3:ListAllMyBuckets on " + f"arn:{self.partition}:s3:::*",
             f"       2. s3:ListBucket on {bucket_arn}",
             f"       3. s3:GetObject and s3:GetObjectVersion on {bucket_arn}/*",
-            "     As JSON, to paste into that policy's \"Statement\" list (add a comma before them",
+            '     As JSON, to paste into that policy\'s "Statement" list (add a comma before them',
             "     if the list already has statements):",
             *[f"       {line}" for line in statements],
             "     Don't add write actions; Quick only needs to read.",
@@ -1935,11 +2162,15 @@ class Setup:
         except ClientError as e:
             return StepState(
                 False,
-                [f"Can't check the grant automatically ({e.response['Error']['Code']})."],
+                [
+                    f"Can't check the grant automatically ({e.response['Error']['Code']})."
+                ],
                 unknown=True,
             )
         if ok:
-            return StepState(True, ["Quick can already read the bucket (IAM policy simulator)."])
+            return StepState(
+                True, ["Quick can already read the bucket (IAM policy simulator)."]
+            )
         return StepState(False, ["Quick can't read the bucket yet."])
 
     def simulate_quick_access(self):
@@ -1948,10 +2179,14 @@ class Setup:
         if not role:
             return (
                 False,
-                ["  No Quick service role found. Is the Quick subscription in this account?"],
+                [
+                    "  No Quick service role found. Is the Quick subscription in this account?"
+                ],
                 {},
             )
-        sample = f"arn:{self.partition}:s3:::{self.bucket}/{PREFIX_ROOT}/chat/sample.json"
+        sample = (
+            f"arn:{self.partition}:s3:::{self.bucket}/{PREFIX_ROOT}/chat/sample.json"
+        )
         checks = [
             ("s3:ListBucket", f"arn:{self.partition}:s3:::{self.bucket}", True),
             ("s3:GetObject", sample, True),
@@ -1971,7 +2206,9 @@ class Setup:
             results[action] = decision
             if want and not allowed:
                 ok = False
-                lines.append(f"    {action}: NOT allowed. Quick can't read the bucket yet.")
+                lines.append(
+                    f"    {action}: NOT allowed. Quick can't read the bucket yet."
+                )
             elif not want and allowed:
                 lines.append(
                     f"    {action}: allowed. Quick has WRITE access; untick 'Write permission"
@@ -2014,15 +2251,25 @@ class Setup:
             print(
                 f"\n  The grant isn't in place yet. Check that s3://{self.bucket} is ticked under"
             )
-            print("  'Amazon S3' (not 'Amazon S3 Tables') and that you clicked Finish and Save.")
-            print("  If you used B (your own policy on Quick's role), check the 3 statements are in")
-            print("  that policy, the policy is attached to the role, and you saved it.")
+            print(
+                "  'Amazon S3' (not 'Amazon S3 Tables') and that you clicked Finish and Save."
+            )
+            print(
+                "  If you used B (your own policy on Quick's role), check the 3 statements are in"
+            )
+            print(
+                "  that policy, the policy is attached to the role, and you saved it."
+            )
             try:
-                again = input(f"  Press Enter to check again, or type '{STOP_WORD}' to stop: ")
+                again = input(
+                    f"  Press Enter to check again, or type '{STOP_WORD}' to stop: "
+                )
             except (EOFError, KeyboardInterrupt):
                 again = STOP_WORD
             if again.strip().lower() == STOP_WORD:
-                raise Abort(f"Stopped at step {QUICK_ACCESS_STEP}: Quick can't read the bucket yet.")
+                raise Abort(
+                    f"Stopped at step {QUICK_ACCESS_STEP}: Quick can't read the bucket yet."
+                )
 
     # ---------- athena step: Glue database + tables, Athena workgroup, access role ----------
     def plan_athena(self):
@@ -2066,7 +2313,9 @@ class Setup:
     def has_data(self, d):
         if not self.bucket_exists():
             return False
-        resp = self.s3.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix(d) + "/", MaxKeys=1)
+        resp = self.s3.list_objects_v2(
+            Bucket=self.bucket, Prefix=self.prefix(d) + "/", MaxKeys=1
+        )
         return resp.get("KeyCount", 0) > 0
 
     # ---------- Athena / Glue resources that back the datasets ----------
@@ -2092,7 +2341,10 @@ class Setup:
                 "OutputFormat": GLUE_IGNOREKEY_OUTPUT,
                 "SerdeInfo": {
                     "SerializationLibrary": GLUE_JSON_SERDE,
-                    "Parameters": {"ignore.malformed.json": "true", "case.insensitive": "true"},
+                    "Parameters": {
+                        "ignore.malformed.json": "true",
+                        "case.insensitive": "true",
+                    },
                 },
             },
         }
@@ -2142,8 +2394,14 @@ class Setup:
                     raise
         # The workgroup already exists. Only touch it if this script created it (our tag); a
         # customer workgroup that happens to share the name is left alone.
-        tags = self.athena.list_tags_for_resource(ResourceARN=self.workgroup_arn()).get("Tags", [])
-        if not any(t.get("Key") == WORKGROUP_TAG["Key"] and t.get("Value") == WORKGROUP_TAG["Value"] for t in tags):
+        tags = self.athena.list_tags_for_resource(ResourceARN=self.workgroup_arn()).get(
+            "Tags", []
+        )
+        if not any(
+            t.get("Key") == WORKGROUP_TAG["Key"]
+            and t.get("Value") == WORKGROUP_TAG["Value"]
+            for t in tags
+        ):
             raise Abort(
                 f"An Athena workgroup named {ATHENA_WORKGROUP} already exists but this script "
                 "didn't create it (it isn't tagged ManagedBy=quick_usage_datasets_setup).\n  The "
@@ -2154,7 +2412,11 @@ class Setup:
         # another --bucket) pointed it elsewhere, Athena would write results where this bucket's
         # role can't. Repoint it at this bucket.
         wg = self.athena.get_work_group(WorkGroup=ATHENA_WORKGROUP)["WorkGroup"]
-        current = wg.get("Configuration", {}).get("ResultConfiguration", {}).get("OutputLocation")
+        current = (
+            wg.get("Configuration", {})
+            .get("ResultConfiguration", {})
+            .get("OutputLocation")
+        )
         if current != loc:
             self.athena.update_work_group(
                 WorkGroup=ATHENA_WORKGROUP,
@@ -2163,12 +2425,16 @@ class Setup:
                     "EnforceWorkGroupConfiguration": True,
                 },
             )
-            print(f"  Athena workgroup {ATHENA_WORKGROUP} results location set to {loc}")
+            print(
+                f"  Athena workgroup {ATHENA_WORKGROUP} results location set to {loc}"
+            )
             self.log.write(event="athena_workgroup_results_updated", location=loc)
 
     def glue_table_for(self, d):
         try:
-            return self.glue.get_table(DatabaseName=GLUE_DATABASE, Name=glue_table_name(d))["Table"]
+            return self.glue.get_table(
+                DatabaseName=GLUE_DATABASE, Name=glue_table_name(d)
+            )["Table"]
         except ClientError as e:
             if e.response["Error"]["Code"] == "EntityNotFoundException":
                 return None
@@ -2177,11 +2443,17 @@ class Setup:
     def ensure_glue_table(self, d, exists):
         """Create the external table, or point an existing one at the right location/columns."""
         if exists:
-            self.glue.update_table(DatabaseName=GLUE_DATABASE, TableInput=self.table_input(d))
+            self.glue.update_table(
+                DatabaseName=GLUE_DATABASE, TableInput=self.table_input(d)
+            )
             print(f"  {d}: Glue table {glue_table_name(d)} updated")
         else:
-            self.glue.create_table(DatabaseName=GLUE_DATABASE, TableInput=self.table_input(d))
-            print(f"  {d}: Glue table {glue_table_name(d)} created ({self.table_location(d)})")
+            self.glue.create_table(
+                DatabaseName=GLUE_DATABASE, TableInput=self.table_input(d)
+            )
+            print(
+                f"  {d}: Glue table {glue_table_name(d)} created ({self.table_location(d)})"
+            )
         self.log.write(
             event="resource",
             glue_table=glue_table_name(d),
@@ -2240,7 +2512,10 @@ class Setup:
                 )
             athena = params["AthenaParameters"]
             role_arn = athena.get("RoleArn")
-            if athena.get("WorkGroup") != ATHENA_WORKGROUP or role_arn != self.data_source_role_arn():
+            if (
+                athena.get("WorkGroup") != ATHENA_WORKGROUP
+                or role_arn != self.data_source_role_arn()
+            ):
                 raise Abort(
                     f"Quick data source {ds_id} already exists but uses workgroup "
                     f"{athena.get('WorkGroup')} / role {role_arn},\n  not {ATHENA_WORKGROUP} / "
@@ -2248,7 +2523,10 @@ class Setup:
                     "source and its dataset, then re-run."
                 )
         data_set = self.get_or_none(
-            self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=ds_id
+            self.qs.describe_data_set,
+            "DataSet",
+            AwsAccountId=self.account,
+            DataSetId=ds_id,
         )
         if data_set is None:
             missing.append("dataset")
@@ -2279,8 +2557,12 @@ class Setup:
             return {}
         if not tables and len(data_set.get("PhysicalTableMap") or {}) != 1:
             return {}
-        have = {c["Name"]: c.get("Description") for c in data_set.get("OutputColumns", [])}
-        return {n: t for n, t in COLUMN_DESCRIPTIONS[d].items() if n in have and not have[n]}
+        have = {
+            c["Name"]: c.get("Description") for c in data_set.get("OutputColumns", [])
+        }
+        return {
+            n: t for n, t in COLUMN_DESCRIPTIONS[d].items() if n in have and not have[n]
+        }
 
     def add_column_descriptions(self, d):
         """Add the missing column descriptions to an existing dataset, keeping everything else.
@@ -2289,11 +2571,15 @@ class Setup:
         that UpdateDataSet accepts is sent back unchanged. It also starts one SPICE refresh.
         """
         ds_id = f"quick-usage-{d}"
-        data_set = self.qs.describe_data_set(AwsAccountId=self.account, DataSetId=ds_id)["DataSet"]
+        data_set = self.qs.describe_data_set(
+            AwsAccountId=self.account, DataSetId=ds_id
+        )["DataSet"]
         to_add = self.descriptions_to_add(d, data_set)
         if not to_add:
             return
-        accepted = self.qs.meta.service_model.operation_model("UpdateDataSet").input_shape.members
+        accepted = self.qs.meta.service_model.operation_model(
+            "UpdateDataSet"
+        ).input_shape.members
         # Empty collections are dropped: several UpdateDataSet lists (ColumnGroups,
         # DatasetParameters, ColumnLevelPermissionRules) must have at least one item.
         params = {
@@ -2305,14 +2591,18 @@ class Setup:
         tables = copy.deepcopy(data_set.get("LogicalTableMap") or {})
         if tables:
             (table,) = tables.values()
-            table.setdefault("DataTransforms", []).extend(column_description_transforms(to_add))
+            table.setdefault("DataTransforms", []).extend(
+                column_description_transforms(to_add)
+            )
         else:
             (physical_id,) = data_set["PhysicalTableMap"]
             tables = logical_table_map(glue_table_name(d), physical_id, to_add)
         params["LogicalTableMap"] = tables
         self.qs.update_data_set(AwsAccountId=self.account, DataSetId=ds_id, **params)
         print(f"  {d}: added descriptions to {len(to_add)} columns of dataset {ds_id}")
-        self.log.write(event="column_descriptions_added", dataset=d, columns=sorted(to_add))
+        self.log.write(
+            event="column_descriptions_added", dataset=d, columns=sorted(to_add)
+        )
 
     def athena_parameters(self):
         return {
@@ -2337,16 +2627,20 @@ class Setup:
                 Type="ATHENA",
                 DataSourceParameters=self.athena_parameters(),
                 Permissions=[
-                    {"Principal": self.args.quick_admin_arn, "Actions": DATA_SOURCE_ACTIONS}
+                    {
+                        "Principal": self.args.quick_admin_arn,
+                        "Actions": DATA_SOURCE_ACTIONS,
+                    }
                 ],
             )
 
         # A new IAM role can take a short time to become usable, so Quick can briefly report
         # "Failed to assume your role" right after the role is created.
         def role_not_ready(error):
-            return error["Code"] == "AccessDeniedException" and "assume" in error.get(
-                "Message", ""
-            ).lower()
+            return (
+                error["Code"] == "AccessDeniedException"
+                and "assume" in error.get("Message", "").lower()
+            )
 
         def on_retry(attempt, error):
             self.log.write(
@@ -2389,9 +2683,9 @@ class Setup:
         """Data source creation is asynchronous; wait until it settles before using it."""
         deadline = time.monotonic() + timeout
         while True:
-            status = self.qs.describe_data_source(AwsAccountId=self.account, DataSourceId=ds_id)[
-                "DataSource"
-            ].get("Status", "")
+            status = self.qs.describe_data_source(
+                AwsAccountId=self.account, DataSourceId=ds_id
+            )["DataSource"].get("Status", "")
             if not status.endswith("IN_PROGRESS"):
                 if status.endswith("FAILED"):
                     raise Abort(
@@ -2401,18 +2695,26 @@ class Setup:
                     )
                 return
             if time.monotonic() > deadline:
-                raise Abort(f"Data source {ds_id} is still {status} after {timeout}s. Re-run later.")
+                raise Abort(
+                    f"Data source {ds_id} is still {status} after {timeout}s. Re-run later."
+                )
             time.sleep(3)
 
     def check_athena(self):
         todo, lines = {}, []
-        if self.args.quick_admin_arn:  # only known when the owner was resolved for this run
+        if (
+            self.args.quick_admin_arn
+        ):  # only known when the owner was resolved for this run
             owner_missing = self.owner_access_state()
             if owner_missing:
                 todo[OWNER_ACCESS] = owner_missing
-                lines.append(f"dataset owner's access: not set up yet (missing: {', '.join(owner_missing)})")
+                lines.append(
+                    f"dataset owner's access: not set up yet (missing: {', '.join(owner_missing)})"
+                )
             else:
-                lines.append("dataset owner's access: IAM role and policy assignment in place")
+                lines.append(
+                    "dataset owner's access: IAM role and policy assignment in place"
+                )
         shared = []
         if not self.glue_database_present():
             shared.append("Glue database")
@@ -2420,7 +2722,9 @@ class Setup:
             shared.append("Athena workgroup")
         if shared:
             todo[ATHENA_SHARED] = shared
-            lines.append(f"shared Athena/Glue: not set up yet (missing: {', '.join(shared)})")
+            lines.append(
+                f"shared Athena/Glue: not set up yet (missing: {', '.join(shared)})"
+            )
         else:
             lines.append(
                 f"shared Athena/Glue: database {GLUE_DATABASE} and workgroup {ATHENA_WORKGROUP} exist"
@@ -2450,10 +2754,14 @@ class Setup:
             missing, _ = self.dataset_state(d)
             if missing == [COLUMN_DESCRIPTIONS_MISSING]:
                 todo[d] = missing
-                lines.append(f"quick-usage-{d}: dataset exists, column descriptions not added yet")
+                lines.append(
+                    f"quick-usage-{d}: dataset exists, column descriptions not added yet"
+                )
             elif missing:
                 todo[d] = missing
-                lines.append(f"quick-usage-{d}: not set up yet (missing: {', '.join(missing)})")
+                lines.append(
+                    f"quick-usage-{d}: not set up yet (missing: {', '.join(missing)})"
+                )
             else:
                 lines.append(f"quick-usage-{d}: Athena data source and dataset exist")
         return StepState(not todo, lines, todo)
@@ -2496,8 +2804,12 @@ class Setup:
                         }
                     }
                 },
-                LogicalTableMap=logical_table_map(glue_table_name(d), "t", COLUMN_DESCRIPTIONS[d]),
-                Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}],
+                LogicalTableMap=logical_table_map(
+                    glue_table_name(d), "t", COLUMN_DESCRIPTIONS[d]
+                ),
+                Permissions=[
+                    {"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}
+                ],
             )
             print(f"  {d}: dataset {ds_id} created")
             self.log.write(
@@ -2508,9 +2820,15 @@ class Setup:
                 data_present=has_data,
             )
             if not has_data:
-                print(f"  NOTE: no {d} logs have arrived yet, so this dataset's first refresh")
-                print("        reads 0 rows (Athena simply finds no files; this is not an error).")
-                print("        Once you've used Quick, refresh it (Datasets > the dataset >")
+                print(
+                    f"  NOTE: no {d} logs have arrived yet, so this dataset's first refresh"
+                )
+                print(
+                    "        reads 0 rows (Athena simply finds no files; this is not an error)."
+                )
+                print(
+                    "        Once you've used Quick, refresh it (Datasets > the dataset >"
+                )
                 print("        Refresh now).")
                 self.log.write(event="dataset_created_without_data", dataset=d)
 
@@ -2526,7 +2844,9 @@ class Setup:
             "datasets": "CREATE DATASETS",
             "refresh": "ENABLE DAILY REFRESH",
             "dashboard": (
-                "UPDATE DASHBOARD" if getattr(self, "dashboard_outdated", {}) else "CREATE DASHBOARD"
+                "UPDATE DASHBOARD"
+                if getattr(self, "dashboard_outdated", {})
+                else "CREATE DASHBOARD"
             ),
         }[key]
 
@@ -2591,7 +2911,9 @@ class Setup:
                 self.qs.create_refresh_schedule(
                     AwsAccountId=self.account, DataSetId=ds_id, Schedule=schedule
                 )
-                print(f"  {d}: daily full refresh scheduled at {self.args.refresh_time}")
+                print(
+                    f"  {d}: daily full refresh scheduled at {self.args.refresh_time}"
+                )
                 outcome = "created"
             except ClientError as e:
                 if e.response["Error"]["Code"] != "ResourceExistsException":
@@ -2616,7 +2938,9 @@ class Setup:
     def skip_refresh(self, reason):
         print("  Skipped. The datasets won't update on their own. To refresh them:")
         print("    - in Quick: Datasets > the dataset > Refresh now, or")
-        print("    - add a schedule later: Datasets > the dataset > Refresh > Add schedule.")
+        print(
+            "    - add a schedule later: Datasets > the dataset > Refresh > Add schedule."
+        )
         self.log.write(event="refresh_skipped", reason=reason)
 
     # ---------- dashboard step: optional starter dashboard ----------
@@ -2624,7 +2948,9 @@ class Setup:
         return f"arn:{self.partition}:quicksight:{self.region}:{self.account}:dataset/quick-usage-{d}"
 
     def quick_link(self, kind, asset_id):
-        return link(f"https://{self.region}.quicksight.aws.amazon.com/sn/{kind}/{asset_id}")
+        return link(
+            f"https://{self.region}.quicksight.aws.amazon.com/sn/{kind}/{asset_id}"
+        )
 
     def dashboard_scope_problem(self):
         """Why the starter dashboard can't be built for this run, or None."""
@@ -2680,7 +3006,10 @@ class Setup:
         """None if missing, else the status. Stops on a failed or still-running asset."""
         if kind == "analysis":
             asset = self.get_or_none(
-                self.qs.describe_analysis, "Analysis", AwsAccountId=self.account, AnalysisId=asset_id
+                self.qs.describe_analysis,
+                "Analysis",
+                AwsAccountId=self.account,
+                AnalysisId=asset_id,
             )
             status = asset and asset.get("Status", "")
             delete = f"delete-analysis --analysis-id {asset_id} --force-delete-without-recovery"
@@ -2721,7 +3050,9 @@ class Setup:
     def asset_version(self, kind, asset_id):
         """Starter dashboard version an existing asset was built from, or None if unreadable."""
         try:
-            tags = self.qs.list_tags_for_resource(ResourceArn=self.asset_arn(kind, asset_id))
+            tags = self.qs.list_tags_for_resource(
+                ResourceArn=self.asset_arn(kind, asset_id)
+            )
         except ClientError as e:
             self.log.write(
                 event="dashboard_version_unreadable",
@@ -2778,7 +3109,9 @@ class Setup:
                     f"newer version {DASHBOARD_VERSION} available"
                 )
             else:
-                lines.append(f"{kind} {asset_id}: already exists (version {version}), kept as is")
+                lines.append(
+                    f"{kind} {asset_id}: already exists (version {version}), kept as is"
+                )
         return StepState(not todo, lines, todo)
 
     def wait_for_asset(self, kind, asset_id, version_number=None):
@@ -2787,9 +3120,9 @@ class Setup:
         deadline = time.monotonic() + CREATE_TIMEOUT_SECONDS
         while True:
             if kind == "analysis":
-                asset = self.qs.describe_analysis(AwsAccountId=self.account, AnalysisId=asset_id)[
-                    "Analysis"
-                ]
+                asset = self.qs.describe_analysis(
+                    AwsAccountId=self.account, AnalysisId=asset_id
+                )["Analysis"]
             else:
                 extra = {"VersionNumber": version_number} if version_number else {}
                 asset = self.qs.describe_dashboard(
@@ -2814,7 +3147,9 @@ class Setup:
             for e in asset.get("Errors") or []
         ]
         if errors:
-            self.log.write(event="asset_errors", kind=kind, asset_id=asset_id, errors=errors)
+            self.log.write(
+                event="asset_errors", kind=kind, asset_id=asset_id, errors=errors
+            )
         if status.endswith("FAILED"):
             details = "\n".join(
                 f"    - {e['type']}: {e['message']}"
@@ -2842,7 +3177,9 @@ class Setup:
                 resume_step=DATASETS_STEP,
             )
         outdated = getattr(self, "dashboard_outdated", {})
-        definition = dashboard_definition({d: self.dataset_arn(d) for d in DASHBOARD_DATASETS})
+        definition = dashboard_definition(
+            {d: self.dataset_arn(d) for d in DASHBOARD_DATASETS}
+        )
         # No ThemeArn: the dashboard carries its own styling (per-tile background/border and
         # per-visual chart colours baked into DASHBOARD_DEFINITION_JSON); anything not covered by
         # the definition uses the account's default Quick theme.
@@ -2857,7 +3194,12 @@ class Setup:
             self.qs.create_analysis(
                 **common,
                 AnalysisId=ANALYSIS_ID,
-                Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": ANALYSIS_ACTIONS}],
+                Permissions=[
+                    {
+                        "Principal": self.args.quick_admin_arn,
+                        "Actions": ANALYSIS_ACTIONS,
+                    }
+                ],
                 Tags=self.version_tags(),
             )
             self.wait_for_asset("analysis", ANALYSIS_ID)
@@ -2867,7 +3209,8 @@ class Setup:
             self.qs.update_analysis(**common, AnalysisId=ANALYSIS_ID)
             self.wait_for_asset("analysis", ANALYSIS_ID)
             self.qs.tag_resource(
-                ResourceArn=self.asset_arn("analysis", ANALYSIS_ID), Tags=self.version_tags()
+                ResourceArn=self.asset_arn("analysis", ANALYSIS_ID),
+                Tags=self.version_tags(),
             )
             print(f"  analysis {ANALYSIS_ID} updated to version {DASHBOARD_VERSION}")
             self.log.write(
@@ -2883,7 +3226,12 @@ class Setup:
             self.qs.create_dashboard(
                 **common,
                 DashboardId=DASHBOARD_ID,
-                Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": DASHBOARD_ACTIONS}],
+                Permissions=[
+                    {
+                        "Principal": self.args.quick_admin_arn,
+                        "Actions": DASHBOARD_ACTIONS,
+                    }
+                ],
                 Tags=self.version_tags(),
             )
             self.wait_for_asset("dashboard", DASHBOARD_ID)
@@ -2895,10 +3243,13 @@ class Setup:
             self.wait_for_asset("dashboard", DASHBOARD_ID, version_number)
             # An update creates a new dashboard version; viewers see it once it's published.
             self.qs.update_dashboard_published_version(
-                AwsAccountId=self.account, DashboardId=DASHBOARD_ID, VersionNumber=version_number
+                AwsAccountId=self.account,
+                DashboardId=DASHBOARD_ID,
+                VersionNumber=version_number,
             )
             self.qs.tag_resource(
-                ResourceArn=self.asset_arn("dashboard", DASHBOARD_ID), Tags=self.version_tags()
+                ResourceArn=self.asset_arn("dashboard", DASHBOARD_ID),
+                Tags=self.version_tags(),
             )
             print(
                 f"  dashboard {DASHBOARD_ID} updated to version {DASHBOARD_VERSION}"
@@ -2919,13 +3270,19 @@ class Setup:
 
     def skip_dashboard(self, reason):
         if getattr(self, "dashboard_outdated", {}):
-            print("  Skipped. Your current analysis and dashboard are kept as they are. Re-run")
+            print(
+                "  Skipped. Your current analysis and dashboard are kept as they are. Re-run"
+            )
             print(f"  with --from-step {DASHBOARD_STEP} to update them later.")
             self.log.write(event="dashboard_update_skipped", reason=reason)
             return
-        print("  Skipped. No analysis or dashboard was created. You can build your own in Quick")
-        print("  from the quick-usage-* datasets, or re-run with --from-step "
-              f"{DASHBOARD_STEP} to create the starter one.")
+        print(
+            "  Skipped. No analysis or dashboard was created. You can build your own in Quick"
+        )
+        print(
+            "  from the quick-usage-* datasets, or re-run with --from-step "
+            f"{DASHBOARD_STEP} to create the starter one."
+        )
         self.log.write(event="dashboard_skipped", reason=reason)
 
     # ---------- destroy: undo the setup steps ----------
@@ -2938,13 +3295,19 @@ class Setup:
             fn(**kwargs)
             return True
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("ResourceNotFoundException", "NoSuchKey", "404"):
+            if e.response["Error"]["Code"] in (
+                "ResourceNotFoundException",
+                "NoSuchKey",
+                "404",
+            ):
                 return False
             raise
 
     def object_exists(self, key):
         try:
-            self.s3.head_object(Bucket=self.bucket, Key=key, ExpectedBucketOwner=self.account)
+            self.s3.head_object(
+                Bucket=self.bucket, Key=key, ExpectedBucketOwner=self.account
+            )
             return True
         except ClientError as e:
             if e.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
@@ -2971,12 +3334,18 @@ class Setup:
     def find_dashboard_to_remove(self):
         todo, lines = {}, []
         if self.get_or_none(
-            self.qs.describe_dashboard, "Dashboard", AwsAccountId=self.account, DashboardId=DASHBOARD_ID
+            self.qs.describe_dashboard,
+            "Dashboard",
+            AwsAccountId=self.account,
+            DashboardId=DASHBOARD_ID,
         ):
             todo["dashboard"] = [DASHBOARD_ID]
             lines.append(f"dashboard {DASHBOARD_ID}")
         analysis = self.get_or_none(
-            self.qs.describe_analysis, "Analysis", AwsAccountId=self.account, AnalysisId=ANALYSIS_ID
+            self.qs.describe_analysis,
+            "Analysis",
+            AwsAccountId=self.account,
+            AnalysisId=ANALYSIS_ID,
         )
         if analysis is not None:
             todo["analysis"] = [ANALYSIS_ID]
@@ -3001,7 +3370,9 @@ class Setup:
     def remove_dashboard(self, state):
         if "dashboard" in state.todo:
             self.delete_if_present(
-                self.qs.delete_dashboard, AwsAccountId=self.account, DashboardId=DASHBOARD_ID
+                self.qs.delete_dashboard,
+                AwsAccountId=self.account,
+                DashboardId=DASHBOARD_ID,
             )
             print(f"  dashboard {DASHBOARD_ID} deleted")
             self.log.write(event="resource_deleted", dashboard=DASHBOARD_ID)
@@ -3059,7 +3430,9 @@ class Setup:
             )
             print(f"  {d}: daily refresh schedule deleted")
             self.log.write(
-                event="resource_deleted", refresh_schedule=REFRESH_SCHEDULE_ID, dataset=d
+                event="resource_deleted",
+                refresh_schedule=REFRESH_SCHEDULE_ID,
+                dataset=d,
             )
 
     # undoes the datasets step (the Quick datasets and data sources)
@@ -3070,7 +3443,10 @@ class Setup:
             ds_id = f"quick-usage-{d}"
             parts = []
             if self.get_or_none(
-                self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=ds_id
+                self.qs.describe_data_set,
+                "DataSet",
+                AwsAccountId=self.account,
+                DataSetId=ds_id,
             ):
                 parts.append("dataset")
             src = self.get_or_none(
@@ -3084,9 +3460,10 @@ class Setup:
                 athena = params.get("AthenaParameters", {})
                 legacy = params.get("S3Parameters", {}).get("ManifestFileLocation", {})
                 if athena:
-                    if athena.get("WorkGroup") == ATHENA_WORKGROUP and athena.get(
-                        "RoleArn"
-                    ) == self.data_source_role_arn():
+                    if (
+                        athena.get("WorkGroup") == ATHENA_WORKGROUP
+                        and athena.get("RoleArn") == self.data_source_role_arn()
+                    ):
                         parts.append("data source")
                     else:
                         lines.append(
@@ -3137,7 +3514,10 @@ class Setup:
             self.athena.get_work_group(WorkGroup=ATHENA_WORKGROUP)
             return True
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("InvalidRequestException", "ResourceNotFoundException"):
+            if e.response["Error"]["Code"] in (
+                "InvalidRequestException",
+                "ResourceNotFoundException",
+            ):
                 return False
             raise
 
@@ -3151,9 +3531,12 @@ class Setup:
         """
         if not self.workgroup_present():
             return False
-        tags = self.athena.list_tags_for_resource(ResourceARN=self.workgroup_arn()).get("Tags", [])
+        tags = self.athena.list_tags_for_resource(ResourceARN=self.workgroup_arn()).get(
+            "Tags", []
+        )
         return any(
-            t.get("Key") == WORKGROUP_TAG["Key"] and t.get("Value") == WORKGROUP_TAG["Value"]
+            t.get("Key") == WORKGROUP_TAG["Key"]
+            and t.get("Value") == WORKGROUP_TAG["Value"]
             for t in tags
         )
 
@@ -3184,7 +3567,10 @@ class Setup:
     def plan_remove_datasets(self, state):
         return [
             "Delete these Quick datasets (with their SPICE data) and their Athena data sources:",
-            *[f"  quick-usage-{d}: {', '.join(parts)}" for d, parts in state.todo.items()],
+            *[
+                f"  quick-usage-{d}: {', '.join(parts)}"
+                for d, parts in state.todo.items()
+            ],
             "Any analysis or dashboard you built yourself on these datasets stops working.",
             "The Glue tables and the log files in the bucket aren't touched in this step.",
         ]
@@ -3199,12 +3585,16 @@ class Setup:
                 print(f"  {d}: dataset {ds_id} deleted")
             if "data source" in parts:
                 self.delete_if_present(
-                    self.qs.delete_data_source, AwsAccountId=self.account, DataSourceId=ds_id
+                    self.qs.delete_data_source,
+                    AwsAccountId=self.account,
+                    DataSourceId=ds_id,
                 )
                 print(f"  {d}: data source {ds_id} deleted")
             if "manifest" in parts:
                 self.s3.delete_object(
-                    Bucket=self.bucket, Key=self.manifest_key(d), ExpectedBucketOwner=self.account
+                    Bucket=self.bucket,
+                    Key=self.manifest_key(d),
+                    ExpectedBucketOwner=self.account,
                 )
                 print(f"  {d}: manifest deleted")
             self.log.write(event="resource_deleted", dataset=d, parts=parts)
@@ -3241,10 +3631,14 @@ class Setup:
     def remove_athena(self, state):
         for d in state.todo:
             self.delete_if_present(
-                self.glue.delete_table, DatabaseName=GLUE_DATABASE, Name=glue_table_name(d)
+                self.glue.delete_table,
+                DatabaseName=GLUE_DATABASE,
+                Name=glue_table_name(d),
             )
             print(f"  {d}: Glue table {glue_table_name(d)} deleted")
-            self.log.write(event="resource_deleted", dataset=d, glue_table=glue_table_name(d))
+            self.log.write(
+                event="resource_deleted", dataset=d, glue_table=glue_table_name(d)
+            )
         self.remove_shared_athena()
 
     def remove_shared_athena(self):
@@ -3269,14 +3663,18 @@ class Setup:
         except ClientError as e:
             return StepState(
                 False,
-                [f"Can't check the grant automatically ({e.response['Error']['Code']})."],
+                [
+                    f"Can't check the grant automatically ({e.response['Error']['Code']})."
+                ],
                 {"grant": [self.bucket]},
                 unknown=True,
             )
         if granted:
             return StepState(
                 False,
-                [f"Quick can still read the bucket (the step {QUICK_ACCESS_STEP} grant)."],
+                [
+                    f"Quick can still read the bucket (the step {QUICK_ACCESS_STEP} grant)."
+                ],
                 {"grant": [self.bucket]},
             )
         return StepState(True, ["Quick can't read the bucket; no grant to remove."])
@@ -3308,8 +3706,12 @@ class Setup:
             try:
                 granted, lines, details = self.simulate_quick_access()
             except ClientError as e:
-                print(f"  Could not verify automatically ({e.response['Error']['Code']}).")
-                self.log.write(event="verify_quick_access_removed", outcome="unverified")
+                print(
+                    f"  Could not verify automatically ({e.response['Error']['Code']})."
+                )
+                self.log.write(
+                    event="verify_quick_access_removed", outcome="unverified"
+                )
                 return None
             self.log.write(
                 event="verify_quick_access_removed",
@@ -3321,15 +3723,21 @@ class Setup:
                 return None
             for line in lines:
                 print(line)
-            print(f"\n  Quick can still read s3://{self.bucket}. Check that it's unticked under")
-            print("  'Amazon S3' and that you clicked Finish and Save. If Quick has access to all")
+            print(
+                f"\n  Quick can still read s3://{self.bucket}. Check that it's unticked under"
+            )
+            print(
+                "  'Amazon S3' and that you clicked Finish and Save. If Quick has access to all"
+            )
             print("  your S3 buckets, unticking one bucket doesn't change that.")
             try:
                 again = input(
                     f"  Press Enter to check again, or type {SKIP_WORD} to leave it and continue: "
                 )
             except (EOFError, KeyboardInterrupt):
-                raise Abort("Stopped while removing Quick's access to the bucket.") from None
+                raise Abort(
+                    "Stopped while removing Quick's access to the bucket."
+                ) from None
             if again.strip().upper() == SKIP_WORD:
                 print("  Left in place.")
                 self.log.write(event="quick_access_kept")
@@ -3345,14 +3753,20 @@ class Setup:
                 {"restore": ["Allow"]},
             )
         if record and record[0] == "already":
-            return StepState(True, ["default access: was already Deny before setup; left as it is"])
+            return StepState(
+                True, ["default access: was already Deny before setup; left as it is"]
+            )
         return StepState(True, ["default access: setup didn't change it"])
 
     def plan_remove_deny_default(self, state):
         return [
             "MANUAL STEP. Setup had you set Quick's default resource access to Deny.",
-            bold("Setting it back to Allow applies to your WHOLE Quick account: every Quick user"),
-            bold("and group without an IAM policy assignment gets access again to all AWS data Quick"),
+            bold(
+                "Setting it back to Allow applies to your WHOLE Quick account: every Quick user"
+            ),
+            bold(
+                "and group without an IAM policy assignment gets access again to all AWS data Quick"
+            ),
             bold("can read (Amazon S3, Athena, Redshift, RDS), not just this bucket."),
             "If you want to keep Deny, type SKIP.",
             "",
@@ -3374,7 +3788,9 @@ class Setup:
         if assignment is not None:
             if assignment.get("PolicyArn") == self.owner_policy_arn():
                 todo["assignment"] = [self.owner_assignment_name()]
-                lines.append(f"Quick IAM policy assignment {self.owner_assignment_name()}")
+                lines.append(
+                    f"Quick IAM policy assignment {self.owner_assignment_name()}"
+                )
             else:
                 lines.append(
                     f"Quick IAM policy assignment {self.owner_assignment_name()} uses another "
@@ -3394,7 +3810,9 @@ class Setup:
                     "than Quick. Kept; delete it yourself if it's yours."
                 )
         if not todo:
-            lines.append("no data source role, owner access policy or assignment from this script")
+            lines.append(
+                "no data source role, owner access policy or assignment from this script"
+            )
         return StepState(not todo, lines, todo)
 
     def plan_remove_owner_access(self, state):
@@ -3413,8 +3831,13 @@ class Setup:
                 AssignmentName=self.owner_assignment_name(),
                 Namespace="default",
             )
-            print(f"  Quick IAM policy assignment {self.owner_assignment_name()} deleted")
-            self.log.write(event="resource_deleted", iam_policy_assignment=self.owner_assignment_name())
+            print(
+                f"  Quick IAM policy assignment {self.owner_assignment_name()} deleted"
+            )
+            self.log.write(
+                event="resource_deleted",
+                iam_policy_assignment=self.owner_assignment_name(),
+            )
         if "policy" in state.todo:
             try:
                 self.iam.delete_policy(PolicyArn=self.owner_policy_arn())
@@ -3426,7 +3849,10 @@ class Setup:
         if "role" in state.todo:
             name = self.data_source_role_name()
             for call, kwargs in (
-                (self.iam.delete_role_policy, {"RoleName": name, "PolicyName": "QuickUsageLogsRead"}),
+                (
+                    self.iam.delete_role_policy,
+                    {"RoleName": name, "PolicyName": "QuickUsageLogsRead"},
+                ),
                 (self.iam.delete_role, {"RoleName": name}),
             ):
                 try:
@@ -3435,7 +3861,9 @@ class Setup:
                     if e.response["Error"]["Code"] != "NoSuchEntity":
                         raise
             print(f"  IAM role {name} deleted")
-            self.log.write(event="resource_deleted", iam_role=self.data_source_role_arn())
+            self.log.write(
+                event="resource_deleted", iam_role=self.data_source_role_arn()
+            )
         if "assignment" in state.todo:
             # Deleting is eventually consistent too: wait, last, until Describe stops returning
             # it, so the check after this destroy step doesn't stop on an assignment that is
@@ -3451,19 +3879,23 @@ class Setup:
                 by_source.setdefault(dl["deliverySourceName"], []).append(dl)
         for d in self.selected:
             name = self.source_name(d)
-            src = self.get_or_none(self.logs.get_delivery_source, "deliverySource", name=name)
+            src = self.get_or_none(
+                self.logs.get_delivery_source, "deliverySource", name=name
+            )
             dest = self.get_or_none(
                 self.logs.get_delivery_destination, "deliveryDestination", name=name
             )
             if src is None and dest is None:
                 continue
             if src is not None and self.resource_arn not in src.get("resourceArns", []):
-                lines.append(f"{name}: delivery source isn't for this Quick account. Kept.")
+                lines.append(
+                    f"{name}: delivery source isn't for this Quick account. Kept."
+                )
                 continue
             if dest is not None:
-                target = dest["deliveryDestinationConfiguration"]["destinationResourceArn"].rstrip(
-                    "/"
-                )
+                target = dest["deliveryDestinationConfiguration"][
+                    "destinationResourceArn"
+                ].rstrip("/")
                 if target != self.expected_destination(d):
                     lines.append(
                         f"{name}: delivery destination sends to {target}, not this bucket. Kept."
@@ -3475,7 +3907,9 @@ class Setup:
                 if dest and dl["deliveryDestinationArn"] == dest["arn"]
             ]
             if [dl for dl in by_source.get(name, []) if dl not in mine]:
-                lines.append(f"{name}: the delivery source also sends to other destinations. Kept.")
+                lines.append(
+                    f"{name}: the delivery source also sends to other destinations. Kept."
+                )
                 continue
             parts = {
                 "deliveries": [dl["id"] for dl in mine],
@@ -3510,7 +3944,9 @@ class Setup:
                 self.delete_if_present(self.logs.delete_delivery_source, name=name)
             print(f"  {d}: log delivery stopped")
             self.log.write(
-                event="resource_deleted", delivery_source=name, deliveries=parts["deliveries"]
+                event="resource_deleted",
+                delivery_source=name,
+                deliveries=parts["deliveries"],
             )
 
     # undoes the bucket step
@@ -3530,7 +3966,9 @@ class Setup:
 
     def other_files_in_bucket(self):
         """True if the bucket holds anything outside the script's folder."""
-        resp = self.s3.list_object_versions(Bucket=self.bucket, Delimiter="/", MaxKeys=1000)
+        resp = self.s3.list_object_versions(
+            Bucket=self.bucket, Delimiter="/", MaxKeys=1000
+        )
         prefixes = [p["Prefix"] for p in resp.get("CommonPrefixes", [])]
         return bool(
             resp.get("Versions")
@@ -3562,14 +4000,18 @@ class Setup:
             todo["files"] = files
         if remove_whole_bucket:
             todo["bucket"] = [self.bucket]
-            lines.append(f"bucket s3://{self.bucket}: created by this script, nothing else in it")
+            lines.append(
+                f"bucket s3://{self.bucket}: created by this script, nothing else in it"
+            )
         elif ours:
             lines.append(
                 f"bucket s3://{self.bucket}: created by this script, but it has other files "
                 "too. Kept."
             )
         else:
-            lines.append(f"bucket s3://{self.bucket}: not created by this script. Kept.")
+            lines.append(
+                f"bucket s3://{self.bucket}: not created by this script. Kept."
+            )
         lines.append(f"{len(files)} file(s) in {PREFIX_ROOT}/ to delete")
         return StepState(not todo, lines, todo)
 
@@ -3610,7 +4052,9 @@ class Setup:
             if "bucket" not in state.todo:
                 return
             try:
-                self.s3.delete_bucket(Bucket=self.bucket, ExpectedBucketOwner=self.account)
+                self.s3.delete_bucket(
+                    Bucket=self.bucket, ExpectedBucketOwner=self.account
+                )
                 print(f"  bucket s3://{self.bucket} deleted")
                 self.log.write(event="resource_deleted", bucket=self.bucket)
                 return
@@ -3636,7 +4080,10 @@ class Setup:
         for d in self.selected:
             print(f"  {d}: data delivered = {self.has_data(d)}")
         if self.get_or_none(
-            self.qs.describe_dashboard, "Dashboard", AwsAccountId=self.account, DashboardId=DASHBOARD_ID
+            self.qs.describe_dashboard,
+            "Dashboard",
+            AwsAccountId=self.account,
+            DashboardId=DASHBOARD_ID,
         ):
             print(f"  starter dashboard: {self.quick_link('dashboards', DASHBOARD_ID)}")
 
@@ -3652,7 +4099,8 @@ def glue_columns(fields):
     Names are the lowercased field names because the OpenX JSON SerDe lowercases JSON keys.
     """
     return [
-        {"Name": (f if isinstance(f, str) else f[0]).lower(), "Type": "string"} for f in fields
+        {"Name": (f if isinstance(f, str) else f[0]).lower(), "Type": "string"}
+        for f in fields
     ]
 
 
@@ -3668,7 +4116,9 @@ def athena_custom_sql(database, table, fields):
         col = name.lower()
         cast = None if isinstance(f, str) else ATHENA_CAST[f[1]]
         select.append(
-            f'TRY_CAST("{col}" AS {cast}) AS "{name}"' if cast else f'"{col}" AS "{name}"'
+            f'TRY_CAST("{col}" AS {cast}) AS "{name}"'
+            if cast
+            else f'"{col}" AS "{name}"'
         )
     # event_datetime: a real DATETIME parsed from the epoch event_timestamp, available for any
     # time-based analysis and as the look-back column if a customer later enables incremental
@@ -3693,7 +4143,10 @@ def athena_sql_columns(fields):
     look-back column if a customer later enables incremental refresh.
     """
     return [
-        {"Name": f if isinstance(f, str) else f[0], "Type": "STRING" if isinstance(f, str) else f[1]}
+        {
+            "Name": f if isinstance(f, str) else f[0],
+            "Type": "STRING" if isinstance(f, str) else f[1],
+        }
         for f in fields
     ] + [{"Name": EVENT_DATETIME_COLUMN, "Type": "DATETIME"}]
 
@@ -10936,7 +11389,11 @@ STEPS = [
     ("Pre-checks", "precheck", False),
     ("Create or prepare the S3 bucket", "bucket", True),
     ("Start log delivery to the bucket", "deliveries", True),
-    ("Deny default access to AWS data (optional, recommended, manual)", "deny_default", True),
+    (
+        "Deny default access to AWS data (optional, recommended, manual)",
+        "deny_default",
+        True,
+    ),
     ("Grant Quick access to the bucket (not needed, skipped)", "quick_access", True),
     ("Create the Athena and Glue resources", "athena", True),
     ("Create Quick data sources and datasets", "datasets", True),
@@ -10988,7 +11445,9 @@ def mismatch_hint(expected, typed):
         return f"Almost there. It needs CAPITAL letters: {expected}"
     if " ".join(t.split()).upper() == expected:
         return f"Check the spacing: one space between each word, like this: {expected}"
-    return f"That doesn't match. Type it exactly as shown, in CAPITAL letters: {expected}"
+    return (
+        f"That doesn't match. Type it exactly as shown, in CAPITAL letters: {expected}"
+    )
 
 
 SKIP_WORD = "SKIP"
@@ -11009,19 +11468,29 @@ def ask_retention(default, log):
             raw = ""  # non-interactive run (e.g. piped stdin): fall back to the default
         except KeyboardInterrupt:
             print()
-            raise Abort("Stopped at the retention question. Nothing was changed.") from None
+            raise Abort(
+                "Stopped at the retention question. Nothing was changed."
+            ) from None
         if not raw:
             days = default
         elif raw.isdigit() and int(raw) >= 1:
             days = int(raw)
         else:
-            print(f"    Enter a positive whole number of days, or press Enter for {default}.")
+            print(
+                f"    Enter a positive whole number of days, or press Enter for {default}."
+            )
             continue
-        log.write(event="retention_chosen", days=days, source="default" if not raw else "typed")
+        log.write(
+            event="retention_chosen",
+            days=days,
+            source="default" if not raw else "typed",
+        )
         return days
 
 
-def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternatives=None):
+def ask_until(
+    log, step, step_name, prompt, expected, allow_skip=False, alternatives=None
+):
     """Ask until the exact phrase is typed.
 
     Returns True (confirmed), False (stopped), "skip" (only when allow_skip is set), or the
@@ -11034,7 +11503,9 @@ def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternat
         print(f"  Or type: {phrase}")
     if allow_skip:
         print(f"  Or type {SKIP_WORD} to skip this optional step.")
-    print(f"  (To stop without changing anything else, type '{STOP_WORD}' or press Ctrl-C.)")
+    print(
+        f"  (To stop without changing anything else, type '{STOP_WORD}' or press Ctrl-C.)"
+    )
     attempt = 0
     while True:
         attempt += 1
@@ -11122,7 +11593,9 @@ def confirm(log, number, name, phrase, allow_skip=False, alternatives=None):
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     p.add_argument(
         "--region",
         help="AWS region (default: your session's region, e.g. CloudShell's region)",
@@ -11194,15 +11667,21 @@ def parse_args():
     try:
         datetime.datetime.strptime(args.refresh_time, "%H:%M")
     except ValueError:
-        p.error(f"--refresh-time must be HH:MM, for example 02:00 (got {args.refresh_time})")
+        p.error(
+            f"--refresh-time must be HH:MM, for example 02:00 (got {args.refresh_time})"
+        )
     if args.destroy and args.from_step != 1:
         p.error("--destroy can't be combined with --from-step")
     if args.retention_days is not None and args.retention_days < 1:
-        p.error(f"--retention-days must be a positive whole number (got {args.retention_days})")
+        p.error(
+            f"--retention-days must be a positive whole number (got {args.retention_days})"
+        )
     if args.destroy and set(args.datasets) != set(DATASETS):
         p.error("--destroy always covers every dataset; leave out --datasets")
     if not 1 <= args.from_step <= len(STEPS):
-        p.error(f"--from-step must be between 1 and {len(STEPS)} (got {args.from_step})")
+        p.error(
+            f"--from-step must be between 1 and {len(STEPS)} (got {args.from_step})"
+        )
     return args
 
 
@@ -11264,7 +11743,9 @@ def main():
     )
 
     # Work out the remaining settings, then show them all for one confirmation.
-    print("\nWorking out the settings (read-only; nothing is changed yet)...", flush=True)
+    print(
+        "\nWorking out the settings (read-only; nothing is changed yet)...", flush=True
+    )
     try:
         setup.bucket, bucket_source = setup.resolve_bucket()
         args.bucket = setup.bucket
@@ -11277,8 +11758,10 @@ def main():
             )
         else:
             admin_arn = admin_role = admin_source = None
-            owner = "not needed for destroy" if args.destroy else (
-                f"not needed (starting at step {args.from_step})"
+            owner = (
+                "not needed for destroy"
+                if args.destroy
+                else (f"not needed (starting at step {args.from_step})")
             )
         bucket_state = setup.bucket_state()
         # Resolve the log retention. For a new bucket, ask (default 365; dry runs stay
@@ -11369,13 +11852,20 @@ def main():
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 1
         except KeyboardInterrupt:
-            print("\n\nInterrupted. Part of the current destroy step may already be done.")
+            print(
+                "\n\nInterrupted. Part of the current destroy step may already be done."
+            )
             log.write(event="run_interrupted", mode="destroy")
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 130
         except Exception as e:
             print(f"\nDestroy failed: {describe_error(e)}")
-            log.write(event="run_failed", mode="destroy", error=repr(e), trace=traceback.format_exc())
+            log.write(
+                event="run_failed",
+                mode="destroy",
+                error=repr(e),
+                trace=traceback.format_exc(),
+            )
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 2
         log.close()
@@ -11412,7 +11902,9 @@ def main():
                 for line in state.lines:
                     print(f"  {line}")
                 if state.done:
-                    print(f"  Step {number} is already complete. Nothing changed; moving on.")
+                    print(
+                        f"  Step {number} is already complete. Nothing changed; moving on."
+                    )
                     log.write(
                         event="step_already_done",
                         step=number,
@@ -11442,7 +11934,9 @@ def main():
                     log.write(event="step_skipped", step=number, step_name=name)
                     continue
                 if not answer:
-                    print(f"\nStopped at step {number}. Nothing in step {number} was changed.")
+                    print(
+                        f"\nStopped at step {number}. Nothing in step {number} was changed."
+                    )
                     log.write(event="run_stopped", step=number)
                     print_resume(log, args, number)
                     code = 1
@@ -11462,7 +11956,9 @@ def main():
         else:
             log.write(event="run_complete")
             if not args.dry_run:
-                print("\nAll steps are complete. Re-running the script is safe: finished steps")
+                print(
+                    "\nAll steps are complete. Re-running the script is safe: finished steps"
+                )
                 print("are detected and skipped.")
     except Abort as e:
         resume = e.resume_step or current
@@ -11471,13 +11967,20 @@ def main():
         print_resume(log, args, resume)
         code = 1
     except KeyboardInterrupt:
-        print(f"\n\nInterrupted during step {current}. Part of that step may already be done.")
+        print(
+            f"\n\nInterrupted during step {current}. Part of that step may already be done."
+        )
         log.write(event="run_interrupted", step=current)
         print_resume(log, args, current)
         code = 130
     except Exception as e:
         print(f"\nStep {current} failed: {describe_error(e)}")
-        log.write(event="run_failed", step=current, error=repr(e), trace=traceback.format_exc())
+        log.write(
+            event="run_failed",
+            step=current,
+            error=repr(e),
+            trace=traceback.format_exc(),
+        )
         print_resume(log, args, current)
         code = 2
     log.close()
@@ -11500,7 +12003,9 @@ CHECKED_STEPS = {
 
 def verify_earlier_steps(setup, log, from_step):
     """Before starting at from_step, check (read-only) that every earlier step is complete."""
-    print(f"\nStarting at step {from_step}. Checking that steps 1-{from_step - 1} are complete:")
+    print(
+        f"\nStarting at step {from_step}. Checking that steps 1-{from_step - 1} are complete:"
+    )
     for number, (name, key, _) in enumerate(STEPS, start=1):
         if number >= from_step:
             break
@@ -11520,7 +12025,9 @@ def verify_earlier_steps(setup, log, from_step):
             details=state.lines,
         )
         if state.unknown:
-            print(f"  Step {number} ({name}): couldn't verify automatically; assuming it's done.")
+            print(
+                f"  Step {number} ({name}): couldn't verify automatically; assuming it's done."
+            )
             continue
         if not state.done:
             raise Abort(
@@ -11539,8 +12046,16 @@ TEARDOWN = [
     ("Delete the Athena and Glue resources", "athena", ATHENA_STEP),
     ("Stop log delivery", "deliveries", DELIVERIES_STEP),
     ("Remove Quick's access to the bucket (manual)", "quick_access", QUICK_ACCESS_STEP),
-    ("Set default access to AWS data back to Allow (manual)", "deny_default", DENY_DEFAULT_STEP),
-    ("Delete the data source role and the owner's IAM policy assignment", "owner_access", ATHENA_STEP),
+    (
+        "Set default access to AWS data back to Allow (manual)",
+        "deny_default",
+        DENY_DEFAULT_STEP,
+    ),
+    (
+        "Delete the data source role and the owner's IAM policy assignment",
+        "owner_access",
+        ATHENA_STEP,
+    ),
     ("Delete the usage logs and the bucket", "bucket", BUCKET_STEP),
 ]
 # If you keep one of these, the parts that depend on it are kept too, so what remains keeps working.
@@ -11555,10 +12070,14 @@ TEARDOWN_NEEDS = {
 
 def run_destroy(setup, log, args):
     """Undo what the setup steps created. Returns the exit code."""
-    setup.selected = list(DATASETS)  # destroy always covers everything the script creates
+    setup.selected = list(
+        DATASETS
+    )  # destroy always covers everything the script creates
     account = setup.account
     print("\n=== Destroy: remove what this script created ===")
-    print("Only things this script creates are removed, under their fixed names. Nothing has")
+    print(
+        "Only things this script creates are removed, under their fixed names. Nothing has"
+    )
     print("been deleted yet. This is what the script finds in this account:")
     found = {}
     for number, (name, key, undoes) in enumerate(TEARDOWN, start=1):
@@ -11570,10 +12089,15 @@ def run_destroy(setup, log, args):
             print(f"       {line}")
     log.write(
         event="destroy_inventory",
-        found={k: {"done": s.done, "unknown": s.unknown, "details": s.lines} for k, s in found.items()},
+        found={
+            k: {"done": s.done, "unknown": s.unknown, "details": s.lines}
+            for k, s in found.items()
+        },
     )
     if all(s.done for s in found.values()):
-        print("\nNothing from this script is left in this account. Nothing was changed.")
+        print(
+            "\nNothing from this script is left in this account. Nothing was changed."
+        )
         log.write(event="destroy_complete", kept=[])
         return 0
     if args.dry_run:
@@ -11583,7 +12107,9 @@ def run_destroy(setup, log, args):
                 for line in getattr(setup, f"plan_remove_{key}")(found[key]):
                     print(f"  {line}")
         return 0
-    print("\nEach removal asks for its own confirmation, and you can type SKIP to keep it.")
+    print(
+        "\nEach removal asks for its own confirmation, and you can type SKIP to keep it."
+    )
     ok = ask_until(
         log,
         0,
@@ -11598,7 +12124,9 @@ def run_destroy(setup, log, args):
     for number, (name, key, _) in enumerate(TEARDOWN, start=1):
         step = f"D{number}"
         print(f"\n=== Destroy {number}/{len(TEARDOWN)}: {name} ===")
-        state = getattr(setup, f"find_{key}_to_remove")()  # re-read just before changing anything
+        state = getattr(
+            setup, f"find_{key}_to_remove"
+        )()  # re-read just before changing anything
         for line in state.lines:
             print(f"  {line}")
         if state.done:
@@ -11610,7 +12138,13 @@ def run_destroy(setup, log, args):
             what = ", ".join(n for n, k, _ in TEARDOWN if k in blocked)
             print(f"  Kept: you chose to keep '{what}', which needs this.")
             kept.append(key)
-            log.write(event="destroy_step_kept", step=step, step_name=name, reason="dependency", needs=blocked)
+            log.write(
+                event="destroy_step_kept",
+                step=step,
+                step_name=name,
+                reason="dependency",
+                needs=blocked,
+            )
             continue
         for line in getattr(setup, f"plan_remove_{key}")(state):
             print(f"  {line}")
@@ -11625,10 +12159,17 @@ def run_destroy(setup, log, args):
         if answer == "skip":
             print("  Kept.")
             kept.append(key)
-            log.write(event="destroy_step_kept", step=step, step_name=name, reason="typed SKIP")
+            log.write(
+                event="destroy_step_kept",
+                step=step,
+                step_name=name,
+                reason="typed SKIP",
+            )
             continue
         if not answer:
-            print(f"\nStopped at destroy step {number}. Nothing in this step was deleted.")
+            print(
+                f"\nStopped at destroy step {number}. Nothing in this step was deleted."
+            )
             log.write(event="destroy_stopped", step=step)
             print(f"To continue, run:\n    {destroy_command(args)}")
             print("Anything already removed is detected and skipped.")
@@ -11636,7 +12177,12 @@ def run_destroy(setup, log, args):
         outcome = getattr(setup, f"remove_{key}")(state)
         if outcome == "kept":
             kept.append(key)
-            log.write(event="destroy_step_kept", step=step, step_name=name, reason="grant left in place")
+            log.write(
+                event="destroy_step_kept",
+                step=step,
+                step_name=name,
+                reason="grant left in place",
+            )
             continue
         if key not in MANUAL_STEPS:  # console changes can't be re-checked here
             after = getattr(setup, f"find_{key}_to_remove")()
@@ -11648,7 +12194,11 @@ def run_destroy(setup, log, args):
         log.write(event="destroy_step_done", step=step, step_name=name)
     log.write(event="destroy_complete", kept=kept)
     if kept:
-        print("\nDone. You chose to keep: " + ", ".join(n for n, k, _ in TEARDOWN if k in kept) + ".")
+        print(
+            "\nDone. You chose to keep: "
+            + ", ".join(n for n, k, _ in TEARDOWN if k in kept)
+            + "."
+        )
         print(f"To remove them later, run:\n    {destroy_command(args)}")
     else:
         print("\nDone. Everything this script created has been removed.")
@@ -11672,7 +12222,11 @@ def describe_error(e):
         err = e.response.get("Error", {})
         op = getattr(e, "operation_name", "AWS call")
         hint = ""
-        if err.get("Code") in ("ExpiredToken", "ExpiredTokenException", "RequestExpired"):
+        if err.get("Code") in (
+            "ExpiredToken",
+            "ExpiredTokenException",
+            "RequestExpired",
+        ):
             hint = " Your AWS credentials expired; refresh them and re-run."
         elif "AccessDenied" in err.get("Code", ""):
             hint = " Your AWS identity is missing a permission for this call."
@@ -11696,7 +12250,10 @@ def resume_command(args, step):
         parts += ["--refresh-time", args.refresh_time]
     if args.timezone != DEFAULT_TIMEZONE:
         parts += ["--timezone", args.timezone]
-    if args.retention_days is not None and args.retention_days != DEFAULT_RETENTION_DAYS:
+    if (
+        args.retention_days is not None
+        and args.retention_days != DEFAULT_RETENTION_DAYS
+    ):
         parts += ["--retention-days", str(args.retention_days)]
     if args.no_deny_default:
         parts.append("--no-deny-default")
@@ -11711,7 +12268,9 @@ def print_resume(log, args, step):
     command = resume_command(args, step)
     print("\nTo continue from where it stopped, fix the problem above, then run:")
     print(f"    {command}")
-    print("Finished steps (and finished parts of a step) are detected and skipped, so this is")
+    print(
+        "Finished steps (and finished parts of a step) are detected and skipped, so this is"
+    )
     print("safe to run more than once.")
     log.write(event="resume_hint", step=step, command=command)
 

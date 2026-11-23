@@ -38,6 +38,7 @@ ID, then asks again before each removal (type SKIP to keep something). It only r
 this script creates, under their fixed names. It deletes the bucket only if the script created it
 and nothing else is in it, and it never deletes Kiro reports from a bucket it didn't create.
 """
+
 import argparse
 import copy
 import datetime
@@ -60,7 +61,9 @@ SCRIPT_VERSION = "0.1.0"
 # Standard retry mode backs off on throttling and transient errors; explicit timeouts keep a dead
 # connection from hanging forever (same settings as quick_usage_datasets_setup.py).
 BOTO_CONFIG = Config(
-    retries={"mode": "standard", "max_attempts": 10}, connect_timeout=10, read_timeout=60
+    retries={"mode": "standard", "max_attempts": 10},
+    connect_timeout=10,
+    read_timeout=60,
 )
 # Kiro writes each day's reports at 02:00 UTC, so the optional daily refresh runs an hour later.
 DEFAULT_REFRESH_TIME = "03:00"
@@ -76,7 +79,9 @@ ATHENA_RESULTS_PREFIX = f"{PREFIX_ROOT}/_athena-results"
 # Athena query results (copies of report rows, with emails) in a bucket this script created
 # expire after this many days, as in quick_usage_datasets_setup.py. Kiro reports never expire.
 ATHENA_RESULTS_RETENTION_DAYS = 365
-ATHENA_RESULTS_RULE_ID = f"expire-kiro-usage-athena-results-after-{ATHENA_RESULTS_RETENTION_DAYS}-days"
+ATHENA_RESULTS_RULE_ID = (
+    f"expire-kiro-usage-athena-results-after-{ATHENA_RESULTS_RETENTION_DAYS}-days"
+)
 # Kiro writes reports under a prefix, so a new bucket gets this one.
 DEFAULT_REPORTS_PREFIX = "kiro-user-activity-reports"
 NEW_WORD = "NEW"
@@ -175,7 +180,9 @@ DATASETS = {
     "user_report": (
         "Kiro use per user, day and client: credits, overage, messages, tier.",
         "user_report",
-        [("Date", "DATETIME"), "user_id"] + USER_REPORT_FIELDS + [(EVENT_DATETIME_COLUMN, "DATETIME")],
+        [("Date", "DATETIME"), "user_id"]
+        + USER_REPORT_FIELDS
+        + [(EVENT_DATETIME_COLUMN, "DATETIME")],
     ),
     "model_messages": (
         "Kiro messages per user, day, client and model (from the per-model report columns).",
@@ -323,7 +330,8 @@ COLUMN_DESCRIPTIONS = {
         EVENT_DATETIME_COLUMN: _KIRO_DATETIME,
     },
     "by_user_analytic": {
-        "Date": _KIRO_DAY + " Legacy Kiro report for CLI and plugin use, one row per user and "
+        "Date": _KIRO_DAY
+        + " Legacy Kiro report for CLI and plugin use, one row per user and "
         "day. All counts are for that day.",
         "user_id": _KIRO_USER["user_id"],
         "UserId": _KIRO_USER["UserId"],
@@ -487,7 +495,9 @@ def parse_s3_uri(text):
     if not bucket:
         raise ValueError("it has no bucket name")
     if not prefix:
-        raise ValueError("Kiro can't write to the bucket root, so it needs a prefix (folder)")
+        raise ValueError(
+            "Kiro can't write to the bucket root, so it needs a prefix (folder)"
+        )
     return bucket, prefix
 
 
@@ -563,10 +573,14 @@ class Setup:
         self.reports_prefix = None
         self.log = log
         self.s3 = session.client("s3", region_name=self.region, config=BOTO_CONFIG)
-        self.qs = session.client("quicksight", region_name=self.region, config=BOTO_CONFIG)
+        self.qs = session.client(
+            "quicksight", region_name=self.region, config=BOTO_CONFIG
+        )
         self.iam = session.client("iam", config=BOTO_CONFIG)
         self.glue = session.client("glue", region_name=self.region, config=BOTO_CONFIG)
-        self.athena = session.client("athena", region_name=self.region, config=BOTO_CONFIG)
+        self.athena = session.client(
+            "athena", region_name=self.region, config=BOTO_CONFIG
+        )
         self.partition = identity["Arn"].split(":")[1]
         self.selected = list(args.datasets)
         # Bucket of the Quick usage logs, if quick_usage_datasets_setup.py has run (precheck).
@@ -608,7 +622,11 @@ class Setup:
         try:
             return fn(**kwargs)[key]
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("ResourceNotFoundException", "NoSuchKey", "404"):
+            if e.response["Error"]["Code"] in (
+                "ResourceNotFoundException",
+                "NoSuchKey",
+                "404",
+            ):
                 return None
             raise
 
@@ -635,19 +653,35 @@ class Setup:
             try:
                 bucket, prefix = parse_s3_uri(self.args.reports_s3_uri)
             except ValueError as e:
-                raise Abort(f"--reports-s3-uri {self.args.reports_s3_uri} isn't usable: {e}.") from e
+                raise Abort(
+                    f"--reports-s3-uri {self.args.reports_s3_uri} isn't usable: {e}."
+                ) from e
             return bucket, prefix, "from --reports-s3-uri"
         default = self.default_bucket()
         if self.bucket_exists(default) and self.bucket_has_our_tag(default):
-            return default, DEFAULT_REPORTS_PREFIX, "created by an earlier run of this script"
+            return (
+                default,
+                DEFAULT_REPORTS_PREFIX,
+                "created by an earlier run of this script",
+            )
         return self.ask_reports()
 
     def ask_reports(self):
-        print("\nDoes Kiro already send user activity reports to an S3 bucket in this account?")
-        print("  If yes, paste the S3 URI shown in the Kiro console under Settings > Kiro user")
-        print("  activity reports, for example s3://amzn-s3-demo-bucket/user-activity-reports/.")
-        print(f"  The datasets then read the reports already there: {self.kiro_settings_link()}")
-        print(f"  If not, type {NEW_WORD}: the script creates a bucket for them, and a later step")
+        print(
+            "\nDoes Kiro already send user activity reports to an S3 bucket in this account?"
+        )
+        print(
+            "  If yes, paste the S3 URI shown in the Kiro console under Settings > Kiro user"
+        )
+        print(
+            "  activity reports, for example s3://amzn-s3-demo-bucket/user-activity-reports/."
+        )
+        print(
+            f"  The datasets then read the reports already there: {self.kiro_settings_link()}"
+        )
+        print(
+            f"  If not, type {NEW_WORD}: the script creates a bucket for them, and a later step"
+        )
         print("  shows you how to turn the reports on in the Kiro console.")
         print(f"  (Type '{STOP_WORD}' to stop.)")
         while True:
@@ -662,18 +696,28 @@ class Setup:
                 raise Abort("Stopped while choosing the reports bucket.")
             if answer.upper() == NEW_WORD:
                 self.log.write(event="reports_location_typed", typed=answer, mode="new")
-                return self.default_bucket(), DEFAULT_REPORTS_PREFIX, "new bucket (you typed NEW)"
+                return (
+                    self.default_bucket(),
+                    DEFAULT_REPORTS_PREFIX,
+                    "new bucket (you typed NEW)",
+                )
             try:
                 bucket, prefix = parse_s3_uri(answer)
             except ValueError as e:
-                print(f"  That isn't an S3 URI the script can use: {e}. Try again, or type "
-                      f"{NEW_WORD}.")
+                print(
+                    f"  That isn't an S3 URI the script can use: {e}. Try again, or type "
+                    f"{NEW_WORD}."
+                )
                 continue
             if not self.bucket_exists(bucket):
-                print(f"  There's no bucket named {bucket} in this account. Check the URI in the "
-                      f"Kiro console, or type {NEW_WORD}.")
+                print(
+                    f"  There's no bucket named {bucket} in this account. Check the URI in the "
+                    f"Kiro console, or type {NEW_WORD}."
+                )
                 continue
-            self.log.write(event="reports_location_typed", typed=answer, mode="existing")
+            self.log.write(
+                event="reports_location_typed", typed=answer, mode="existing"
+            )
             return bucket, prefix, "typed by you"
 
     def bucket_has_our_tag(self, bucket=None):
@@ -687,7 +731,9 @@ class Setup:
 
     def bucket_state(self):
         try:
-            return "exists in this account" if self.bucket_exists() else "will be created"
+            return (
+                "exists in this account" if self.bucket_exists() else "will be created"
+            )
         except ClientError as e:
             return f"can't check: {e.response['Error']['Code']}"
 
@@ -701,21 +747,33 @@ class Setup:
     def admin_users(self):
         """Quick users in the default namespace with an admin role, as (arn, name, role)."""
         print("  Looking for Quick admins to own the datasets. To find them,")
-        print("  the script reads every Quick user in the account (100 per call). To skip it")
-        print("  next time, pass --quick-admin-arn with the owner's Quick user ARN.", flush=True)
+        print(
+            "  the script reads every Quick user in the account (100 per call). To skip it"
+        )
+        print(
+            "  next time, pass --quick-admin-arn with the owner's Quick user ARN.",
+            flush=True,
+        )
         found, seen = [], 0
         try:
             for page in self.qs.get_paginator("list_users").paginate(
-                AwsAccountId=self.account, Namespace="default", PaginationConfig={"PageSize": 100}
+                AwsAccountId=self.account,
+                Namespace="default",
+                PaginationConfig={"PageSize": 100},
             ):
                 for u in page["UserList"]:
                     if u.get("Role", "").startswith("ADMIN") and u.get("Active", True):
                         found.append((u["Arn"], u["UserName"], u["Role"]))
                 seen += len(page["UserList"])
-                progress(f"    {seen} Quick users checked, {len(found)} admins found so far...")
+                progress(
+                    f"    {seen} Quick users checked, {len(found)} admins found so far..."
+                )
         except ClientError as e:
             self.raise_quick_error(e)
-        progress(f"    Done: {seen} Quick users checked, {len(found)} admins found.", done=True)
+        progress(
+            f"    Done: {seen} Quick users checked, {len(found)} admins found.",
+            done=True,
+        )
         self.log.write(event="admin_scan", users_checked=seen, admins_found=len(found))
         return found
 
@@ -779,11 +837,15 @@ class Setup:
         arn = self.args.quick_admin_arn
         if arn:
             if ":user/" not in arn:
-                raise Abort(f"--quick-admin-arn does not look like a Quick user ARN: {arn}")
+                raise Abort(
+                    f"--quick-admin-arn does not look like a Quick user ARN: {arn}"
+                )
             namespace, user_name = self.parse_quick_user(arn)
             user = self.describe_quick_user(namespace, user_name)
             if not user:
-                raise Abort(f"No Quick user matches --quick-admin-arn {arn} in this account.")
+                raise Abort(
+                    f"No Quick user matches --quick-admin-arn {arn} in this account."
+                )
             if not user.get("Active", True):
                 raise Abort(
                     f"The Quick user in --quick-admin-arn ({user_name}) isn't active yet, so it "
@@ -808,7 +870,11 @@ class Setup:
         try:
             name = self.caller_quick_user_name(caller_arn)
             user = self.describe_quick_user("default", name) if name else None
-            if user and user.get("Role", "").startswith("ADMIN") and user.get("Active", True):
+            if (
+                user
+                and user.get("Role", "").startswith("ADMIN")
+                and user.get("Active", True)
+            ):
                 return user["Arn"], user["Role"], "that's you"
         except Exception as e:  # noqa: BLE001 - a failed lookup never stops the run
             self.log.write(event="caller_admin_check_failed", error=repr(e))
@@ -817,10 +883,16 @@ class Setup:
     def ask_admin(self):
         """Ask for the dataset owner by Quick user name or ARN; SEARCH lists every admin."""
         print("\nWhich Quick admin should own the datasets?")
-        print("  Type the admin's Quick user name or Quick user ARN. You can find user names")
-        print("  in Quick under Manage account > Manage users. In Identity Center accounts the")
+        print(
+            "  Type the admin's Quick user name or Quick user ARN. You can find user names"
+        )
+        print(
+            "  in Quick under Manage account > Manage users. In Identity Center accounts the"
+        )
         print("  user name is usually the person's email.")
-        print(f"  Or type {SEARCH_WORD} to have the script find the admins for you (this reads")
+        print(
+            f"  Or type {SEARCH_WORD} to have the script find the admins for you (this reads"
+        )
         print("  every Quick user in the account, so it can take several minutes).")
         print(f"  (Type '{STOP_WORD}' to stop.)")
         while True:
@@ -841,17 +913,23 @@ class Setup:
             namespace, user_name = self.parse_quick_user(answer)
             user = self.describe_quick_user(namespace, user_name)
             if not user:
-                print(f"  No Quick user named '{user_name}' in this account. Try again, or "
-                      f"type {SEARCH_WORD}.")
+                print(
+                    f"  No Quick user named '{user_name}' in this account. Try again, or "
+                    f"type {SEARCH_WORD}."
+                )
                 continue
             role = user.get("Role", "")
             if not role.startswith("ADMIN"):
-                print(f"  {user_name} is a Quick {role or 'user'}, not an admin. Type an "
-                      f"admin, or {SEARCH_WORD}.")
+                print(
+                    f"  {user_name} is a Quick {role or 'user'}, not an admin. Type an "
+                    f"admin, or {SEARCH_WORD}."
+                )
                 continue
             if not user.get("Active", True):
-                print(f"  {user_name} hasn't signed in to Quick yet, so it can't own the "
-                      f"datasets. Type another admin, or {SEARCH_WORD}.")
+                print(
+                    f"  {user_name} hasn't signed in to Quick yet, so it can't own the "
+                    f"datasets. Type another admin, or {SEARCH_WORD}."
+                )
                 continue
             self.log.write(event="admin_typed", arn=user["Arn"], typed=answer)
             return user["Arn"], role, "typed by you"
@@ -868,7 +946,9 @@ class Setup:
         if len(admins) == 1:
             a, _, role = admins[0]
             return a, role, "the only Quick admin in this account"
-        print("\nThis Quick account has several admins. Which one should own the datasets?")
+        print(
+            "\nThis Quick account has several admins. Which one should own the datasets?"
+        )
         for i, (_, user_name, role) in enumerate(admins, start=1):
             print(f"  {i}. {user_name} ({role})")
         print(f"  (Type a number, or '{STOP_WORD}' to stop.)")
@@ -902,7 +982,9 @@ class Setup:
         found = {}
         for name in QUICK_JOIN_TABLES:
             try:
-                table = self.glue.get_table(DatabaseName=QUICK_GLUE_DATABASE, Name=name)["Table"]
+                table = self.glue.get_table(
+                    DatabaseName=QUICK_GLUE_DATABASE, Name=name
+                )["Table"]
             except ClientError as e:
                 if e.response["Error"]["Code"] == "EntityNotFoundException":
                     continue
@@ -915,7 +997,11 @@ class Setup:
         tables = self.quick_usage_tables()
         if set(tables) != set(QUICK_JOIN_TABLES):
             return None
-        buckets = {loc[len("s3://") :].split("/", 1)[0] for loc in tables.values() if loc.startswith("s3://")}
+        buckets = {
+            loc[len("s3://") :].split("/", 1)[0]
+            for loc in tables.values()
+            if loc.startswith("s3://")
+        }
         return buckets.pop() if len(buckets) == 1 else None
 
     def missing_quick_datasets(self):
@@ -944,16 +1030,28 @@ class Setup:
         if exists:
             count, newest = self.count_reports()
             if count:
-                print(f"  Kiro reports found under {self.kiro_logs_prefix()}: {count}"
-                      f"{'+' if count >= 1000 else ''} file(s), newest "
-                      f"{newest['LastModified']:%Y-%m-%d}")
+                print(
+                    f"  Kiro reports found under {self.kiro_logs_prefix()}: {count}"
+                    f"{'+' if count >= 1000 else ''} file(s), newest "
+                    f"{newest['LastModified']:%Y-%m-%d}"
+                )
             else:
                 print(f"  No Kiro reports under {self.kiro_logs_prefix()} yet.")
-        print("  Checking for the Quick usage setup (quick_usage_datasets_setup.py)...", flush=True)
+        print(
+            "  Checking for the Quick usage setup (quick_usage_datasets_setup.py)...",
+            flush=True,
+        )
         self.quick_bucket = self.find_quick_bucket()
-        missing = [f"Glue table {QUICK_GLUE_DATABASE}.{t}" for t in QUICK_JOIN_TABLES
-                   if not self.quick_bucket] + self.missing_quick_datasets()
-        self.log.write(event="precheck", quick_bucket=self.quick_bucket, missing_quick_usage=missing)
+        missing = [
+            f"Glue table {QUICK_GLUE_DATABASE}.{t}"
+            for t in QUICK_JOIN_TABLES
+            if not self.quick_bucket
+        ] + self.missing_quick_datasets()
+        self.log.write(
+            event="precheck",
+            quick_bucket=self.quick_bucket,
+            missing_quick_usage=missing,
+        )
         if missing:
             raise Abort(
                 "This script adds Kiro to the Quick usage datasets, and they aren't set up in "
@@ -962,13 +1060,17 @@ class Setup:
                 "again. Nothing was changed.",
                 resume_step=PRECHECK_STEP,
             )
-        print(f"  Quick usage setup found: Glue tables in {QUICK_GLUE_DATABASE} (logs in "
-              f"s3://{self.quick_bucket}/) and the quick-usage-* datasets.")
+        print(
+            f"  Quick usage setup found: Glue tables in {QUICK_GLUE_DATABASE} (logs in "
+            f"s3://{self.quick_bucket}/) and the quick-usage-* datasets."
+        )
 
     # ---------- bucket step ----------
     def bucket_policy(self):
         try:
-            return policy_document(self.s3.get_bucket_policy(Bucket=self.bucket)["Policy"])
+            return policy_document(
+                self.s3.get_bucket_policy(Bucket=self.bucket)["Policy"]
+            )
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchBucketPolicy":
                 return {}
@@ -1004,14 +1106,18 @@ class Setup:
     def has_tls_only(policy):
         """True if some Deny statement refuses requests made without TLS."""
         for st in as_list(policy.get("Statement", [])):
-            secure = (st.get("Condition") or {}).get("Bool", {}).get("aws:SecureTransport")
+            secure = (
+                (st.get("Condition") or {}).get("Bool", {}).get("aws:SecureTransport")
+            )
             if st.get("Effect") == "Deny" and str(secure).lower() == "false":
                 return True
         return False
 
     def lifecycle_rules(self):
         try:
-            return self.s3.get_bucket_lifecycle_configuration(Bucket=self.bucket).get("Rules", [])
+            return self.s3.get_bucket_lifecycle_configuration(Bucket=self.bucket).get(
+                "Rules", []
+            )
         except ClientError as e:
             if e.response["Error"]["Code"] != "NoSuchLifecycleConfiguration":
                 raise
@@ -1027,7 +1133,9 @@ class Setup:
         if not self.needs_results_expiry():
             return
         # put replaces the whole configuration, so keep every rule that isn't ours.
-        rules = [r for r in self.lifecycle_rules() if r.get("ID") != ATHENA_RESULTS_RULE_ID]
+        rules = [
+            r for r in self.lifecycle_rules() if r.get("ID") != ATHENA_RESULTS_RULE_ID
+        ]
         rules.append(
             {
                 "ID": ATHENA_RESULTS_RULE_ID,
@@ -1036,9 +1144,15 @@ class Setup:
                 "Expiration": {"Days": ATHENA_RESULTS_RETENTION_DAYS},
             }
         )
-        self.s3.put_bucket_lifecycle_configuration(Bucket=self.bucket, LifecycleConfiguration={"Rules": rules})
-        print(f"  Athena query results expire after {ATHENA_RESULTS_RETENTION_DAYS} days; Kiro reports are kept.")
-        self.log.write(event="resource", bucket_lifecycle_days=ATHENA_RESULTS_RETENTION_DAYS)
+        self.s3.put_bucket_lifecycle_configuration(
+            Bucket=self.bucket, LifecycleConfiguration={"Rules": rules}
+        )
+        print(
+            f"  Athena query results expire after {ATHENA_RESULTS_RETENTION_DAYS} days; Kiro reports are kept."
+        )
+        self.log.write(
+            event="resource", bucket_lifecycle_days=ATHENA_RESULTS_RETENTION_DAYS
+        )
 
     def needs_tls_only(self, policy):
         """Only a bucket this script created gets the TLS-only statement; a customer's is left alone."""
@@ -1056,14 +1170,18 @@ class Setup:
             actions = as_list(st.get("Action", []))
             if not any(fnmatch.fnmatchcase("s3:PutObject", a) for a in actions):
                 continue
-            if any(fnmatch.fnmatchcase(probe, r) for r in as_list(st.get("Resource", []))):
+            if any(
+                fnmatch.fnmatchcase(probe, r) for r in as_list(st.get("Resource", []))
+            ):
                 return True
         return False
 
     def bucket_warnings(self):
         """Settings on an existing bucket that the script doesn't change but you should know about."""
         warnings = []
-        location = self.s3.get_bucket_location(Bucket=self.bucket).get("LocationConstraint")
+        location = self.s3.get_bucket_location(Bucket=self.bucket).get(
+            "LocationConstraint"
+        )
         location = location or "us-east-1"
         if location != self.region:
             warnings.append(
@@ -1082,7 +1200,9 @@ class Setup:
         except ClientError as e:
             if e.response["Error"]["Code"] != "NoSuchPublicAccessBlockConfiguration":
                 raise
-            warnings.append("This bucket has no Block Public Access settings. Turn them on.")
+            warnings.append(
+                "This bucket has no Block Public Access settings. Turn them on."
+            )
         try:
             rules = self.s3.get_bucket_encryption(Bucket=self.bucket)[
                 "ServerSideEncryptionConfiguration"
@@ -1094,9 +1214,14 @@ class Setup:
                     "access to that KMS key."
                 )
         except ClientError as e:
-            if e.response["Error"]["Code"] != "ServerSideEncryptionConfigurationNotFoundError":
+            if (
+                e.response["Error"]["Code"]
+                != "ServerSideEncryptionConfigurationNotFoundError"
+            ):
                 raise
-        if not self.bucket_has_our_tag() and not self.has_tls_only(self.bucket_policy()):
+        if not self.bucket_has_our_tag() and not self.has_tls_only(
+            self.bucket_policy()
+        ):
             warnings.append(
                 "The bucket policy doesn't refuse requests made without TLS. Consider adding a "
                 "Deny statement with the condition aws:SecureTransport = false."
@@ -1105,25 +1230,37 @@ class Setup:
 
     def check_bucket(self):
         if not self.bucket_exists():
-            return StepState(False, [f"Bucket s3://{self.bucket} doesn't exist yet."], {"bucket": ["create"]})
+            return StepState(
+                False,
+                [f"Bucket s3://{self.bucket} doesn't exist yet."],
+                {"bucket": ["create"]},
+            )
         lines = [f"Bucket s3://{self.bucket} exists and is owned by this account."]
         lines += [f"WARNING: {w}" for w in self.bucket_warnings()]
         policy = self.bucket_policy()
         changes = {}
         if self.kiro_can_write(policy):
-            lines.append(f"Its bucket policy already lets Kiro ({KIRO_PRINCIPAL}) write under "
-                         f"{self.reports_prefix}/.")
+            lines.append(
+                f"Its bucket policy already lets Kiro ({KIRO_PRINCIPAL}) write under "
+                f"{self.reports_prefix}/."
+            )
             if self.needs_tls_only(policy):
-                lines.append("Its TLS-only bucket policy statement is missing and will be added.")
+                lines.append(
+                    "Its TLS-only bucket policy statement is missing and will be added."
+                )
                 changes["bucket policy"] = ["add TLS-only statement"]
         else:
-            lines.append(f"Its bucket policy doesn't let Kiro ({KIRO_PRINCIPAL}) write under "
-                         f"{self.reports_prefix}/ yet.")
+            lines.append(
+                f"Its bucket policy doesn't let Kiro ({KIRO_PRINCIPAL}) write under "
+                f"{self.reports_prefix}/ yet."
+            )
             changes["bucket policy"] = ["add statement"]
         # run_bucket always applies the expiration, so the plan must always show it.
         if self.needs_results_expiry():
-            lines.append(f"Its {ATHENA_RESULTS_RETENTION_DAYS}-day Athena results expiration is "
-                         "missing and will be added.")
+            lines.append(
+                f"Its {ATHENA_RESULTS_RETENTION_DAYS}-day Athena results expiration is "
+                "missing and will be added."
+            )
             changes["bucket lifecycle"] = ["add expiration"]
         return StepState(not changes, lines, changes or None)
 
@@ -1140,9 +1277,13 @@ class Setup:
                 f"  - Kiro writes its reports under {self.reports_prefix}/ (Kiro can't use the root)",
             ]
         else:
-            lines.append(f"Use existing bucket s3://{self.bucket}. Its other settings are not changed.")
+            lines.append(
+                f"Use existing bucket s3://{self.bucket}. Its other settings are not changed."
+            )
             if self.needs_tls_only(self.bucket_policy()):
-                lines.append("  - a bucket policy statement that refuses requests made without TLS is added")
+                lines.append(
+                    "  - a bucket policy statement that refuses requests made without TLS is added"
+                )
         lines += [
             "Add this statement to the bucket policy (existing statements are kept). It is the",
             "policy the Kiro documentation asks for: only Kiro, for this account and region, may",
@@ -1158,7 +1299,9 @@ class Setup:
         if not self.bucket_exists():
             kwargs = {"Bucket": self.bucket, "ObjectOwnership": "BucketOwnerEnforced"}
             if self.region != "us-east-1":
-                kwargs["CreateBucketConfiguration"] = {"LocationConstraint": self.region}
+                kwargs["CreateBucketConfiguration"] = {
+                    "LocationConstraint": self.region
+                }
             self.s3.create_bucket(**kwargs)
             self.s3.put_public_access_block(
                 Bucket=self.bucket,
@@ -1172,10 +1315,18 @@ class Setup:
             self.s3.put_bucket_encryption(
                 Bucket=self.bucket,
                 ServerSideEncryptionConfiguration={
-                    "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+                    "Rules": [
+                        {
+                            "ApplyServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
                 },
             )
-            self.s3.put_bucket_tagging(Bucket=self.bucket, Tagging={"TagSet": [BUCKET_TAG]})
+            self.s3.put_bucket_tagging(
+                Bucket=self.bucket, Tagging={"TagSet": [BUCKET_TAG]}
+            )
             print(f"  Created s3://{self.bucket}")
             self.log.write(event="resource", bucket=self.bucket)
         else:
@@ -1199,12 +1350,18 @@ class Setup:
         policy["Statement"] = statements
         self.s3.put_bucket_policy(Bucket=self.bucket, Policy=json.dumps(policy))
         if BUCKET_POLICY_SID in added:
-            print(f"  Bucket policy: statement {BUCKET_POLICY_SID} added (Kiro may write under "
-                  f"{self.reports_prefix}/)")
+            print(
+                f"  Bucket policy: statement {BUCKET_POLICY_SID} added (Kiro may write under "
+                f"{self.reports_prefix}/)"
+            )
         if TLS_ONLY_SID in added:
-            print(f"  Bucket policy: statement {TLS_ONLY_SID} added (requests without TLS are refused)")
+            print(
+                f"  Bucket policy: statement {TLS_ONLY_SID} added (requests without TLS are refused)"
+            )
         for sid in added:
-            self.log.write(event="resource", bucket_policy_statement=sid, bucket=self.bucket)
+            self.log.write(
+                event="resource", bucket_policy_statement=sid, bucket=self.bucket
+            )
 
     # ---------- reporting step: manual, in the Kiro console ----------
     # This setting is managed in the Kiro console, so the customer turns it on in the
@@ -1218,7 +1375,9 @@ class Setup:
             Bucket=self.bucket, Prefix=LOG_PREFIX + "/"
         ):
             for obj in page.get("Contents", []):
-                body = self.s3.get_object(Bucket=self.bucket, Key=obj["Key"])["Body"].read()
+                body = self.s3.get_object(Bucket=self.bucket, Key=obj["Key"])[
+                    "Body"
+                ].read()
                 for line in body.decode("utf-8", "replace").splitlines():
                     try:
                         entries.append(json.loads(line))
@@ -1262,11 +1421,15 @@ class Setup:
                     "turn them on.",
                 ],
             )
-        return StepState(False, [f"No Kiro reports under {self.kiro_logs_prefix()} yet."])
+        return StepState(
+            False, [f"No Kiro reports under {self.kiro_logs_prefix()} yet."]
+        )
 
     def plan_reporting(self):
         return [
-            bold("MANUAL STEP (you do this in the Kiro console; the script waits for you)."),
+            bold(
+                "MANUAL STEP (you do this in the Kiro console; the script waits for you)."
+            ),
             "This setting is managed in the Kiro console. You need the Kiro administrator permissions",
             "(https://kiro.dev/docs/enterprise/iam/).",
             f"  1. Open the Kiro console in {self.region} (the region of your Kiro profile):",
@@ -1287,14 +1450,24 @@ class Setup:
         ]
 
     def run_reporting(self, state=None):
-        outcome = "already" if getattr(self, "confirmed_as", True) == "already" else "turned_on"
-        self.log.write(event="kiro_reporting", outcome=outcome, reports_uri=self.reports_uri())
+        outcome = (
+            "already"
+            if getattr(self, "confirmed_as", True) == "already"
+            else "turned_on"
+        )
+        self.log.write(
+            event="kiro_reporting", outcome=outcome, reports_uri=self.reports_uri()
+        )
         count, _ = self.count_reports()
         if count:
             print(f"  Kiro reports are arriving ({count} file(s) so far).")
         else:
-            print("  Recorded. No report is in the bucket yet; the first one arrives at 02:00 UTC.")
-            print("  The next steps work without it (the datasets refresh to 0 rows until then).")
+            print(
+                "  Recorded. No report is in the bucket yet; the first one arrives at 02:00 UTC."
+            )
+            print(
+                "  The next steps work without it (the datasets refresh to 0 rows until then)."
+            )
 
     # ---------- athena step: data source role, Glue database + tables, Athena workgroup ----------
     # The data sources set AthenaParameters.RoleArn to this role, so Quick runs their Athena
@@ -1366,7 +1539,12 @@ class Setup:
         return {
             "Version": "2012-10-17",
             "Statement": [
-                {"Sid": "ReadUsageReports", "Effect": "Allow", "Action": ["s3:GetObject"], "Resource": read},
+                {
+                    "Sid": "ReadUsageReports",
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject"],
+                    "Resource": read,
+                },
                 {
                     "Sid": "ListUsageReportBuckets",
                     "Effect": "Allow",
@@ -1376,7 +1554,12 @@ class Setup:
                 {
                     "Sid": "WriteAthenaResults",
                     "Effect": "Allow",
-                    "Action": ["s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:PutObject",
+                        "s3:AbortMultipartUpload",
+                        "s3:ListMultipartUploadParts",
+                    ],
                     "Resource": [f"{bucket_arn}/{ATHENA_RESULTS_PREFIX}/*"],
                 },
                 {
@@ -1435,14 +1618,17 @@ class Setup:
             )
         missing = []
         actions = set()
-        for st in as_list(policy_document(role.get("AssumeRolePolicyDocument")).get("Statement", [])):
+        for st in as_list(
+            policy_document(role.get("AssumeRolePolicyDocument")).get("Statement", [])
+        ):
             if st.get("Effect") == "Allow":
                 actions |= set(as_list(st.get("Action", [])))
         if not {"sts:AssumeRole", "sts:TagSession"} <= actions:
             missing.append("trust policy")
         try:
             doc = self.iam.get_role_policy(
-                RoleName=self.data_source_role_name(), PolicyName=DATA_SOURCE_ROLE_POLICY
+                RoleName=self.data_source_role_name(),
+                PolicyName=DATA_SOURCE_ROLE_POLICY,
             )["PolicyDocument"]
             if policy_document(doc) != self.data_source_role_policy_document():
                 missing.append("role policy")
@@ -1478,7 +1664,9 @@ class Setup:
                 PolicyDocument=json.dumps(self.data_source_role_policy_document()),
             )
             print(f"  IAM role {name}: policy {DATA_SOURCE_ROLE_POLICY} set")
-            self.log.write(event="resource", iam_role_policy=DATA_SOURCE_ROLE_POLICY, role=name)
+            self.log.write(
+                event="resource", iam_role_policy=DATA_SOURCE_ROLE_POLICY, role=name
+            )
 
     def athena_results_location(self):
         return f"s3://{self.bucket}/{ATHENA_RESULTS_PREFIX}/"
@@ -1504,7 +1692,10 @@ class Setup:
                 "OutputFormat": GLUE_IGNOREKEY_OUTPUT,
                 "SerdeInfo": {
                     "SerializationLibrary": GLUE_LINE_SERDE,
-                    "Parameters": {"field.delim": "\u0001", "serialization.format": "\u0001"},
+                    "Parameters": {
+                        "field.delim": "\u0001",
+                        "serialization.format": "\u0001",
+                    },
                 },
             },
         }
@@ -1514,7 +1705,9 @@ class Setup:
 
     def glue_table(self, report):
         try:
-            return self.glue.get_table(DatabaseName=GLUE_DATABASE, Name=self.glue_table_name(report))["Table"]
+            return self.glue.get_table(
+                DatabaseName=GLUE_DATABASE, Name=self.glue_table_name(report)
+            )["Table"]
         except ClientError as e:
             if e.response["Error"]["Code"] == "EntityNotFoundException":
                 return None
@@ -1541,15 +1734,24 @@ class Setup:
             self.athena.get_work_group(WorkGroup=ATHENA_WORKGROUP)
             return True
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("InvalidRequestException", "ResourceNotFoundException"):
+            if e.response["Error"]["Code"] in (
+                "InvalidRequestException",
+                "ResourceNotFoundException",
+            ):
                 return False
             raise
 
     def workgroup_is_ours(self):
         if not self.workgroup_present():
             return False
-        tags = self.athena.list_tags_for_resource(ResourceARN=self.workgroup_arn()).get("Tags", [])
-        return any(t.get("Key") == WORKGROUP_TAG["Key"] and t.get("Value") == WORKGROUP_TAG["Value"] for t in tags)
+        tags = self.athena.list_tags_for_resource(ResourceARN=self.workgroup_arn()).get(
+            "Tags", []
+        )
+        return any(
+            t.get("Key") == WORKGROUP_TAG["Key"]
+            and t.get("Value") == WORKGROUP_TAG["Value"]
+            for t in tags
+        )
 
     def ensure_glue_database(self):
         try:
@@ -1590,7 +1792,11 @@ class Setup:
                 resume_step=ATHENA_STEP,
             )
         wg = self.athena.get_work_group(WorkGroup=ATHENA_WORKGROUP)["WorkGroup"]
-        current = wg.get("Configuration", {}).get("ResultConfiguration", {}).get("OutputLocation")
+        current = (
+            wg.get("Configuration", {})
+            .get("ResultConfiguration", {})
+            .get("OutputLocation")
+        )
         if current != loc:
             self.athena.update_work_group(
                 WorkGroup=ATHENA_WORKGROUP,
@@ -1599,12 +1805,18 @@ class Setup:
                     "EnforceWorkGroupConfiguration": True,
                 },
             )
-            print(f"  Athena workgroup {ATHENA_WORKGROUP} results location set to {loc}")
+            print(
+                f"  Athena workgroup {ATHENA_WORKGROUP} results location set to {loc}"
+            )
             self.log.write(event="athena_workgroup_results_updated", location=loc)
 
     def workgroup_results_current(self):
         wg = self.athena.get_work_group(WorkGroup=ATHENA_WORKGROUP)["WorkGroup"]
-        current = wg.get("Configuration", {}).get("ResultConfiguration", {}).get("OutputLocation")
+        current = (
+            wg.get("Configuration", {})
+            .get("ResultConfiguration", {})
+            .get("OutputLocation")
+        )
         return current == self.athena_results_location()
 
     def plan_athena(self):
@@ -1624,7 +1836,10 @@ class Setup:
         lines += [
             "    You need iam:CreateRole, iam:PutRolePolicy and iam:PassRole for this role.",
             f"  - Glue database {GLUE_DATABASE} with one external table per report type:",
-            *[f"      {self.glue_table_name(r)}  ->  {self.table_location(r)}" for r in self.selected_reports()],
+            *[
+                f"      {self.glue_table_name(r)}  ->  {self.table_location(r)}"
+                for r in self.selected_reports()
+            ],
             f"  - Athena workgroup {ATHENA_WORKGROUP} (query results under",
             f"    s3://{self.bucket}/{ATHENA_RESULTS_PREFIX}/).",
         ]
@@ -1635,7 +1850,9 @@ class Setup:
         role_missing = self.data_source_role_state()
         if role_missing:
             todo[DATA_SOURCE_ROLE] = role_missing
-            lines.append(f"data source role: not set up yet (missing: {', '.join(role_missing)})")
+            lines.append(
+                f"data source role: not set up yet (missing: {', '.join(role_missing)})"
+            )
         else:
             lines.append(f"data source role {self.data_source_role_name()} is in place")
         shared = []
@@ -1649,7 +1866,9 @@ class Setup:
             todo[ATHENA_SHARED] = shared
             lines.append(f"Athena/Glue: not set up yet (missing: {', '.join(shared)})")
         else:
-            lines.append(f"Athena/Glue: database {GLUE_DATABASE} and workgroup {ATHENA_WORKGROUP} exist")
+            lines.append(
+                f"Athena/Glue: database {GLUE_DATABASE} and workgroup {ATHENA_WORKGROUP} exist"
+            )
         for r in self.selected_reports():
             if self.glue_table_missing(r):
                 todo[r] = ["Glue table"]
@@ -1668,10 +1887,16 @@ class Setup:
             exists = self.glue_table(r) is not None
             fn = self.glue.update_table if exists else self.glue.create_table
             fn(DatabaseName=GLUE_DATABASE, TableInput=self.table_input(r))
-            print(f"  Glue table {self.glue_table_name(r)} {'updated' if exists else 'created'} "
-                  f"({self.table_location(r)})")
-            self.log.write(event="resource", glue_table=self.glue_table_name(r),
-                           location=self.table_location(r), updated=exists)
+            print(
+                f"  Glue table {self.glue_table_name(r)} {'updated' if exists else 'created'} "
+                f"({self.table_location(r)})"
+            )
+            self.log.write(
+                event="resource",
+                glue_table=self.glue_table_name(r),
+                location=self.table_location(r),
+                updated=exists,
+            )
 
     # ---------- datasets step: Quick Athena data sources + SPICE datasets ----------
     def plan_datasets(self):
@@ -1703,17 +1928,25 @@ class Setup:
         ds_id = self.dataset_id(d)
         missing = []
         src = self.get_or_none(
-            self.qs.describe_data_source, "DataSource", AwsAccountId=self.account, DataSourceId=ds_id
+            self.qs.describe_data_source,
+            "DataSource",
+            AwsAccountId=self.account,
+            DataSourceId=ds_id,
         )
         if src is None:
             missing.append("data source")
         else:
             status = src.get("Status", "")
             if status.endswith("IN_PROGRESS"):
-                raise Abort(f"Quick data source {ds_id} is still being created ({status}). Wait a "
-                            "minute, then re-run.")
+                raise Abort(
+                    f"Quick data source {ds_id} is still being created ({status}). Wait a "
+                    "minute, then re-run."
+                )
             athena = src.get("DataSourceParameters", {}).get("AthenaParameters", {})
-            if athena.get("WorkGroup") != ATHENA_WORKGROUP or athena.get("RoleArn") != self.data_source_role_arn():
+            if (
+                athena.get("WorkGroup") != ATHENA_WORKGROUP
+                or athena.get("RoleArn") != self.data_source_role_arn()
+            ):
                 raise Abort(
                     f"Quick data source {ds_id} already exists but doesn't use workgroup "
                     f"{ATHENA_WORKGROUP} with role {self.data_source_role_name()}. The script "
@@ -1723,7 +1956,10 @@ class Setup:
                 # Ours, left failed by an earlier run (e.g. IAM not ready): run_datasets replaces it.
                 missing.append("data source")
         data_set = self.get_or_none(
-            self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=ds_id
+            self.qs.describe_data_set,
+            "DataSet",
+            AwsAccountId=self.account,
+            DataSetId=ds_id,
         )
         if data_set is None:
             missing.append("dataset")
@@ -1768,8 +2004,12 @@ class Setup:
         once the dashboard step updates them. Starts one SPICE refresh.
         """
         ds_id = self.dataset_id(d)
-        data_set = self.qs.describe_data_set(AwsAccountId=self.account, DataSetId=ds_id)["DataSet"]
-        accepted = self.qs.meta.service_model.operation_model("UpdateDataSet").input_shape.members
+        data_set = self.qs.describe_data_set(
+            AwsAccountId=self.account, DataSetId=ds_id
+        )["DataSet"]
+        accepted = self.qs.meta.service_model.operation_model(
+            "UpdateDataSet"
+        ).input_shape.members
         params = {
             k: v
             for k, v in data_set.items()
@@ -1790,7 +2030,9 @@ class Setup:
             }
         }
         # A fresh logical table: the previous transforms refer to the month columns.
-        params["LogicalTableMap"] = logical_table_map(ds_id, physical_id, COLUMN_DESCRIPTIONS[d])
+        params["LogicalTableMap"] = logical_table_map(
+            ds_id, physical_id, COLUMN_DESCRIPTIONS[d]
+        )
         self.qs.update_data_set(AwsAccountId=self.account, DataSetId=ds_id, **params)
         print(f"  {d}: dataset {ds_id} updated to one row per user and day")
         self.log.write(event="dataset_upgraded_to_daily_rows", dataset=d)
@@ -1806,8 +2048,12 @@ class Setup:
             return {}
         if not tables and len(data_set.get("PhysicalTableMap") or {}) != 1:
             return {}
-        have = {c["Name"]: c.get("Description") for c in data_set.get("OutputColumns", [])}
-        return {n: t for n, t in COLUMN_DESCRIPTIONS[d].items() if n in have and not have[n]}
+        have = {
+            c["Name"]: c.get("Description") for c in data_set.get("OutputColumns", [])
+        }
+        return {
+            n: t for n, t in COLUMN_DESCRIPTIONS[d].items() if n in have and not have[n]
+        }
 
     def add_column_descriptions(self, d):
         """Add the missing column descriptions to an existing dataset, keeping everything else.
@@ -1816,11 +2062,15 @@ class Setup:
         that UpdateDataSet accepts is sent back unchanged. It also starts one SPICE refresh.
         """
         ds_id = self.dataset_id(d)
-        data_set = self.qs.describe_data_set(AwsAccountId=self.account, DataSetId=ds_id)["DataSet"]
+        data_set = self.qs.describe_data_set(
+            AwsAccountId=self.account, DataSetId=ds_id
+        )["DataSet"]
         to_add = self.descriptions_to_add(d, data_set)
         if not to_add:
             return
-        accepted = self.qs.meta.service_model.operation_model("UpdateDataSet").input_shape.members
+        accepted = self.qs.meta.service_model.operation_model(
+            "UpdateDataSet"
+        ).input_shape.members
         # Empty collections are dropped: several UpdateDataSet lists (ColumnGroups,
         # DatasetParameters, ColumnLevelPermissionRules) must have at least one item.
         params = {
@@ -1832,14 +2082,18 @@ class Setup:
         tables = copy.deepcopy(data_set.get("LogicalTableMap") or {})
         if tables:
             (table,) = tables.values()
-            table.setdefault("DataTransforms", []).extend(column_description_transforms(to_add))
+            table.setdefault("DataTransforms", []).extend(
+                column_description_transforms(to_add)
+            )
         else:
             (physical_id,) = data_set["PhysicalTableMap"]
             tables = logical_table_map(ds_id, physical_id, to_add)
         params["LogicalTableMap"] = tables
         self.qs.update_data_set(AwsAccountId=self.account, DataSetId=ds_id, **params)
         print(f"  {d}: added descriptions to {len(to_add)} columns of dataset {ds_id}")
-        self.log.write(event="column_descriptions_added", dataset=d, columns=sorted(to_add))
+        self.log.write(
+            event="column_descriptions_added", dataset=d, columns=sorted(to_add)
+        )
 
     def create_athena_data_source(self, ds_id, attempts=4, delay=15):
         """CreateDataSource (Athena) with the data source role, retrying while IAM propagates."""
@@ -1851,19 +2105,36 @@ class Setup:
                 Name=ds_id,
                 Type="ATHENA",
                 DataSourceParameters={
-                    "AthenaParameters": {"WorkGroup": ATHENA_WORKGROUP, "RoleArn": self.data_source_role_arn()}
+                    "AthenaParameters": {
+                        "WorkGroup": ATHENA_WORKGROUP,
+                        "RoleArn": self.data_source_role_arn(),
+                    }
                 },
-                Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": DATA_SOURCE_ACTIONS}],
+                Permissions=[
+                    {
+                        "Principal": self.args.quick_admin_arn,
+                        "Actions": DATA_SOURCE_ACTIONS,
+                    }
+                ],
             )
 
         def role_not_ready(error):
-            return error["Code"] == "AccessDeniedException" and "assume" in error.get("Message", "").lower()
+            return (
+                error["Code"] == "AccessDeniedException"
+                and "assume" in error.get("Message", "").lower()
+            )
 
         def on_retry(attempt, error):
-            self.log.write(event="assume_role_denied", data_source=ds_id, attempt=attempt,
-                           message=error.get("Message", ""))
-            print(f"  Quick can't use the new role yet (IAM takes a few seconds); checking again "
-                  f"in {delay}s ({attempt}/{attempts - 1})...")
+            self.log.write(
+                event="assume_role_denied",
+                data_source=ds_id,
+                attempt=attempt,
+                message=error.get("Message", ""),
+            )
+            print(
+                f"  Quick can't use the new role yet (IAM takes a few seconds); checking again "
+                f"in {delay}s ({attempt}/{attempts - 1})..."
+            )
 
         def give_up(exc):
             raise Abort(
@@ -1874,18 +2145,24 @@ class Setup:
                 resume_step=ATHENA_STEP,
             )
 
-        return retry_on_client_error(create, role_not_ready, attempts, delay, on_retry=on_retry, give_up=give_up)
+        return retry_on_client_error(
+            create, role_not_ready, attempts, delay, on_retry=on_retry, give_up=give_up
+        )
 
     def wait_for_data_source(self, ds_id, timeout=120):
         """Wait until creation settles. Returns the failed DataSource, or None on success."""
         deadline = time.monotonic() + timeout
         while True:
-            src = self.qs.describe_data_source(AwsAccountId=self.account, DataSourceId=ds_id)["DataSource"]
+            src = self.qs.describe_data_source(
+                AwsAccountId=self.account, DataSourceId=ds_id
+            )["DataSource"]
             status = src.get("Status", "")
             if not status.endswith("IN_PROGRESS"):
                 return src if status.endswith("FAILED") else None
             if time.monotonic() > deadline:
-                raise Abort(f"Data source {ds_id} is still {status} after {timeout}s. Re-run later.")
+                raise Abort(
+                    f"Data source {ds_id} is still {status} after {timeout}s. Re-run later."
+                )
             time.sleep(3)
 
     def create_data_source_and_wait(self, ds_id, attempts=4, delay=15):
@@ -1898,8 +2175,17 @@ class Setup:
             if failed is None:
                 return src
             message = (failed.get("ErrorInfo") or {}).get("Message", "")
-            self.log.write(event="data_source_failed", data_source=ds_id, attempt=attempt, message=message)
-            self.delete_if_present(self.qs.delete_data_source, AwsAccountId=self.account, DataSourceId=ds_id)
+            self.log.write(
+                event="data_source_failed",
+                data_source=ds_id,
+                attempt=attempt,
+                message=message,
+            )
+            self.delete_if_present(
+                self.qs.delete_data_source,
+                AwsAccountId=self.account,
+                DataSourceId=ds_id,
+            )
             if "assume" not in message.lower() or attempt == attempts:
                 raise Abort(
                     f"Quick couldn't create data source {ds_id}: {message or 'no details'}\n  Check that "
@@ -1907,8 +2193,10 @@ class Setup:
                     f"Athena in {ATHENA_WORKGROUP}, then re-run.",
                     resume_step=DATASETS_STEP,
                 )
-            print(f"  Quick can't use the new role yet (IAM takes a few seconds); trying again in "
-                  f"{delay}s ({attempt}/{attempts - 1})...")
+            print(
+                f"  Quick can't use the new role yet (IAM takes a few seconds); trying again in "
+                f"{delay}s ({attempt}/{attempts - 1})..."
+            )
             time.sleep(delay)
 
     def check_datasets(self):
@@ -1923,12 +2211,18 @@ class Setup:
                 )
             elif missing == [COLUMN_DESCRIPTIONS_MISSING]:
                 todo[d] = missing
-                lines.append(f"{self.dataset_id(d)}: dataset exists, column descriptions not added yet")
+                lines.append(
+                    f"{self.dataset_id(d)}: dataset exists, column descriptions not added yet"
+                )
             elif missing:
                 todo[d] = missing
-                lines.append(f"{self.dataset_id(d)}: not set up yet (missing: {', '.join(missing)})")
+                lines.append(
+                    f"{self.dataset_id(d)}: not set up yet (missing: {', '.join(missing)})"
+                )
             else:
-                lines.append(f"{self.dataset_id(d)}: Athena data source and dataset exist")
+                lines.append(
+                    f"{self.dataset_id(d)}: Athena data source and dataset exist"
+                )
         return StepState(not todo, lines, todo)
 
     def run_datasets(self, state=None):
@@ -1939,9 +2233,14 @@ class Setup:
             ds_id = self.dataset_id(d)
             if "data source" in missing:
                 if src is not None:  # a failed one from an earlier run
-                    self.delete_if_present(self.qs.delete_data_source, AwsAccountId=self.account,
-                                           DataSourceId=ds_id)
-                    self.log.write(event="failed_data_source_removed", data_source=ds_id)
+                    self.delete_if_present(
+                        self.qs.delete_data_source,
+                        AwsAccountId=self.account,
+                        DataSourceId=ds_id,
+                    )
+                    self.log.write(
+                        event="failed_data_source_removed", data_source=ds_id
+                    )
                 src = self.create_data_source_and_wait(ds_id)
                 print(f"  {d}: Athena data source {ds_id} created")
             if "dataset" not in missing:
@@ -1969,21 +2268,29 @@ class Setup:
                     }
                 },
                 LogicalTableMap=logical_table_map(ds_id, "t", COLUMN_DESCRIPTIONS[d]),
-                Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}],
+                Permissions=[
+                    {"Principal": self.args.quick_admin_arn, "Actions": DATASET_ACTIONS}
+                ],
             )
             print(f"  {d}: dataset {ds_id} created")
-            self.log.write(event="resource", dataset=d, data_source=src["Arn"], data_set=ds_id)
+            self.log.write(
+                event="resource", dataset=d, data_source=src["Arn"], data_set=ds_id
+            )
 
     # ---------- confirmation phrase per step ----------
     def confirmation_phrase(self, key):
         """What the customer types to approve a step. It says what the step does."""
         return {
-            "bucket": "LET KIRO WRITE TO MY BUCKET" if self.bucket_exists() else "CREATE KIRO BUCKET",
+            "bucket": "LET KIRO WRITE TO MY BUCKET"
+            if self.bucket_exists()
+            else "CREATE KIRO BUCKET",
             "reporting": "I TURNED ON KIRO REPORTS",
             "athena": "CREATE ATHENA RESOURCES",
             "datasets": "CREATE DATASETS",
             "refresh": "ENABLE DAILY REFRESH",
-            "dashboard": "UPDATE DASHBOARD" if getattr(self, "dashboard_outdated", {}) else "CREATE DASHBOARD",
+            "dashboard": "UPDATE DASHBOARD"
+            if getattr(self, "dashboard_outdated", {})
+            else "CREATE DASHBOARD",
         }[key]
 
     def confirmation_alternatives(self, key):
@@ -2009,9 +2316,9 @@ class Setup:
         for d in self.selected:
             ds_id = self.dataset_id(d)
             try:
-                schedules = self.qs.list_refresh_schedules(AwsAccountId=self.account, DataSetId=ds_id)[
-                    "RefreshSchedules"
-                ]
+                schedules = self.qs.list_refresh_schedules(
+                    AwsAccountId=self.account, DataSetId=ds_id
+                )["RefreshSchedules"]
             except ClientError as e:
                 if e.response["Error"]["Code"] != "ResourceNotFoundException":
                     raise
@@ -2020,8 +2327,10 @@ class Setup:
                 continue
             if schedules:
                 # Keep whatever is there, including a customer's own incremental schedule.
-                lines.append(f"{ds_id}: already has a refresh schedule "
-                             f"({', '.join(s['ScheduleId'] for s in schedules)})")
+                lines.append(
+                    f"{ds_id}: already has a refresh schedule "
+                    f"({', '.join(s['ScheduleId'] for s in schedules)})"
+                )
             else:
                 todo[d] = ["schedule"]
                 lines.append(f"{ds_id}: no refresh schedule")
@@ -2040,22 +2349,35 @@ class Setup:
                 "RefreshType": "FULL_REFRESH",
             }
             try:
-                self.qs.create_refresh_schedule(AwsAccountId=self.account, DataSetId=ds_id, Schedule=schedule)
-                print(f"  {d}: daily full refresh scheduled at {self.args.refresh_time}")
+                self.qs.create_refresh_schedule(
+                    AwsAccountId=self.account, DataSetId=ds_id, Schedule=schedule
+                )
+                print(
+                    f"  {d}: daily full refresh scheduled at {self.args.refresh_time}"
+                )
                 outcome = "created"
             except ClientError as e:
                 if e.response["Error"]["Code"] != "ResourceExistsException":
                     raise
-                self.qs.update_refresh_schedule(AwsAccountId=self.account, DataSetId=ds_id, Schedule=schedule)
+                self.qs.update_refresh_schedule(
+                    AwsAccountId=self.account, DataSetId=ds_id, Schedule=schedule
+                )
                 print(f"  {d}: refresh schedule updated to daily full refresh")
                 outcome = "updated"
-            self.log.write(event="refresh_schedule", dataset=ds_id, outcome=outcome,
-                           time=self.args.refresh_time, timezone=self.args.timezone)
+            self.log.write(
+                event="refresh_schedule",
+                dataset=ds_id,
+                outcome=outcome,
+                time=self.args.refresh_time,
+                timezone=self.args.timezone,
+            )
 
     def skip_refresh(self, reason):
         print("  Skipped. The datasets won't update on their own. To refresh them:")
         print("    - in Quick: Datasets > the dataset > Refresh now, or")
-        print("    - add a schedule later: Datasets > the dataset > Refresh > Add schedule.")
+        print(
+            "    - add a schedule later: Datasets > the dataset > Refresh > Add schedule."
+        )
         self.log.write(event="refresh_skipped", reason=reason)
 
     # ---------- dashboard step: optional starter dashboard ----------
@@ -2066,7 +2388,9 @@ class Setup:
         return arns
 
     def quick_link(self, kind, asset_id):
-        return link(f"https://{self.region}.quicksight.aws.amazon.com/sn/{kind}/{asset_id}")
+        return link(
+            f"https://{self.region}.quicksight.aws.amazon.com/sn/{kind}/{asset_id}"
+        )
 
     def dashboard_scope_problem(self):
         """Why the starter dashboard can't be built for this run, or None."""
@@ -2111,13 +2435,21 @@ class Setup:
     def asset_state(self, kind, asset_id):
         """None if missing, else the status. Stops on a failed or still-running asset."""
         if kind == "analysis":
-            asset = self.get_or_none(self.qs.describe_analysis, "Analysis", AwsAccountId=self.account,
-                                     AnalysisId=asset_id)
+            asset = self.get_or_none(
+                self.qs.describe_analysis,
+                "Analysis",
+                AwsAccountId=self.account,
+                AnalysisId=asset_id,
+            )
             status = asset and asset.get("Status", "")
             delete = f"delete-analysis --analysis-id {asset_id} --force-delete-without-recovery"
         else:
-            asset = self.get_or_none(self.qs.describe_dashboard, "Dashboard", AwsAccountId=self.account,
-                                     DashboardId=asset_id)
+            asset = self.get_or_none(
+                self.qs.describe_dashboard,
+                "Dashboard",
+                AwsAccountId=self.account,
+                DashboardId=asset_id,
+            )
             status = asset and asset.get("Version", {}).get("Status", "")
             delete = f"delete-dashboard --dashboard-id {asset_id}"
         if asset is None:
@@ -2129,8 +2461,10 @@ class Setup:
                 f"    aws quicksight {delete} --aws-account-id {self.account} --region {self.region}"
             )
         if status.endswith("IN_PROGRESS"):
-            raise Abort(f"Quick {kind} {asset_id} is still being created or updated ({status}). "
-                        "Wait a minute, then re-run.")
+            raise Abort(
+                f"Quick {kind} {asset_id} is still being created or updated ({status}). "
+                "Wait a minute, then re-run."
+            )
         if status.endswith("FAILED"):
             raise Abort(
                 f"Quick {kind} {asset_id} is in state {status}. Delete it, then re-run:\n"
@@ -2143,10 +2477,16 @@ class Setup:
 
     def asset_version(self, kind, asset_id):
         try:
-            tags = self.qs.list_tags_for_resource(ResourceArn=self.asset_arn(kind, asset_id))
+            tags = self.qs.list_tags_for_resource(
+                ResourceArn=self.asset_arn(kind, asset_id)
+            )
         except ClientError as e:
-            self.log.write(event="dashboard_version_unreadable", kind=kind, asset_id=asset_id,
-                           error=e.response["Error"]["Code"])
+            self.log.write(
+                event="dashboard_version_unreadable",
+                kind=kind,
+                asset_id=asset_id,
+                error=e.response["Error"]["Code"],
+            )
             return None
         for tag in tags.get("Tags") or []:
             if tag.get("Key") == DASHBOARD_VERSION_TAG:
@@ -2164,8 +2504,13 @@ class Setup:
         missing = [
             self.dataset_id(d)
             for d in DASHBOARD_DATASETS
-            if self.get_or_none(self.qs.describe_data_set, "DataSet", AwsAccountId=self.account,
-                                DataSetId=self.dataset_id(d)) is None
+            if self.get_or_none(
+                self.qs.describe_data_set,
+                "DataSet",
+                AwsAccountId=self.account,
+                DataSetId=self.dataset_id(d),
+            )
+            is None
         ] + self.missing_quick_datasets()
         if missing:
             todo["datasets"] = missing
@@ -2180,8 +2525,10 @@ class Setup:
             if version is not None and version < DASHBOARD_VERSION:
                 self.dashboard_outdated[kind] = version
                 todo.setdefault("update", []).append(asset_id)
-                lines.append(f"{kind} {asset_id}: version {version}, newer version "
-                             f"{DASHBOARD_VERSION} available")
+                lines.append(
+                    f"{kind} {asset_id}: version {version}, newer version "
+                    f"{DASHBOARD_VERSION} available"
+                )
             else:
                 lines.append(f"{kind} {asset_id}: already exists, kept as is")
         return StepState(not todo, lines, todo)
@@ -2190,28 +2537,40 @@ class Setup:
         deadline = time.monotonic() + CREATE_TIMEOUT_SECONDS
         while True:
             if kind == "analysis":
-                asset = self.qs.describe_analysis(AwsAccountId=self.account, AnalysisId=asset_id)["Analysis"]
+                asset = self.qs.describe_analysis(
+                    AwsAccountId=self.account, AnalysisId=asset_id
+                )["Analysis"]
             else:
                 extra = {"VersionNumber": version_number} if version_number else {}
-                asset = self.qs.describe_dashboard(AwsAccountId=self.account, DashboardId=asset_id,
-                                                   **extra)["Dashboard"]["Version"]
+                asset = self.qs.describe_dashboard(
+                    AwsAccountId=self.account, DashboardId=asset_id, **extra
+                )["Dashboard"]["Version"]
             status = asset.get("Status", "")
             if not status.endswith("IN_PROGRESS"):
                 break
             if time.monotonic() > deadline:
-                raise Abort(f"Quick {kind} {asset_id} is still {status} after "
-                            f"{CREATE_TIMEOUT_SECONDS}s. Re-run later.", resume_step=DASHBOARD_STEP)
+                raise Abort(
+                    f"Quick {kind} {asset_id} is still {status} after "
+                    f"{CREATE_TIMEOUT_SECONDS}s. Re-run later.",
+                    resume_step=DASHBOARD_STEP,
+                )
             time.sleep(3)
         errors = [
-            {"type": e.get("Type"), "message": e.get("Message"),
-             "paths": [v.get("Path") for v in e.get("ViolatedEntities") or []]}
+            {
+                "type": e.get("Type"),
+                "message": e.get("Message"),
+                "paths": [v.get("Path") for v in e.get("ViolatedEntities") or []],
+            }
             for e in asset.get("Errors") or []
         ]
         if errors:
-            self.log.write(event="asset_errors", kind=kind, asset_id=asset_id, errors=errors)
+            self.log.write(
+                event="asset_errors", kind=kind, asset_id=asset_id, errors=errors
+            )
         if status.endswith("FAILED"):
             details = "\n".join(
-                f"    - {e['type']}: {e['message']}" + "".join(f"\n        at {p}" for p in e["paths"])
+                f"    - {e['type']}: {e['message']}"
+                + "".join(f"\n        at {p}" for p in e["paths"])
                 for e in errors
             )
             raise Abort(
@@ -2246,7 +2605,12 @@ class Setup:
             self.qs.create_analysis(
                 **common,
                 AnalysisId=ANALYSIS_ID,
-                Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": ANALYSIS_ACTIONS}],
+                Permissions=[
+                    {
+                        "Principal": self.args.quick_admin_arn,
+                        "Actions": ANALYSIS_ACTIONS,
+                    }
+                ],
                 Tags=self.version_tags(),
             )
             self.wait_for_asset("analysis", ANALYSIS_ID)
@@ -2255,17 +2619,30 @@ class Setup:
         elif "analysis" in outdated:
             self.qs.update_analysis(**common, AnalysisId=ANALYSIS_ID)
             self.wait_for_asset("analysis", ANALYSIS_ID)
-            self.qs.tag_resource(ResourceArn=self.asset_arn("analysis", ANALYSIS_ID), Tags=self.version_tags())
+            self.qs.tag_resource(
+                ResourceArn=self.asset_arn("analysis", ANALYSIS_ID),
+                Tags=self.version_tags(),
+            )
             print(f"  analysis {ANALYSIS_ID} updated to version {DASHBOARD_VERSION}")
-            self.log.write(event="dashboard_updated", kind="analysis", asset_id=ANALYSIS_ID,
-                           from_version=outdated["analysis"], to_version=DASHBOARD_VERSION)
+            self.log.write(
+                event="dashboard_updated",
+                kind="analysis",
+                asset_id=ANALYSIS_ID,
+                from_version=outdated["analysis"],
+                to_version=DASHBOARD_VERSION,
+            )
         else:
             print(f"  analysis {ANALYSIS_ID} already exists, kept")
         if self.asset_state("dashboard", DASHBOARD_ID) is None:
             self.qs.create_dashboard(
                 **common,
                 DashboardId=DASHBOARD_ID,
-                Permissions=[{"Principal": self.args.quick_admin_arn, "Actions": DASHBOARD_ACTIONS}],
+                Permissions=[
+                    {
+                        "Principal": self.args.quick_admin_arn,
+                        "Actions": DASHBOARD_ACTIONS,
+                    }
+                ],
                 Tags=self.version_tags(),
             )
             self.wait_for_asset("dashboard", DASHBOARD_ID)
@@ -2276,13 +2653,25 @@ class Setup:
             version_number = int(response["VersionArn"].rsplit("/", 1)[1])
             self.wait_for_asset("dashboard", DASHBOARD_ID, version_number)
             self.qs.update_dashboard_published_version(
-                AwsAccountId=self.account, DashboardId=DASHBOARD_ID, VersionNumber=version_number
+                AwsAccountId=self.account,
+                DashboardId=DASHBOARD_ID,
+                VersionNumber=version_number,
             )
-            self.qs.tag_resource(ResourceArn=self.asset_arn("dashboard", DASHBOARD_ID), Tags=self.version_tags())
-            print(f"  dashboard {DASHBOARD_ID} updated to version {DASHBOARD_VERSION} (published)")
-            self.log.write(event="dashboard_updated", kind="dashboard", asset_id=DASHBOARD_ID,
-                           from_version=outdated["dashboard"], to_version=DASHBOARD_VERSION,
-                           quick_version_number=version_number)
+            self.qs.tag_resource(
+                ResourceArn=self.asset_arn("dashboard", DASHBOARD_ID),
+                Tags=self.version_tags(),
+            )
+            print(
+                f"  dashboard {DASHBOARD_ID} updated to version {DASHBOARD_VERSION} (published)"
+            )
+            self.log.write(
+                event="dashboard_updated",
+                kind="dashboard",
+                asset_id=DASHBOARD_ID,
+                from_version=outdated["dashboard"],
+                to_version=DASHBOARD_VERSION,
+                quick_version_number=version_number,
+            )
         else:
             print(f"  dashboard {DASHBOARD_ID} already exists, kept")
         print(f"  Open the dashboard: {self.quick_link('dashboards', DASHBOARD_ID)}")
@@ -2290,12 +2679,18 @@ class Setup:
 
     def skip_dashboard(self, reason):
         if getattr(self, "dashboard_outdated", {}):
-            print("  Skipped. Your current analysis and dashboard are kept as they are. Re-run")
+            print(
+                "  Skipped. Your current analysis and dashboard are kept as they are. Re-run"
+            )
             print(f"  with --from-step {DASHBOARD_STEP} to update them later.")
             self.log.write(event="dashboard_update_skipped", reason=reason)
             return
-        print("  Skipped. No analysis or dashboard was created. You can build your own in Quick")
-        print(f"  from the kiro-usage-* datasets, or re-run with --from-step {DASHBOARD_STEP}.")
+        print(
+            "  Skipped. No analysis or dashboard was created. You can build your own in Quick"
+        )
+        print(
+            f"  from the kiro-usage-* datasets, or re-run with --from-step {DASHBOARD_STEP}."
+        )
         self.log.write(event="dashboard_skipped", reason=reason)
 
     # ---------- verify step ----------
@@ -2308,9 +2703,15 @@ class Setup:
             when = f", newest {newest['LastModified']:%Y-%m-%d}" if newest else ""
             print(f"  {r} reports: {count}{'+' if count >= 1000 else ''} file(s){when}")
         for d in self.selected:
-            print(f"  dataset {self.dataset_id(d)}: {self.quick_link('data-sets', self.dataset_id(d))}")
-        if self.get_or_none(self.qs.describe_dashboard, "Dashboard", AwsAccountId=self.account,
-                            DashboardId=DASHBOARD_ID):
+            print(
+                f"  dataset {self.dataset_id(d)}: {self.quick_link('data-sets', self.dataset_id(d))}"
+            )
+        if self.get_or_none(
+            self.qs.describe_dashboard,
+            "Dashboard",
+            AwsAccountId=self.account,
+            DashboardId=DASHBOARD_ID,
+        ):
             print(f"  starter dashboard: {self.quick_link('dashboards', DASHBOARD_ID)}")
 
     # ---------- destroy: undo the setup steps ----------
@@ -2320,14 +2721,23 @@ class Setup:
             fn(**kwargs)
             return True
         except ClientError as e:
-            if e.response["Error"]["Code"] in ("ResourceNotFoundException", "NoSuchKey", "404",
-                                               "EntityNotFoundException", "NoSuchEntity"):
+            if e.response["Error"]["Code"] in (
+                "ResourceNotFoundException",
+                "NoSuchKey",
+                "404",
+                "EntityNotFoundException",
+                "NoSuchEntity",
+            ):
                 return False
             raise
 
     def removal_phrase(self, key, state):
         if key == "bucket":
-            return "DELETE BUCKET AND KIRO REPORTS" if "bucket" in state.todo else "DELETE ATHENA RESULTS FROM BUCKET"
+            return (
+                "DELETE BUCKET AND KIRO REPORTS"
+                if "bucket" in state.todo
+                else "DELETE ATHENA RESULTS FROM BUCKET"
+            )
         return {
             "dashboard": "DELETE DASHBOARD",
             "refresh": "DELETE REFRESH SCHEDULES",
@@ -2339,12 +2749,23 @@ class Setup:
 
     def find_dashboard_to_remove(self):
         todo, lines = {}, []
-        if self.get_or_none(self.qs.describe_dashboard, "Dashboard", AwsAccountId=self.account,
-                            DashboardId=DASHBOARD_ID):
+        if self.get_or_none(
+            self.qs.describe_dashboard,
+            "Dashboard",
+            AwsAccountId=self.account,
+            DashboardId=DASHBOARD_ID,
+        ):
             todo["dashboard"] = [DASHBOARD_ID]
             lines.append(f"dashboard {DASHBOARD_ID}")
-        if self.get_or_none(self.qs.describe_analysis, "Analysis", AwsAccountId=self.account,
-                            AnalysisId=ANALYSIS_ID) is not None:
+        if (
+            self.get_or_none(
+                self.qs.describe_analysis,
+                "Analysis",
+                AwsAccountId=self.account,
+                AnalysisId=ANALYSIS_ID,
+            )
+            is not None
+        ):
             todo["analysis"] = [ANALYSIS_ID]
             lines.append(f"analysis {ANALYSIS_ID}")
         if not todo:
@@ -2359,12 +2780,20 @@ class Setup:
 
     def remove_dashboard(self, state):
         if "dashboard" in state.todo:
-            self.delete_if_present(self.qs.delete_dashboard, AwsAccountId=self.account, DashboardId=DASHBOARD_ID)
+            self.delete_if_present(
+                self.qs.delete_dashboard,
+                AwsAccountId=self.account,
+                DashboardId=DASHBOARD_ID,
+            )
             print(f"  dashboard {DASHBOARD_ID} deleted")
             self.log.write(event="resource_deleted", dashboard=DASHBOARD_ID)
         if "analysis" in state.todo:
-            self.delete_if_present(self.qs.delete_analysis, AwsAccountId=self.account, AnalysisId=ANALYSIS_ID,
-                                   ForceDeleteWithoutRecovery=True)
+            self.delete_if_present(
+                self.qs.delete_analysis,
+                AwsAccountId=self.account,
+                AnalysisId=ANALYSIS_ID,
+                ForceDeleteWithoutRecovery=True,
+            )
             print(f"  analysis {ANALYSIS_ID} deleted")
             self.log.write(event="resource_deleted", analysis=ANALYSIS_ID)
 
@@ -2373,9 +2802,9 @@ class Setup:
         for d in self.selected:
             ds_id = self.dataset_id(d)
             try:
-                schedules = self.qs.list_refresh_schedules(AwsAccountId=self.account, DataSetId=ds_id)[
-                    "RefreshSchedules"
-                ]
+                schedules = self.qs.list_refresh_schedules(
+                    AwsAccountId=self.account, DataSetId=ds_id
+                )["RefreshSchedules"]
             except ClientError as e:
                 if e.response["Error"]["Code"] != "ResourceNotFoundException":
                     raise
@@ -2396,26 +2825,48 @@ class Setup:
 
     def remove_refresh(self, state):
         for d in state.todo:
-            self.delete_if_present(self.qs.delete_refresh_schedule, AwsAccountId=self.account,
-                                   DataSetId=self.dataset_id(d), ScheduleId=REFRESH_SCHEDULE_ID)
+            self.delete_if_present(
+                self.qs.delete_refresh_schedule,
+                AwsAccountId=self.account,
+                DataSetId=self.dataset_id(d),
+                ScheduleId=REFRESH_SCHEDULE_ID,
+            )
             print(f"  {d}: daily refresh schedule deleted")
-            self.log.write(event="resource_deleted", refresh_schedule=REFRESH_SCHEDULE_ID, dataset=d)
+            self.log.write(
+                event="resource_deleted",
+                refresh_schedule=REFRESH_SCHEDULE_ID,
+                dataset=d,
+            )
 
     def find_datasets_to_remove(self):
         todo, lines = {}, []
         for d in self.selected:
             ds_id = self.dataset_id(d)
             parts = []
-            if self.get_or_none(self.qs.describe_data_set, "DataSet", AwsAccountId=self.account, DataSetId=ds_id):
+            if self.get_or_none(
+                self.qs.describe_data_set,
+                "DataSet",
+                AwsAccountId=self.account,
+                DataSetId=ds_id,
+            ):
                 parts.append("dataset")
-            src = self.get_or_none(self.qs.describe_data_source, "DataSource", AwsAccountId=self.account,
-                                   DataSourceId=ds_id)
+            src = self.get_or_none(
+                self.qs.describe_data_source,
+                "DataSource",
+                AwsAccountId=self.account,
+                DataSourceId=ds_id,
+            )
             if src is not None:
                 athena = src.get("DataSourceParameters", {}).get("AthenaParameters", {})
-                if athena.get("WorkGroup") == ATHENA_WORKGROUP and athena.get("RoleArn") == self.data_source_role_arn():
+                if (
+                    athena.get("WorkGroup") == ATHENA_WORKGROUP
+                    and athena.get("RoleArn") == self.data_source_role_arn()
+                ):
                     parts.append("data source")
                 else:
-                    lines.append(f"{ds_id}: a data source with this id exists but isn't this script's. Kept.")
+                    lines.append(
+                        f"{ds_id}: a data source with this id exists but isn't this script's. Kept."
+                    )
             if parts:
                 todo[d] = parts
                 lines.append(f"{ds_id}: {', '.join(parts)}")
@@ -2426,7 +2877,10 @@ class Setup:
     def plan_remove_datasets(self, state):
         return [
             "Delete these Quick datasets (with their SPICE data) and their Athena data sources:",
-            *[f"  {self.dataset_id(d)}: {', '.join(parts)}" for d, parts in state.todo.items()],
+            *[
+                f"  {self.dataset_id(d)}: {', '.join(parts)}"
+                for d, parts in state.todo.items()
+            ],
             "Any analysis or dashboard you built yourself on these datasets stops working.",
             "The Kiro reports in the bucket aren't touched in this step.",
         ]
@@ -2435,10 +2889,16 @@ class Setup:
         for d, parts in state.todo.items():
             ds_id = self.dataset_id(d)
             if "dataset" in parts:
-                self.delete_if_present(self.qs.delete_data_set, AwsAccountId=self.account, DataSetId=ds_id)
+                self.delete_if_present(
+                    self.qs.delete_data_set, AwsAccountId=self.account, DataSetId=ds_id
+                )
                 print(f"  {d}: dataset {ds_id} deleted")
             if "data source" in parts:
-                self.delete_if_present(self.qs.delete_data_source, AwsAccountId=self.account, DataSourceId=ds_id)
+                self.delete_if_present(
+                    self.qs.delete_data_source,
+                    AwsAccountId=self.account,
+                    DataSourceId=ds_id,
+                )
                 print(f"  {d}: data source {ds_id} deleted")
             self.log.write(event="resource_deleted", dataset=d, parts=parts)
 
@@ -2465,7 +2925,9 @@ class Setup:
         if self.workgroup_is_ours():
             shared.append("workgroup")
         elif self.workgroup_present():
-            lines.append(f"Athena workgroup {ATHENA_WORKGROUP} isn't tagged as this script's; kept.")
+            lines.append(
+                f"Athena workgroup {ATHENA_WORKGROUP} isn't tagged as this script's; kept."
+            )
         if self.glue_database_present() and self.glue_database_only_ours():
             shared.append("Glue database")
         if shared:
@@ -2477,19 +2939,30 @@ class Setup:
 
     def plan_remove_athena(self, state):
         lines = ["Delete these Athena/Glue resources:"]
-        lines += [f"  Glue table {self.glue_table_name(r)}" for r in state.todo if r in REPORTS]
+        lines += [
+            f"  Glue table {self.glue_table_name(r)}"
+            for r in state.todo
+            if r in REPORTS
+        ]
         lines += [f"  {s}" for s in state.todo.get(ATHENA_SHARED, [])]
         lines.append("The Kiro reports in the bucket aren't touched in this step.")
         return lines
 
     def remove_athena(self, state):
         for r in [r for r in state.todo if r in REPORTS]:
-            self.delete_if_present(self.glue.delete_table, DatabaseName=GLUE_DATABASE, Name=self.glue_table_name(r))
+            self.delete_if_present(
+                self.glue.delete_table,
+                DatabaseName=GLUE_DATABASE,
+                Name=self.glue_table_name(r),
+            )
             print(f"  Glue table {self.glue_table_name(r)} deleted")
             self.log.write(event="resource_deleted", glue_table=self.glue_table_name(r))
         if self.workgroup_is_ours():
-            self.delete_if_present(self.athena.delete_work_group, WorkGroup=ATHENA_WORKGROUP,
-                                   RecursiveDeleteOption=True)
+            self.delete_if_present(
+                self.athena.delete_work_group,
+                WorkGroup=ATHENA_WORKGROUP,
+                RecursiveDeleteOption=True,
+            )
             print(f"  Athena workgroup {ATHENA_WORKGROUP} deleted")
             self.log.write(event="resource_deleted", athena_workgroup=ATHENA_WORKGROUP)
         if self.glue_database_present() and self.glue_database_only_ours():
@@ -2502,11 +2975,20 @@ class Setup:
         if role is None:
             return StepState(True, ["no data source role from this script"])
         if not self.is_our_data_source_role(role):
-            return StepState(True, [f"IAM role {self.data_source_role_name()} isn't this script's. Kept."])
-        return StepState(False, [f"IAM role {self.data_source_role_name()}"], {"role": [self.data_source_role_name()]})
+            return StepState(
+                True,
+                [f"IAM role {self.data_source_role_name()} isn't this script's. Kept."],
+            )
+        return StepState(
+            False,
+            [f"IAM role {self.data_source_role_name()}"],
+            {"role": [self.data_source_role_name()]},
+        )
 
     def plan_remove_role(self, state):
-        return [f"Delete IAM role {self.data_source_role_name()} and its inline policy. Nothing else uses it."]
+        return [
+            f"Delete IAM role {self.data_source_role_name()} and its inline policy. Nothing else uses it."
+        ]
 
     def remove_role(self, state):
         name = self.data_source_role_name()
@@ -2520,9 +3002,17 @@ class Setup:
         """Offer to turn Kiro reporting off only if this script's setup had the customer turn it on."""
         record = self.reporting_record()
         if record and record[0] == "turned_on":
-            return StepState(False, [f"Kiro reports go to {self.reports_uri()} (you turned them on "
-                                     f"during setup on {record[1][:10]})"], {"reporting": ["on"]})
-        return StepState(True, ["Kiro reporting wasn't turned on by this script; left as is"])
+            return StepState(
+                False,
+                [
+                    f"Kiro reports go to {self.reports_uri()} (you turned them on "
+                    f"during setup on {record[1][:10]})"
+                ],
+                {"reporting": ["on"]},
+            )
+        return StepState(
+            True, ["Kiro reporting wasn't turned on by this script; left as is"]
+        )
 
     def plan_remove_reporting(self, state):
         return [
@@ -2534,12 +3024,16 @@ class Setup:
         ]
 
     def remove_reporting(self, state):
-        self.log.write(event="kiro_reporting", outcome="turned_off", reports_uri=self.reports_uri())
+        self.log.write(
+            event="kiro_reporting", outcome="turned_off", reports_uri=self.reports_uri()
+        )
         print("  Recorded: Kiro user activity reports turned off.")
 
     def other_files_in_bucket(self):
         """True if the bucket holds anything outside the reports prefix and the script's folder."""
-        resp = self.s3.list_object_versions(Bucket=self.bucket, Delimiter="/", MaxKeys=1000)
+        resp = self.s3.list_object_versions(
+            Bucket=self.bucket, Delimiter="/", MaxKeys=1000
+        )
         ours = {PREFIX_ROOT + "/", self.reports_prefix.split("/")[0] + "/"}
         prefixes = [p["Prefix"] for p in resp.get("CommonPrefixes", [])]
         return bool(
@@ -2551,7 +3045,9 @@ class Setup:
 
     def object_versions(self, prefix, skip_prefix=None):
         found = []
-        for page in self.s3.get_paginator("list_object_versions").paginate(Bucket=self.bucket, Prefix=prefix):
+        for page in self.s3.get_paginator("list_object_versions").paginate(
+            Bucket=self.bucket, Prefix=prefix
+        ):
             for v in page.get("Versions", []) + page.get("DeleteMarkers", []):
                 if skip_prefix and v["Key"].startswith(skip_prefix):
                     continue
@@ -2562,21 +3058,34 @@ class Setup:
         if not self.bucket_exists():
             return StepState(True, [f"bucket s3://{self.bucket} doesn't exist"])
         ours = self.bucket_has_our_tag() or any(
-            e.get("event") == "resource" and e.get("bucket") == self.bucket and "bucket_policy_statement" not in e
+            e.get("event") == "resource"
+            and e.get("bucket") == self.bucket
+            and "bucket_policy_statement" not in e
             for e in self.earlier_log_entries()
         )
         whole = ours and not self.other_files_in_bucket()
         todo, lines = {}, []
         if whole:
-            files = self.object_versions(PREFIX_ROOT + "/") + self.object_versions(self.reports_prefix + "/")
+            files = self.object_versions(PREFIX_ROOT + "/") + self.object_versions(
+                self.reports_prefix + "/"
+            )
             todo["bucket"] = [self.bucket]
-            lines.append(f"bucket s3://{self.bucket}: created by this script, nothing else in it")
+            lines.append(
+                f"bucket s3://{self.bucket}: created by this script, nothing else in it"
+            )
         else:
             # Only the script's own files (Athena results); confirmation logs and reports stay.
-            files = self.object_versions(PREFIX_ROOT + "/", skip_prefix=LOG_PREFIX + "/")
-            lines.append(f"bucket s3://{self.bucket}: "
-                         + ("created by this script, but it has other files too. Kept."
-                            if ours else "not created by this script. Kept, with its Kiro reports."))
+            files = self.object_versions(
+                PREFIX_ROOT + "/", skip_prefix=LOG_PREFIX + "/"
+            )
+            lines.append(
+                f"bucket s3://{self.bucket}: "
+                + (
+                    "created by this script, but it has other files too. Kept."
+                    if ours
+                    else "not created by this script. Kept, with its Kiro reports."
+                )
+            )
         if files:
             todo["files"] = files
         lines.append(f"{len(files)} file(s) to delete")
@@ -2598,12 +3107,17 @@ class Setup:
     def remove_bucket(self, state):
         files = state.todo.get("files", [])
         for i in range(0, len(files), 1000):
-            resp = self.s3.delete_objects(Bucket=self.bucket, Delete={"Objects": files[i : i + 1000], "Quiet": True},
-                                          ExpectedBucketOwner=self.account)
+            resp = self.s3.delete_objects(
+                Bucket=self.bucket,
+                Delete={"Objects": files[i : i + 1000], "Quiet": True},
+                ExpectedBucketOwner=self.account,
+            )
             if resp.get("Errors"):
                 first = resp["Errors"][0]
-                raise Abort(f"S3 couldn't delete {len(resp['Errors'])} file(s), for example "
-                            f"{first.get('Key')}: {first.get('Code')} {first.get('Message')}")
+                raise Abort(
+                    f"S3 couldn't delete {len(resp['Errors'])} file(s), for example "
+                    f"{first.get('Key')}: {first.get('Code')} {first.get('Message')}"
+                )
         print(f"  {len(files)} file(s) deleted")
         self.log.write(event="files_deleted", bucket=self.bucket, count=len(files))
         if "bucket" in state.todo:
@@ -2616,7 +3130,7 @@ class Setup:
 # Splits a CSV line on commas outside double quotes, then strips the quotes from each value.
 CSV_SPLIT = (
     "transform(regexp_split(regexp_replace(replace(line, U&'\\FEFF', ''), '\\r$', ''), "
-    "',(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'), c -> trim(BOTH '\"' FROM c))"
+    '\',(?=(?:[^"]*"[^"]*")*[^"]*$)\'), c -> trim(BOTH \'"\' FROM c))'
 )
 
 
@@ -2676,11 +3190,16 @@ def dataset_sql(d, table_name):
     date = report_date(report)
     if d == "user_report":
         cols = [f'{date} AS "Date"', "element_at(m, 'UserId') AS \"user_id\""]
-        cols += select_fields(USER_REPORT_FIELDS) + [f'{date} AS "{EVENT_DATETIME_COLUMN}"']
+        cols += select_fields(USER_REPORT_FIELDS) + [
+            f'{date} AS "{EVENT_DATETIME_COLUMN}"'
+        ]
         return f"{with_rec}\nSELECT " + ",\n       ".join(cols) + "\nFROM rec"
     if d == "by_user_analytic":
-        cols = [f'{date} AS "Date"', "element_at(m, 'UserId') AS \"user_id\"",
-                "element_at(m, 'UserId') AS \"UserId\""]
+        cols = [
+            f'{date} AS "Date"',
+            "element_at(m, 'UserId') AS \"user_id\"",
+            "element_at(m, 'UserId') AS \"UserId\"",
+        ]
         cols += select_fields([(m, "INTEGER") for m in BY_USER_ANALYTIC_METRICS])
         cols.append(f'{date} AS "{EVENT_DATETIME_COLUMN}"')
         return f"{with_rec}\nSELECT " + ",\n       ".join(cols) + "\nFROM rec"
@@ -2689,7 +3208,9 @@ def dataset_sql(d, table_name):
         cols = [
             f'{date} AS "Date"',
             "element_at(m, 'UserId') AS \"user_id\"",
-            *select_fields(["UserId", "Client_Type", "Subscription_Tier", "User_Email"]),
+            *select_fields(
+                ["UserId", "Client_Type", "Subscription_Tier", "User_Email"]
+            ),
             "regexp_replace(k, '_messages$', '') AS \"model\"",
             'TRY_CAST(v AS bigint) AS "messages"',
             f'{date} AS "{EVENT_DATETIME_COLUMN}"',
@@ -2723,9 +3244,9 @@ def quick_kiro_sql(with_rec, date):
 kiro AS (
   SELECT date_trunc('day', {date}) AS day, element_at(m, 'UserId') AS user_id,
          max(element_at(m, 'User_Email')) AS user_email,
-         sum({value('Credits_Used', 'DECIMAL')}) AS kiro_credits,
-         sum({value('Overage_Credits_Used', 'DECIMAL')}) AS kiro_overage_credits,
-         sum({value('Total_Messages', 'INTEGER')}) AS kiro_messages
+         sum({value("Credits_Used", "DECIMAL")}) AS kiro_credits,
+         sum({value("Overage_Credits_Used", "DECIMAL")}) AS kiro_overage_credits,
+         sum({value("Total_Messages", "INTEGER")}) AS kiro_messages
   FROM rec
   WHERE coalesce(element_at(m, 'UserId'), '') <> ''
   GROUP BY 1, 2
@@ -2766,7 +3287,12 @@ FROM kiro k FULL OUTER JOIN quick q ON k.user_id = q.user_id AND k.day = q.day""
 def column_description_transforms(descriptions):
     """One TagColumnOperation per column, setting its Description in Quick."""
     return [
-        {"TagColumnOperation": {"ColumnName": name, "Tags": [{"ColumnDescription": {"Text": text}}]}}
+        {
+            "TagColumnOperation": {
+                "ColumnName": name,
+                "Tags": [{"ColumnDescription": {"Text": text}}],
+            }
+        }
         for name, text in descriptions.items()
     ]
 
@@ -2784,7 +3310,10 @@ def logical_table_map(alias, physical_table_id, descriptions):
 
 def sql_columns(fields):
     return [
-        {"Name": f if isinstance(f, str) else f[0], "Type": "STRING" if isinstance(f, str) else f[1]}
+        {
+            "Name": f if isinstance(f, str) else f[0],
+            "Type": "STRING" if isinstance(f, str) else f[1],
+        }
         for f in fields
     ]
 
@@ -8980,17 +9509,23 @@ def mismatch_hint(expected, typed):
         if digits == expected:
             return "Close. Type only the 12 digits, with no spaces or dashes."
         if len(digits) != len(expected):
-            return (f"You typed {len(digits)} digits, but the account ID has {len(expected)}. "
-                    "Check for a missing or extra digit.")
+            return (
+                f"You typed {len(digits)} digits, but the account ID has {len(expected)}. "
+                "Check for a missing or extra digit."
+            )
         return "The digits don't match the account ID shown."
     if t.upper() == expected:
         return f"Almost there. It needs CAPITAL letters: {expected}"
     if " ".join(t.split()).upper() == expected:
         return f"Check the spacing: one space between each word, like this: {expected}"
-    return f"That doesn't match. Type it exactly as shown, in CAPITAL letters: {expected}"
+    return (
+        f"That doesn't match. Type it exactly as shown, in CAPITAL letters: {expected}"
+    )
 
 
-def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternatives=None):
+def ask_until(
+    log, step, step_name, prompt, expected, allow_skip=False, alternatives=None
+):
     """Ask until the exact phrase is typed.
 
     Returns True (confirmed), False (stopped), "skip" (only when allow_skip is set), or the value
@@ -9003,14 +9538,23 @@ def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternat
         print(f"  Or type: {phrase}")
     if allow_skip:
         print(f"  Or type {SKIP_WORD} to skip this optional step.")
-    print(f"  (To stop without changing anything else, type '{STOP_WORD}' or press Ctrl-C.)")
+    print(
+        f"  (To stop without changing anything else, type '{STOP_WORD}' or press Ctrl-C.)"
+    )
     attempt = 0
     while True:
         attempt += 1
 
         def record(outcome, typed, attempt=attempt):
-            log.write(event="confirmation", step=step, step_name=step_name, prompt=expected,
-                      typed=typed, attempt=attempt, outcome=outcome)
+            log.write(
+                event="confirmation",
+                step=step,
+                step_name=step_name,
+                prompt=expected,
+                typed=typed,
+                attempt=attempt,
+                outcome=outcome,
+            )
 
         try:
             answer = input("> ")
@@ -9037,27 +9581,70 @@ def ask_until(log, step, step_name, prompt, expected, allow_skip=False, alternat
 
 
 def confirm(log, number, name, phrase, allow_skip=False, alternatives=None):
-    return ask_until(log, number, name, f"Ready to run step {number} ({name})? Confirm by typing what it does.",
-                     phrase, allow_skip=allow_skip, alternatives=alternatives)
+    return ask_until(
+        log,
+        number,
+        name,
+        f"Ready to run step {number} ({name})? Confirm by typing what it does.",
+        phrase,
+        allow_skip=allow_skip,
+        alternatives=alternatives,
+    )
 
 
 def parse_args(argv=None):
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    p.add_argument("--region", help="AWS region of your Kiro profile and Quick account (default: your "
-                   "session's region, e.g. CloudShell's region)")
-    p.add_argument("--reports-s3-uri", help="S3 URI Kiro writes its user activity reports to, e.g. "
-                   "s3://my-bucket/kiro-reports/ (default: ask)")
-    p.add_argument("--quick-admin-arn", help="Quick user ARN that will own the datasets (default: you, "
-                   "if you are a Quick admin)")
-    p.add_argument("--datasets", default=",".join(DATASETS), help=f"comma-separated subset of: {', '.join(DATASETS)}")
-    p.add_argument("--refresh-time", default=DEFAULT_REFRESH_TIME,
-                   help=f"time of day (HH:MM) for the optional daily refresh (default {DEFAULT_REFRESH_TIME})")
-    p.add_argument("--timezone", default=DEFAULT_TIMEZONE, help="timezone for the daily refresh (default UTC)")
-    p.add_argument("--no-refresh", action="store_true", help="skip the optional daily refresh step")
-    p.add_argument("--no-dashboard", action="store_true", help="skip the optional starter dashboard step")
-    p.add_argument("--from-step", type=int, default=1,
-                   help=f"start at this step (1-{len(STEPS)}); earlier steps are checked, not re-run")
-    p.add_argument("--destroy", action="store_true", help="remove what this script created, in reverse order")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
+    p.add_argument(
+        "--region",
+        help="AWS region of your Kiro profile and Quick account (default: your "
+        "session's region, e.g. CloudShell's region)",
+    )
+    p.add_argument(
+        "--reports-s3-uri",
+        help="S3 URI Kiro writes its user activity reports to, e.g. "
+        "s3://my-bucket/kiro-reports/ (default: ask)",
+    )
+    p.add_argument(
+        "--quick-admin-arn",
+        help="Quick user ARN that will own the datasets (default: you, "
+        "if you are a Quick admin)",
+    )
+    p.add_argument(
+        "--datasets",
+        default=",".join(DATASETS),
+        help=f"comma-separated subset of: {', '.join(DATASETS)}",
+    )
+    p.add_argument(
+        "--refresh-time",
+        default=DEFAULT_REFRESH_TIME,
+        help=f"time of day (HH:MM) for the optional daily refresh (default {DEFAULT_REFRESH_TIME})",
+    )
+    p.add_argument(
+        "--timezone",
+        default=DEFAULT_TIMEZONE,
+        help="timezone for the daily refresh (default UTC)",
+    )
+    p.add_argument(
+        "--no-refresh", action="store_true", help="skip the optional daily refresh step"
+    )
+    p.add_argument(
+        "--no-dashboard",
+        action="store_true",
+        help="skip the optional starter dashboard step",
+    )
+    p.add_argument(
+        "--from-step",
+        type=int,
+        default=1,
+        help=f"start at this step (1-{len(STEPS)}); earlier steps are checked, not re-run",
+    )
+    p.add_argument(
+        "--destroy",
+        action="store_true",
+        help="remove what this script created, in reverse order",
+    )
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--profile")
     args = p.parse_args(argv)
@@ -9068,13 +9655,17 @@ def parse_args(argv=None):
     try:
         datetime.datetime.strptime(args.refresh_time, "%H:%M")
     except ValueError:
-        p.error(f"--refresh-time must be HH:MM, for example 03:00 (got {args.refresh_time})")
+        p.error(
+            f"--refresh-time must be HH:MM, for example 03:00 (got {args.refresh_time})"
+        )
     if args.destroy and args.from_step != 1:
         p.error("--destroy can't be combined with --from-step")
     if args.destroy and set(args.datasets) != set(DATASETS):
         p.error("--destroy always covers every dataset; leave out --datasets")
     if not 1 <= args.from_step <= len(STEPS):
-        p.error(f"--from-step must be between 1 and {len(STEPS)} (got {args.from_step})")
+        p.error(
+            f"--from-step must be between 1 and {len(STEPS)} (got {args.from_step})"
+        )
     if args.reports_s3_uri:
         try:
             parse_s3_uri(args.reports_s3_uri)
@@ -9099,7 +9690,10 @@ def describe_profile(args):
     if args.profile:
         return args.profile, "from --profile"
     if os.environ.get("AWS_ACCESS_KEY_ID"):
-        return "(environment credentials)", "AWS_ACCESS_KEY_ID is set; profiles are ignored"
+        return (
+            "(environment credentials)",
+            "AWS_ACCESS_KEY_ID is set; profiles are ignored",
+        )
     if os.environ.get("AWS_PROFILE"):
         return os.environ["AWS_PROFILE"], "from AWS_PROFILE environment variable"
     return "default", "no --profile or AWS_PROFILE given"
@@ -9111,7 +9705,11 @@ def describe_error(e):
         err = e.response.get("Error", {})
         op = getattr(e, "operation_name", "AWS call")
         hint = ""
-        if err.get("Code") in ("ExpiredToken", "ExpiredTokenException", "RequestExpired"):
+        if err.get("Code") in (
+            "ExpiredToken",
+            "ExpiredTokenException",
+            "RequestExpired",
+        ):
             hint = " Your AWS credentials expired; refresh them and re-run."
         elif "AccessDenied" in err.get("Code", ""):
             hint = " Your AWS identity is missing a permission for this call."
@@ -9130,7 +9728,10 @@ def common_flags(args):
 
 
 def destroy_command(args):
-    return " ".join(shlex.quote(p) for p in ["python3", sys.argv[0], "--destroy"] + common_flags(args))
+    return " ".join(
+        shlex.quote(p)
+        for p in ["python3", sys.argv[0], "--destroy"] + common_flags(args)
+    )
 
 
 def resume_command(args, step):
@@ -9155,14 +9756,18 @@ def print_resume(log, args, step):
     command = resume_command(args, step)
     print("\nTo continue from where it stopped, fix the problem above, then run:")
     print(f"    {command}")
-    print("Finished steps (and finished parts of a step) are detected and skipped, so this is")
+    print(
+        "Finished steps (and finished parts of a step) are detected and skipped, so this is"
+    )
     print("safe to run more than once.")
     log.write(event="resume_hint", step=step, command=command)
 
 
 def verify_earlier_steps(setup, log, from_step):
     """Before starting at from_step, check (read-only) that every earlier step is complete."""
-    print(f"\nStarting at step {from_step}. Checking that steps 1-{from_step - 1} are complete:")
+    print(
+        f"\nStarting at step {from_step}. Checking that steps 1-{from_step - 1} are complete:"
+    )
     for number, (name, key, _) in enumerate(STEPS, start=1):
         if number >= from_step:
             break
@@ -9173,8 +9778,14 @@ def verify_earlier_steps(setup, log, from_step):
         if key not in CHECKED_STEPS or key in OPTIONAL_STEPS:
             continue
         state = getattr(setup, f"check_{key}")()
-        log.write(event="prerequisite_check", step=number, step_name=name, done=state.done,
-                  unknown=state.unknown, details=state.lines)
+        log.write(
+            event="prerequisite_check",
+            step=number,
+            step_name=name,
+            done=state.done,
+            unknown=state.unknown,
+            details=state.lines,
+        )
         if not state.done:
             raise Abort(
                 f"You asked to start at step {from_step}, but step {number} ({name}) isn't complete:\n"
@@ -9208,20 +9819,28 @@ def run_destroy(setup, log, args):
     setup.selected = list(DATASETS)
     account = setup.account
     print("\n=== Destroy: remove what this script created ===")
-    print("Only things this script creates are removed, under their fixed names. Nothing has")
+    print(
+        "Only things this script creates are removed, under their fixed names. Nothing has"
+    )
     print("been deleted yet. This is what the script finds in this account:")
     found = {}
     for number, (name, key, undoes) in enumerate(TEARDOWN, start=1):
         state = getattr(setup, f"find_{key}_to_remove")()
         found[key] = state
-        print(f"\n  {number}. {name} (undoes step {undoes}): "
-              f"{'nothing to remove' if state.done else 'to remove'}")
+        print(
+            f"\n  {number}. {name} (undoes step {undoes}): "
+            f"{'nothing to remove' if state.done else 'to remove'}"
+        )
         for line in state.lines:
             print(f"       {line}")
-    log.write(event="destroy_inventory",
-              found={k: {"done": s.done, "details": s.lines} for k, s in found.items()})
+    log.write(
+        event="destroy_inventory",
+        found={k: {"done": s.done, "details": s.lines} for k, s in found.items()},
+    )
     if all(s.done for s in found.values()):
-        print("\nNothing from this script is left in this account. Nothing was changed.")
+        print(
+            "\nNothing from this script is left in this account. Nothing was changed."
+        )
         log.write(event="destroy_complete", kept=[])
         return 0
     if args.dry_run:
@@ -9231,10 +9850,16 @@ def run_destroy(setup, log, args):
                 for line in getattr(setup, f"plan_remove_{key}")(found[key]):
                     print(f"  {line}")
         return 0
-    print("\nEach removal asks for its own confirmation, and you can type SKIP to keep it.")
-    if not ask_until(log, 0, "Confirm destroy",
-                     f"To start removing these from account {account}, confirm by typing the account ID.",
-                     account):
+    print(
+        "\nEach removal asks for its own confirmation, and you can type SKIP to keep it."
+    )
+    if not ask_until(
+        log,
+        0,
+        "Confirm destroy",
+        f"To start removing these from account {account}, confirm by typing the account ID.",
+        account,
+    ):
         print("Stopped. Nothing was deleted.")
         return 1
     kept = []
@@ -9253,20 +9878,38 @@ def run_destroy(setup, log, args):
             what = ", ".join(n for n, k, _ in TEARDOWN if k in blocked)
             print(f"  Kept: you chose to keep '{what}', which needs this.")
             kept.append(key)
-            log.write(event="destroy_step_kept", step=step, step_name=name, reason="dependency", needs=blocked)
+            log.write(
+                event="destroy_step_kept",
+                step=step,
+                step_name=name,
+                reason="dependency",
+                needs=blocked,
+            )
             continue
         for line in getattr(setup, f"plan_remove_{key}")(state):
             print(f"  {line}")
-        answer = ask_until(log, step, name,
-                           f"Ready to run destroy step {number} ({name})? Confirm by typing what it does.",
-                           setup.removal_phrase(key, state), allow_skip=True)
+        answer = ask_until(
+            log,
+            step,
+            name,
+            f"Ready to run destroy step {number} ({name})? Confirm by typing what it does.",
+            setup.removal_phrase(key, state),
+            allow_skip=True,
+        )
         if answer == "skip":
             print("  Kept.")
             kept.append(key)
-            log.write(event="destroy_step_kept", step=step, step_name=name, reason="typed SKIP")
+            log.write(
+                event="destroy_step_kept",
+                step=step,
+                step_name=name,
+                reason="typed SKIP",
+            )
             continue
         if not answer:
-            print(f"\nStopped at destroy step {number}. Nothing in this step was deleted.")
+            print(
+                f"\nStopped at destroy step {number}. Nothing in this step was deleted."
+            )
             log.write(event="destroy_stopped", step=step)
             print(f"To continue, run:\n    {destroy_command(args)}")
             return 1
@@ -9274,12 +9917,18 @@ def run_destroy(setup, log, args):
         if key not in MANUAL_STEPS:
             after = getattr(setup, f"find_{key}_to_remove")()
             if not after.done:
-                raise Abort(f"Destroy step {number} ran, but the check afterwards still finds:\n"
-                            + "\n".join(f"    {line}" for line in after.lines))
+                raise Abort(
+                    f"Destroy step {number} ran, but the check afterwards still finds:\n"
+                    + "\n".join(f"    {line}" for line in after.lines)
+                )
         log.write(event="destroy_step_done", step=step, step_name=name)
     log.write(event="destroy_complete", kept=kept)
     if kept:
-        print("\nDone. You chose to keep: " + ", ".join(n for n, k, _ in TEARDOWN if k in kept) + ".")
+        print(
+            "\nDone. You chose to keep: "
+            + ", ".join(n for n, k, _ in TEARDOWN if k in kept)
+            + "."
+        )
         print(f"To remove them later, run:\n    {destroy_command(args)}")
     else:
         print("\nDone. Everything this script created has been removed.")
@@ -9328,22 +9977,37 @@ def run_steps(setup, log, args):
                 for line in state.lines:
                     print(f"  {line}")
                 if state.done:
-                    print(f"  Step {number} is already complete. Nothing changed; moving on.")
-                    log.write(event="step_already_done", step=number, step_name=name, details=state.lines)
+                    print(
+                        f"  Step {number} is already complete. Nothing changed; moving on."
+                    )
+                    log.write(
+                        event="step_already_done",
+                        step=number,
+                        step_name=name,
+                        details=state.lines,
+                    )
                     continue
             for line in getattr(setup, f"plan_{key}")():
                 print(f"  {line}")
             if args.dry_run and changes:
                 continue
             if changes:
-                answer = confirm(log, number, name, setup.confirmation_phrase(key), allow_skip=optional,
-                                 alternatives=setup.confirmation_alternatives(key))
+                answer = confirm(
+                    log,
+                    number,
+                    name,
+                    setup.confirmation_phrase(key),
+                    allow_skip=optional,
+                    alternatives=setup.confirmation_alternatives(key),
+                )
                 if answer == "skip":
                     getattr(setup, f"skip_{key}")("typed SKIP")
                     log.write(event="step_skipped", step=number, step_name=name)
                     continue
                 if not answer:
-                    print(f"\nStopped at step {number}. Nothing in step {number} was changed.")
+                    print(
+                        f"\nStopped at step {number}. Nothing in step {number} was changed."
+                    )
                     log.write(event="run_stopped", step=number)
                     print_resume(log, args, number)
                     return 1
@@ -9352,12 +10016,17 @@ def run_steps(setup, log, args):
             if key in CHECKED_STEPS and key not in MANUAL_STEPS:
                 after = getattr(setup, f"check_{key}")()
                 if not after.done and not after.unknown:
-                    raise Abort(f"Step {number} ran, but the check afterwards says it isn't complete:\n"
-                                + "\n".join(f"    {line}" for line in after.lines), resume_step=number)
+                    raise Abort(
+                        f"Step {number} ran, but the check afterwards says it isn't complete:\n"
+                        + "\n".join(f"    {line}" for line in after.lines),
+                        resume_step=number,
+                    )
             log.write(event="step_done", step=number, step_name=name)
         log.write(event="run_complete")
         if not args.dry_run:
-            print("\nAll steps are complete. Re-running the script is safe: finished steps")
+            print(
+                "\nAll steps are complete. Re-running the script is safe: finished steps"
+            )
             print("are detected and skipped.")
         return 0
     except Abort as e:
@@ -9366,13 +10035,20 @@ def run_steps(setup, log, args):
         print_resume(log, args, e.resume_step or current)
         return 1
     except KeyboardInterrupt:
-        print(f"\n\nInterrupted during step {current}. Part of that step may already be done.")
+        print(
+            f"\n\nInterrupted during step {current}. Part of that step may already be done."
+        )
         log.write(event="run_interrupted", step=current)
         print_resume(log, args, current)
         return 130
     except Exception as e:
         print(f"\nStep {current} failed: {describe_error(e)}")
-        log.write(event="run_failed", step=current, error=repr(e), trace=traceback.format_exc())
+        log.write(
+            event="run_failed",
+            step=current,
+            error=repr(e),
+            trace=traceback.format_exc(),
+        )
         print_resume(log, args, current)
         return 2
 
@@ -9382,7 +10058,9 @@ def main():
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
     region, region_source = resolve_region(args, session)
     if not region:
-        print("Stopped: no AWS region found. Re-run with --region <region>, for example --region us-east-1.")
+        print(
+            "Stopped: no AWS region found. Re-run with --region <region>, for example --region us-east-1."
+        )
         return 1
     args.region = region
     identity = session.client("sts").get_caller_identity()
@@ -9404,7 +10082,9 @@ def main():
     print(f"Run {run_id}")
     print(f"AWS profile: {profile} ({source})")
 
-    print("\nWorking out the settings (read-only; nothing is changed yet)...", flush=True)
+    print(
+        "\nWorking out the settings (read-only; nothing is changed yet)...", flush=True
+    )
     try:
         setup.bucket, setup.reports_prefix, reports_source = setup.resolve_reports()
         args.reports_s3_uri = setup.reports_uri()
@@ -9414,7 +10094,11 @@ def main():
             owner = f"{admin_arn.split(':user/', 1)[1].partition('/')[2]} ({admin_role}, {admin_source})"
         else:
             admin_arn = None
-            owner = "not needed for destroy" if args.destroy else f"not needed (starting at step {args.from_step})"
+            owner = (
+                "not needed for destroy"
+                if args.destroy
+                else f"not needed (starting at step {args.from_step})"
+            )
         bucket_state = setup.bucket_state()
     except Abort as e:
         print(f"\nStopped: {e}\nNothing was changed.")
@@ -9422,28 +10106,47 @@ def main():
         log.close()
         print(f"Confirmation log kept locally at {log_path}")
         return 1
-    log.write(event="inputs_resolved", region=args.region, region_source=region_source,
-              reports_uri=setup.reports_uri(), reports_source=reports_source, bucket_state=bucket_state,
-              quick_admin_arn=admin_arn)
+    log.write(
+        event="inputs_resolved",
+        region=args.region,
+        region_source=region_source,
+        reports_uri=setup.reports_uri(),
+        reports_source=reports_source,
+        bucket_state=bucket_state,
+        quick_admin_arn=admin_arn,
+    )
     caller = identity["Arn"].split(":", 5)[5]
     if args.destroy:
         print("\nWe'll look for what this script created, with these settings:")
     else:
         print("\nWe'll set up Kiro user activity datasets with these settings:")
     print(f"  AWS account:   {identity['Account']}  (signed in as {caller})")
-    print(f"  Region:        {args.region}  ({region_source}). Must be your Kiro profile's region.")
-    print(f"  Kiro reports:  {setup.reports_uri()}  ({reports_source}; bucket {bucket_state})")
+    print(
+        f"  Region:        {args.region}  ({region_source}). Must be your Kiro profile's region."
+    )
+    print(
+        f"  Kiro reports:  {setup.reports_uri()}  ({reports_source}; bucket {bucket_state})"
+    )
     print(f"  Dataset owner: {owner}")
     print(f"  Datasets:      {', '.join(args.datasets)}")
     print(f"  Confirmation log: {log_path}")
-    print("\nTo change any of these, type 'stop' and re-run with --region, --reports-s3-uri or "
-          "--quick-admin-arn.")
+    print(
+        "\nTo change any of these, type 'stop' and re-run with --region, --reports-s3-uri or "
+        "--quick-admin-arn."
+    )
     if not args.dry_run and not args.destroy:
-        print(f"\nTo remove everything this script created instead, type {DESTROY_WORD}. Nothing is"
-              "\ndeleted yet: you'll see what it finds and confirm each removal.")
-        ok = ask_until(log, 0, "Confirm settings",
-                       "If all of these settings are right, confirm by typing the account ID.",
-                       identity["Account"], alternatives={DESTROY_WORD: "destroy"})
+        print(
+            f"\nTo remove everything this script created instead, type {DESTROY_WORD}. Nothing is"
+            "\ndeleted yet: you'll see what it finds and confirm each removal."
+        )
+        ok = ask_until(
+            log,
+            0,
+            "Confirm settings",
+            "If all of these settings are right, confirm by typing the account ID.",
+            identity["Account"],
+            alternatives={DESTROY_WORD: "destroy"},
+        )
         if ok == "destroy":
             args.destroy = True
         elif not ok:
@@ -9459,13 +10162,20 @@ def main():
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 1
         except KeyboardInterrupt:
-            print("\n\nInterrupted. Part of the current destroy step may already be done.")
+            print(
+                "\n\nInterrupted. Part of the current destroy step may already be done."
+            )
             log.write(event="run_interrupted", mode="destroy")
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 130
         except Exception as e:
             print(f"\nDestroy failed: {describe_error(e)}")
-            log.write(event="run_failed", mode="destroy", error=repr(e), trace=traceback.format_exc())
+            log.write(
+                event="run_failed",
+                mode="destroy",
+                error=repr(e),
+                trace=traceback.format_exc(),
+            )
             print(f"To continue, run:\n    {destroy_command(args)}")
             code = 2
     else:
