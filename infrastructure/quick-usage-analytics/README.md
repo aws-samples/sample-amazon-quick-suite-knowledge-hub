@@ -1,6 +1,6 @@
-# Amazon Quick usage datasets: setup
+# AWS Quick usage datasets: setup
 
-This guide sets up usage analytics for Amazon Quick in your own Quick account. When you're done,
+This guide sets up usage analytics for AWS Quick in your own Quick account. When you're done,
 you will be able to view dashboards and chat with Quick in natural language about your
 organization's Quick usage.
 
@@ -12,7 +12,7 @@ To set it up, run the `quick_usage_datasets_setup.py` script.
 
 You need all of these:
 
-- An **Amazon Quick Enterprise** (or Professional) subscription. Note its region, e.g. `us-east-1`.
+- An **AWS Quick Enterprise** (or Professional) subscription. Note its region, e.g. `us-east-1`.
 - Sign-in to **Quick as an admin** (role Admin or Admin Pro) — two steps are done in the Quick console.
 - Sign-in to the **AWS console** for the same account, with permission to create S3 buckets,
   CloudWatch Logs deliveries, Athena and Glue resources, IAM policies, and Quick resources.
@@ -58,7 +58,7 @@ detected and skipped, so re-running is always safe.
 3. In Quick, open **Datasets**, open each `quick-usage-*` dataset, and click **Refresh now**.
    - Without this manual refresh, each dataset updates on its own daily schedule (a full refresh at 02:00 UTC that reloads the dataset from all of its logs).
 4. Open a chat and ask it a question about the dataset.
-5. Open the **Amazon Quick usage** dashboard in the **Dashboards** section.
+5. Open the **AWS Quick usage** dashboard in the **Dashboards** section.
 
 A dataset with no rows usually just means nobody has done that kind of activity yet.
 
@@ -99,7 +99,7 @@ the daily full refresh set up by the script keeps everything accurate in the mea
 
 If your users also use **Kiro**, a second script, `kiro_usage_datasets_setup.py`, adds Kiro's
 per-user activity reports to Quick. It creates Kiro datasets, joins them with the Quick usage
-datasets above on `user_id`, and builds an **Amazon Quick and Kiro usage** dashboard. It works the
+datasets above on `user_id`, and builds an **AWS Quick and Kiro usage** dashboard. It works the
 same way as the main script: each step shows its plan and waits for a confirmation phrase,
 re-running is safe, and `--destroy` removes what it created.
 
@@ -167,7 +167,7 @@ The script reads those reports in place with Athena, just like the Quick usage l
 Every column has a short description in Quick (open the dataset to see it), which Quick's
 natural-language features use when you ask questions about the data.
 
-The dashboard, **Amazon Quick and Kiro usage**, has the tabs **Overview**, **Kiro**,
+The dashboard, **AWS Quick and Kiro usage**, has the tabs **Overview**, **Kiro**,
 **Quick + Kiro by user** and **Monthly report**.
 
 Notes:
@@ -224,7 +224,7 @@ It works out the same settings as the setup script and asks you to confirm. Then
 | `quick-org-identity-center-users` | One row per IAM Identity Center user, with every field Identity Center has: names, email, phone, address, job fields (title, department, cost center, manager, ...) and preferences. **This is personal data (PII).** | Only the dataset owner |
 | `quick-usage-<dataset>-with-org` (one per usage dataset) | Every usage record, LEFT-joined to its user. It adds only the job fields, prefixed `org_`: `user_name`, `quick_user_arn` (the join key), `title`, `user_type`, `cost_center`, `organization`, `division`, `department`, `manager_user_name` and `snapshot_time`. | Only the dataset owner |
 
-It also creates the **Amazon Quick usage by organization** dashboard over the joined datasets.
+It also creates the **AWS Quick usage by organization** dashboard over the joined datasets.
 Every column gets a description, which Quick's natural-language features use.
 
 The script stores PII in your account: the org dataset keeps it in SPICE, and the joined
@@ -250,7 +250,7 @@ The AWS services each script calls:
 
 | Service | `quick_usage_datasets_setup.py` | `kiro_usage_datasets_setup.py` | `quick_usage_org.py` |
 | --- | --- | --- | --- |
-| Amazon Quick (`quicksight`) | ✓ | ✓ | ✓ |
+| AWS Quick (`quicksight`) | ✓ | ✓ | ✓ |
 | Amazon S3 | ✓ | ✓ | ✓ |
 | AWS Glue | ✓ | ✓ | ✓ |
 | Amazon Athena | ✓ | ✓ | ✓ |
